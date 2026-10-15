@@ -114,6 +114,20 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Occurrences of a recurring task that passed while it sat overdue
+    /// (for stats), oldest first. Skips those of undone completions.
+    pub fn missed_occurrences(&self, task_id: &str) -> Result<Vec<i64>> {
+        let mut st = self.conn.prepare(
+            "SELECT e.due_at_then FROM task_events e
+             WHERE e.task_id = ?1 AND e.kind = 'missed' AND NOT EXISTS (
+               SELECT 1 FROM completions c
+               WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)
+             ORDER BY e.due_at_then",
+        )?;
+        let rows = st.query_map([task_id], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     // ------------------------------------------------------------ task writes
 
     pub fn add_task(&mut self, new: NewTask) -> Result<Change> {
@@ -257,6 +271,22 @@ impl Store {
             c.execute("DELETE FROM alarm_state WHERE task_id = ?1", [id])?;
             let task = get_any(c, id)?;
             Ok(Change { task, alarm: AlarmChange::Cancel { task_id: id.to_string() } })
+        })
+    }
+
+    /// Undo a delete: brings back the task and the subtasks deleted with it.
+    pub fn restore_task(&mut self, id: &str) -> Result<Change> {
+        self.write(|c, now| {
+            let t = get_any(c, id)?;
+            let Some(deleted_at) = t.deleted_at else {
+                return Err(Error::Invalid("task is not deleted".into()));
+            };
+            c.execute(
+                "UPDATE tasks SET deleted_at = NULL, updated_at = ?3 WHERE (id = ?1 OR parent_id = ?1) AND deleted_at = ?2",
+                params![id, deleted_at, now],
+            )?;
+            log(c, id, "restored", now, None, None, Source::App)?;
+            finish(c, id, true)
         })
     }
 
@@ -504,6 +534,14 @@ fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change
         params![new_id(), id, now, t.due_at],
     )?;
     log(c, id, "completed", now, t.effective_due(), None, source)?;
+    // Fixed schedule done late: log each occurrence that passed meanwhile
+    // (stats only). `at` = this completion, so an undone completion
+    // (completions.deleted_at set) identifies its missed rows.
+    if let (Some(rule), Some(due), Some(tz), false) = (&t.rrule, t.due_at, &t.tz, t.adaptive) {
+        for m in recurrence::missed(rule, parse_tz(tz)?, due, now)? {
+            log(c, id, "missed", now, Some(m), None, source)?;
+        }
+    }
     if let Some(next) = next {
         // Next occurrence: new due, snooze cleared, subtasks unchecked.
         c.execute(

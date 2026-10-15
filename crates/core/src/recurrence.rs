@@ -47,10 +47,29 @@ fn first_after(rrule: &str, dtstart: DateTime<Tz>, after: DateTime<Tz>) -> Resul
     Ok(res.dates.into_iter().next().map(|d| d.with_timezone(&dtstart.timezone())))
 }
 
+/// Most missed occurrences recorded per completion.
+pub const MISSED_CAP: u16 = 1000;
+
+/// Occurrences strictly between `due_at` and `now`: the ones that came and
+/// went while the task sat overdue.
+pub fn missed(rrule: &str, tz: Tz, due_at: i64, now: i64) -> Result<Vec<i64>> {
+    if now <= due_at {
+        return Ok(vec![]);
+    }
+    let due = from_ms(due_at, tz);
+    let rtz: rrule::Tz = tz.into();
+    let res = set(rrule, due)?
+        .after((due + Duration::seconds(1)).with_timezone(&rtz))
+        .before((from_ms(now, tz) - Duration::seconds(1)).with_timezone(&rtz))
+        .all(MISSED_CAP);
+    Ok(res.dates.into_iter().map(|d| to_utc_ms(d.with_timezone(&tz))).collect())
+}
+
 /// Next due after completing an occurrence.
 ///
 /// * fixed: next scheduled occurrence after both the current due and now
-///   (missed occurrences are skipped, like rent or bins).
+///   (missed occurrences are skipped, like rent or bins). Done late, today
+///   counts as done too: no second reminder later the same day.
 /// * adaptive: counted from completion, keeping the time of day
 ///   (plants, haircut).
 pub fn next_due(rrule: &str, tz: Tz, due_at: i64, adaptive: bool, now: i64) -> Result<Option<i64>> {
@@ -63,8 +82,12 @@ pub fn next_due(rrule: &str, tz: Tz, due_at: i64, adaptive: bool, now: i64) -> R
             .earliest()
             .unwrap_or(now_tz);
         first_after(rrule, start, start.max(now_tz))?
+    } else if now_tz > due {
+        let tomorrow = now_tz.date_naive().succ_opt().unwrap_or(now_tz.date_naive()).and_time(NaiveTime::MIN);
+        let start = tz.from_local_datetime(&tomorrow).earliest().unwrap_or(now_tz);
+        first_after(rrule, due, start - Duration::seconds(1))?
     } else {
-        first_after(rrule, due, due.max(now_tz))?
+        first_after(rrule, due, due)?
     };
     Ok(next.map(to_utc_ms))
 }
@@ -91,6 +114,29 @@ mod tests {
         let due = berlin(2026, 10, 1, 9, 0);
         let now = berlin(2026, 10, 15, 12, 0);
         assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+    }
+
+    #[test]
+    fn fixed_late_skips_rest_of_today() {
+        // Overdue since Oct 10, done Oct 15 at 08:00: not again at 09:00 today.
+        let due = berlin(2026, 10, 10, 9, 0);
+        let now = berlin(2026, 10, 15, 8, 0);
+        assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+        // Done early (before today's due): next is tomorrow's.
+        let due = berlin(2026, 10, 15, 9, 0);
+        assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+    }
+
+    #[test]
+    fn missed_between_due_and_now() {
+        let due = berlin(2026, 10, 10, 9, 0);
+        let now = berlin(2026, 10, 15, 14, 0);
+        let days: Vec<i64> = (11..=15).map(|d| berlin(2026, 10, d, 9, 0)).collect();
+        assert_eq!(missed("FREQ=DAILY", B, due, now).unwrap(), days);
+        // Before today's 09:00: today isn't missed.
+        let now = berlin(2026, 10, 15, 8, 0);
+        assert_eq!(missed("FREQ=DAILY", B, due, now).unwrap(), days[..4]);
+        assert!(missed("FREQ=DAILY", B, due, due - 1).unwrap().is_empty());
     }
 
     #[test]

@@ -5,20 +5,38 @@ const MIN = 60_000
 const HOUR = 60 * MIN
 const DAY = 24 * HOUR
 
-const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+const time = (d: Date) => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
 
-export function dueLabel(ms: number | null, now = Date.now()): string {
+/** "25 min", "2h", "3d". */
+export function span(ms: number): string {
+  if (ms < HOUR) return `${Math.max(1, Math.round(ms / MIN))} min`
+  if (ms < DAY) return `${Math.round(ms / HOUR)}h`
+  return `${Math.round(ms / DAY)}d`
+}
+
+/** `timeOnly`: the list already says it's today, so "18:00" instead of "Today 18:00". */
+export function dueLabel(ms: number | null, now = Date.now(), timeOnly = false): string {
   if (ms == null) return ''
   const diff = ms - now
-  if (diff < 0) {
-    const late = -diff
-    if (late < HOUR) return `${Math.max(1, Math.round(late / MIN))} min late`
-    if (late < DAY) return `${Math.round(late / HOUR)} h late`
-    return `${Math.round(late / DAY)} d late`
-  }
-  if (diff < HOUR) return `in ${Math.max(1, Math.round(diff / MIN))} min`
+  if (diff < 0) return `${span(-diff)} late`
+  if (diff < HOUR) return `in ${span(diff)}`
+  if (timeOnly && isToday(ms, now)) return time(new Date(ms))
   return dayLabel(ms, now)
+}
+
+export const isToday = (ms: number, now = Date.now()) => startOfDay(new Date(ms)) === startOfDay(new Date(now))
+
+export const timeLabel = (ms: number) => time(new Date(ms))
+
+/** List sections, in display order. */
+export type Section = 'overdue' | 'today' | 'later' | 'none'
+export const sectionTitles: Record<Section, string> = { overdue: 'Overdue', today: 'Today', later: 'Upcoming', none: 'No date' }
+
+export function sectionOf(ms: number | null, now = Date.now()): Section {
+  if (ms == null) return 'none'
+  if (ms < now) return 'overdue'
+  return isToday(ms, now) ? 'today' : 'later'
 }
 
 /** "Today 18:00", "Tomorrow 09:00", "Fri 15:00", "23 Oct 15:00". */

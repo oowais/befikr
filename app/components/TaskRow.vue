@@ -4,10 +4,10 @@
 import { Check, ListChecks, Moon, Repeat } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 
-const props = defineProps<{ row: Row; now: number; done?: boolean }>()
+const props = defineProps<{ row: Row; now: number; done?: boolean; timeOnly?: boolean }>()
 const emit = defineEmits<{ complete: []; open: []; snooze: [] }>()
 
-const label = computed(() => dueLabel(props.row.snoozedUntil ?? props.row.dueAt, props.now))
+const label = computed(() => dueLabel(props.row.snoozedUntil ?? props.row.dueAt, props.now, props.timeOnly))
 const big = computed(() => props.row.urgency === 'red' || props.row.urgency === 'yellow')
 const canSnooze = computed(() => props.row.dueAt != null || props.row.snoozedUntil != null)
 

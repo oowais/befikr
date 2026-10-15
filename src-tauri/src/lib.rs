@@ -108,6 +108,11 @@ fn delete_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
 }
 
 #[tauri::command]
+fn restore_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
+    write(&app, &db, |s| s.restore_task(&id))
+}
+
+#[tauri::command]
 fn get_settings(db: State<Db>) -> Res<Settings> {
     db.store.lock().map_err(err)?.settings().map_err(err)
 }
@@ -179,6 +184,7 @@ pub fn run() {
             reopen_task,
             snooze_task,
             delete_task,
+            restore_task,
             get_settings,
             set_time_word,
             remove_time_word,
