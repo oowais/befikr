@@ -229,7 +229,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI releases `v0.x.y` (main only). Needs on-device check (see step 3 notes) |
-| 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | ⬜ | |
+| 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | Done: re-remind, snooze sheet, subtasks, history. **Left: backup** (manual export/import, daily auto-export to a picked folder, keep 7) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | ⬜ | |
 
 ### Step 0 — spike checklist
