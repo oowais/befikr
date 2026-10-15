@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, Moon, Plus, Repeat, RotateCcw, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { firstDue } from '@befikr/parser'
 import type { Task } from '~/composables/api'
 
 const route = useRoute()
@@ -12,10 +13,11 @@ const task = ref<Task | null>(null)
 const subtasks = ref<Task[]>([])
 const title = ref('')
 const description = ref('')
-const repeatText = ref('')
 const newSub = ref('')
 const error = ref('')
-const showRepeat = ref(false)
+const pickingRepeat = ref(false)
+/** Date/repeat found in an edited title, waiting for the user to apply or keep as text. */
+const found = ref<ReturnType<typeof parseWith> | null>(null)
 const showNotes = ref(false)
 const picking = ref(false)
 
@@ -41,20 +43,48 @@ async function patch(p: Parameters<typeof api.updateTask>[1]) {
   }
 }
 
-const saveTitle = () => title.value.trim() && title.value !== task.value?.title && patch({ title: title.value })
+function saveTitle() {
+  if (!title.value.trim() || title.value === task.value?.title) return
+  const r = parseWith(title.value, [])
+  if (r.title && (r.due || r.rrule)) return (found.value = r)
+  patch({ title: title.value })
+}
+// Apply what the edited title says ("call mom tomorrow 5pm"), dropping those words.
+function applyFound() {
+  const r = found.value
+  if (!r) return
+  found.value = null
+  const due = r.due ? localMs(r.due.date, r.due.time ?? dueTime()) : task.value?.dueAt ?? null
+  title.value = r.title
+  patch({ title: r.title, ...(due != null && { dueAt: due, tz: deviceTz() }), ...(r.rrule && { rrule: r.rrule }) })
+}
+function keepTitle() {
+  found.value = null
+  patch({ title: title.value })
+}
+const foundLabel = computed(() => {
+  const r = found.value
+  if (!r) return ''
+  const when = r.due ? dayLabel(localMs(r.due.date, r.due.time ?? dueTime())) : ''
+  return [when, r.recurrenceText].filter(Boolean).join(' · ')
+})
 const saveNotes = () => description.value !== task.value?.description && patch({ description: description.value })
 function setDue(ms: number | null) {
   patch(ms == null ? { dueAt: null, rrule: null, tz: null } : { dueAt: ms, tz: deviceTz() })
 }
-function saveRepeat() {
-  const t = repeatText.value.trim()
-  if (!t) return patch({ rrule: null })
-  const r = parseWith(`x ${t.startsWith('every') ? t : `every ${t}`}`, [])
-  if (!r.rrule) return (error.value = `Couldn't understand “${t}”`)
-  const dueAt = task.value?.dueAt ?? Date.now()
-  repeatText.value = ''
-  showRepeat.value = false
-  patch({ rrule: r.rrule, dueAt, tz: task.value?.tz ?? deviceTz() })
+/** The task's time of day, 'HH:MM' (09:00 when undated). */
+function dueTime() {
+  const d = task.value?.dueAt
+  return d == null ? '09:00' : new Date(d).toTimeString().slice(0, 5)
+}
+// A new rule moves the date to its first matching day, from the current date
+// if that's still ahead, keeping the time of day.
+function setRepeat(rule: string | null) {
+  if (!rule) return patch({ rrule: null })
+  const d = task.value?.dueAt
+  const from = d != null && d > Date.now() ? new Date(new Date(d).setHours(0, 0, 0, 0)) : new Date()
+  const f = firstDue(rule, from, dueTime())
+  patch({ rrule: rule, dueAt: localMs(f.date, f.time!), tz: task.value?.tz ?? deviceTz() })
 }
 
 async function addSub() {
@@ -117,6 +147,12 @@ async function remove() {
         @keydown.enter="($event.target as HTMLInputElement).blur()"
       />
 
+      <div v-if="found" class="pane found">
+        <span class="flex">Set <b>{{ foundLabel }}</b>?</span>
+        <button class="btn" @click="keepTitle">Keep as text</button>
+        <button class="btn primary" @click="applyFound">Set</button>
+      </div>
+
       <div class="pane rows props">
         <div v-if="task.completedAt" class="prop">
           <CheckCircle2 :size="20" class="muted" /> <span class="flex">Completed {{ dayLabel(task.completedAt) }}</span>
@@ -134,16 +170,12 @@ async function remove() {
         </div>
         <div v-if="task.rrule" class="prop">
           <Repeat :size="20" class="muted" />
-          <button class="flex left" title="Change" @click="showRepeat = !showRepeat">{{ rruleText(task.rrule) }}</button>
+          <button class="flex left cap" title="Change" @click="pickingRepeat = true">{{ rruleText(task.rrule) }}</button>
           <button class="chip" :class="{ off: !task.adaptive }" @click="patch({ adaptive: !task.adaptive })">
             {{ task.adaptive ? 'From completion' : 'On schedule' }}
           </button>
           <button class="icon-btn" aria-label="Stop repeating" @click="patch({ rrule: null })"><X :size="18" /></button>
         </div>
-        <form v-if="showRepeat" class="prop" @submit.prevent="saveRepeat">
-          <Repeat :size="20" class="muted" />
-          <input v-model="repeatText" class="field" :placeholder="task.rrule ? 'every 2 weeks' : 'every monday'" autocorrect="on" />
-        </form>
         <div v-if="showNotes" class="prop top">
           <StickyNote :size="20" class="muted" />
           <textarea
@@ -158,7 +190,7 @@ async function remove() {
       </div>
 
       <div class="add-props">
-        <button v-if="!showRepeat && !task.rrule" class="chip off" @click="showRepeat = true"><Plus :size="15" /> Repeat</button>
+        <button v-if="!task.rrule" class="chip off" @click="pickingRepeat = true"><Plus :size="15" /> Repeat</button>
         <button v-if="!showNotes" class="chip off" @click="showNotes = true"><Plus :size="15" /> Notes</button>
       </div>
 
@@ -185,6 +217,7 @@ async function remove() {
       <button class="btn danger delete" @click="remove"><Trash2 :size="18" /> Delete task</button>
     </template>
 
+    <RepeatSheet v-if="pickingRepeat" :model-value="task?.rrule ?? null" :start="task?.dueAt" @update:model-value="setRepeat" @close="pickingRepeat = false" />
     <DateTimeSheet
       v-if="picking"
       :model-value="task?.dueAt ?? null"
@@ -210,4 +243,6 @@ async function remove() {
 .add-icon { margin: 0 2px; }
 .bare { flex: 1; border: 0; outline: none; background: none; padding: 12px 0; }
 .delete { margin-top: 40px; }
+.cap::first-letter { text-transform: uppercase; }
+.found { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 12px; flex-wrap: wrap; animation: float-in 0.2s; }
 </style>
