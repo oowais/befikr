@@ -12,7 +12,7 @@
     <application>
         <!-- "Share → Befikr" from other apps: merged into the app's main activity;
              RemindersPlugin turns the shared text into a quick add route. -->
-        <activity android:name="com.befikr.app.MainActivity">
+        <activity android:name="com.befikr.app.MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
