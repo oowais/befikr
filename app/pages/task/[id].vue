@@ -1,22 +1,23 @@
 <script setup lang="ts">
+import { AlarmClock, ArrowLeft, CalendarDays, Check, Moon, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-vue-next'
 import type { Task } from '~/composables/api'
 
 const route = useRoute()
 const router = useRouter()
 const { show } = useToast()
+const sound = useSound()
 const id = computed(() => String(route.params.id))
 
 const task = ref<Task | null>(null)
 const subtasks = ref<Task[]>([])
 const title = ref('')
 const description = ref('')
-const due = ref('')
 const repeatText = ref('')
 const newSub = ref('')
 const error = ref('')
 const showRepeat = ref(false)
 const showNotes = ref(false)
-const sound = useSound()
+const picking = ref(false)
 
 async function load() {
   try {
@@ -24,9 +25,7 @@ async function load() {
     subtasks.value = await api.listSubtasks(id.value)
     title.value = task.value.title
     description.value = task.value.description
-    due.value = toInputValue(task.value.dueAt)
     showNotes.value = !!task.value.description
-    showRepeat.value = false
   } catch (e) {
     error.value = String(e)
   }
@@ -44,8 +43,7 @@ async function patch(p: Parameters<typeof api.updateTask>[1]) {
 
 const saveTitle = () => title.value.trim() && title.value !== task.value?.title && patch({ title: title.value })
 const saveNotes = () => description.value !== task.value?.description && patch({ description: description.value })
-function saveDue() {
-  const ms = fromInputValue(due.value)
+function setDue(ms: number | null) {
   patch(ms == null ? { dueAt: null, rrule: null, tz: null } : { dueAt: ms, tz: deviceTz() })
 }
 function saveRepeat() {
@@ -90,81 +88,111 @@ async function remove() {
 <template>
   <main class="page">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()">←</button>
+      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <span style="flex: 1" />
-      <NuxtLink v-if="task?.dueAt" :to="`/snooze?id=${id}`" class="btn">Snooze</NuxtLink>
-      <button class="btn primary" @click="complete">Done</button>
+      <NuxtLink v-if="task?.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
+      <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
     </header>
 
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="task">
-      <input v-model="title" class="title-input" autocapitalize="sentences" autocorrect="on" spellcheck="true" @blur="saveTitle" @keydown.enter="($event.target as HTMLInputElement).blur()" />
+      <input
+        v-model="title"
+        class="title-input"
+        autocapitalize="sentences" autocorrect="on" spellcheck="true"
+        @blur="saveTitle"
+        @keydown.enter="($event.target as HTMLInputElement).blur()"
+      />
 
-      <div class="props">
-        <label class="prop">
-          <span>📅</span>
-          <input v-model="due" type="datetime-local" class="field" @change="saveDue" />
-        </label>
-        <p v-if="task.snoozedUntil" class="muted small">💤 Snoozed until {{ dayLabel(task.snoozedUntil) }}</p>
-
+      <div class="pane rows props">
+        <div class="prop">
+          <CalendarDays :size="20" class="muted" />
+          <button class="flex left" @click="picking = true">
+            <span v-if="task.dueAt">{{ dayLabel(task.dueAt) }}</span>
+            <span v-else class="muted">Add date</span>
+          </button>
+          <button v-if="task.dueAt" class="icon-btn" aria-label="Remove date" @click="setDue(null)"><X :size="18" /></button>
+        </div>
+        <div v-if="task.snoozedUntil" class="prop muted small">
+          <Moon :size="18" /> <span class="flex">Snoozed until {{ dayLabel(task.snoozedUntil) }}</span>
+        </div>
         <div v-if="task.rrule" class="prop">
-          <span>↻</span>
+          <Repeat :size="20" class="muted" />
           <button class="flex left" title="Change" @click="showRepeat = !showRepeat">{{ rruleText(task.rrule) }}</button>
           <button class="chip" :class="{ off: !task.adaptive }" @click="patch({ adaptive: !task.adaptive })">
             {{ task.adaptive ? 'From completion' : 'On schedule' }}
           </button>
-          <button class="icon-btn" aria-label="Stop repeating" @click="patch({ rrule: null })">✕</button>
+          <button class="icon-btn" aria-label="Stop repeating" @click="patch({ rrule: null })"><X :size="18" /></button>
         </div>
         <form v-if="showRepeat" class="prop" @submit.prevent="saveRepeat">
-          <span>↻</span>
-          <input v-model="repeatText" class="field" :placeholder="task.rrule ? 'change: every 2 weeks' : 'every monday'" />
+          <Repeat :size="20" class="muted" />
+          <input v-model="repeatText" class="field" :placeholder="task.rrule ? 'every 2 weeks' : 'every monday'" autocorrect="on" />
         </form>
-
-        <textarea
-          v-if="showNotes"
-          v-model="description"
-          class="field"
-          rows="4"
-          placeholder="Notes"
-          autocapitalize="sentences" autocorrect="on" spellcheck="true"
-          @blur="saveNotes"
-        />
-
-        <div class="add-props">
-          <button v-if="!showRepeat && !task.rrule" class="chip off" @click="showRepeat = true">+ Repeat</button>
-          <button v-if="!showNotes" class="chip off" @click="showNotes = true">+ Notes</button>
+        <div v-if="showNotes" class="prop top">
+          <StickyNote :size="20" class="muted" />
+          <textarea
+            v-model="description"
+            class="notes"
+            rows="3"
+            placeholder="Notes"
+            autocapitalize="sentences" autocorrect="on" spellcheck="true"
+            @blur="saveNotes"
+          />
         </div>
       </div>
 
-      <h2 class="section-title">Subtasks <span v-if="subtasks.length">{{ subtasks.filter((s) => s.completedAt).length }}/{{ subtasks.length }}</span></h2>
-      <ul class="subs">
-        <li v-for="s in subtasks" :key="s.id" :class="{ done: s.completedAt }">
-          <button class="sub-check" @click="toggleSub(s)">{{ s.completedAt ? '☑' : '☐' }}</button>
-          <span>{{ s.title }}</span>
-        </li>
-      </ul>
-      <form @submit.prevent="addSub">
-        <input v-model="newSub" class="field" placeholder="+ Add subtask" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
-      </form>
+      <div class="add-props">
+        <button v-if="!showRepeat && !task.rrule" class="chip off" @click="showRepeat = true"><Plus :size="15" /> Repeat</button>
+        <button v-if="!showNotes" class="chip off" @click="showNotes = true"><Plus :size="15" /> Notes</button>
+      </div>
 
-      <button class="btn danger delete" @click="remove">Delete task</button>
+      <h2 class="section-title">
+        Subtasks <span v-if="subtasks.length">{{ subtasks.filter((s) => s.completedAt).length }}/{{ subtasks.length }}</span>
+      </h2>
+      <div class="pane rows subs">
+        <button v-for="s in subtasks" :key="s.id" class="sub" :class="{ done: s.completedAt }" @click="toggleSub(s)">
+          <span class="checkbox square" :class="{ checked: s.completedAt }"><Check :size="14" :stroke-width="3" /></span>
+          <span>{{ s.title }}</span>
+        </button>
+        <form class="sub" @submit.prevent="addSub">
+          <Plus :size="20" class="muted add-icon" />
+          <input
+            v-model="newSub"
+            class="bare"
+            placeholder="Add subtask"
+            enterkeyhint="done"
+            autocapitalize="sentences" autocorrect="on" spellcheck="true"
+          />
+        </form>
+      </div>
+
+      <button class="btn danger delete" @click="remove"><Trash2 :size="18" /> Delete task</button>
     </template>
+
+    <DateTimeSheet
+      v-if="picking"
+      :model-value="task?.dueAt ?? null"
+      title="Due"
+      allow-clear
+      @update:model-value="setDue"
+      @close="picking = false"
+    />
   </main>
 </template>
 
 <style scoped>
-.title-input { width: 100%; font-size: 1.4rem; font-weight: 600; border: 0; outline: none; background: none; padding: 12px 0; }
-.props { display: flex; flex-direction: column; gap: 10px; }
-.prop { display: flex; align-items: center; gap: 10px; }
+.topbar { gap: 8px; }
+.title-input { width: 100%; font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; border: 0; outline: none; background: none; padding: 12px 0; }
+.prop { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+.prop.top { align-items: flex-start; padding-top: 14px; }
 .flex { flex: 1; }
-.left { text-align: left; }
-.small { margin: 0; font-size: 0.85rem; }
-.add-props { display: flex; gap: 8px; }
-.subs { list-style: none; padding: 0; margin: 0 0 8px; }
-.subs li { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
-.subs li.done span { text-decoration: line-through; color: var(--muted); }
-.sub-check { font-size: 1.3rem; width: 32px; }
+.left { text-align: left; min-height: 44px; }
+.notes { flex: 1; border: 0; outline: none; background: none; resize: vertical; padding: 0; min-height: 60px; }
+.add-props { display: flex; gap: 8px; margin-top: 12px; }
+.sub { display: flex; align-items: center; gap: 12px; min-height: 48px; width: 100%; text-align: left; }
+.sub.done span:last-child { text-decoration: line-through; color: var(--muted); }
+.add-icon { margin: 0 2px; }
+.bare { flex: 1; border: 0; outline: none; background: none; padding: 12px 0; }
 .delete { margin-top: 40px; }
-.error { color: var(--red); }
 </style>

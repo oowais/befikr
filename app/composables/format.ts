@@ -57,20 +57,6 @@ export function localMs(date: string, time: string): number {
   return new Date(y!, m! - 1, d!, h!, mi!).getTime()
 }
 
-/** epoch ms ↔ <input type="datetime-local"> value. */
-export function toInputValue(ms: number | null): string {
-  if (ms == null) return ''
-  const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
-}
-
-export function fromInputValue(v: string): number | null {
-  if (!v) return null
-  const [date, time] = v.split('T')
-  return localMs(date!, time!)
-}
-
 export const haptic = () => {
   try {
     navigator.vibrate?.(12)

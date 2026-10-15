@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
+import { AlarmClock, ArrowLeft, BatteryFull, Bell, Check, Plus, X } from 'lucide-vue-next'
 import type { Settings, Status } from '~/composables/api'
 
 const router = useRouter()
-const { design, set: setDesign } = useDesign()
 const sound = useSound()
 const settings = ref<Settings | null>(null)
 const status = ref<Status | null>(null)
@@ -53,63 +53,35 @@ function addWord() {
 <template>
   <main class="page">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()">←</button>
+      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <h1>Settings</h1>
     </header>
     <p v-if="error" class="error">{{ error }}</p>
 
-    <h2 class="section-title">Design</h2>
-    <div class="designs">
-      <button
-        v-for="d in DESIGNS"
-        :key="d.value"
-        class="btn design-option"
-        :aria-pressed="design === d.value"
-        @click="setDesign(d.value)"
-      >
-        <b>{{ d.label }}<span v-if="design === d.value"> ✓</span></b>
-        <span class="muted small">{{ d.hint }}</span>
-      </button>
-    </div>
-
-    <h2 class="section-title">Feedback</h2>
-    <div class="group">
-      <label class="perm">
-        <span>Sound when completing</span>
-        <input
-          type="checkbox"
-          class="switch"
-          :checked="sound.enabled.value"
-          @change="
-            (e) => {
-              sound.setEnabled((e.target as HTMLInputElement).checked)
-              if ((e.target as HTMLInputElement).checked) sound.complete()
-            }
-          "
-        />
-      </label>
-    </div>
-
     <template v-if="status">
       <h2 class="section-title">Reminders</h2>
-      <div class="group">
-      <div class="perm">
-        <span>Notifications</span>
-        <span v-if="status.notifications">✅</span>
-        <button v-else class="btn" @click="run(reminders.requestNotifications)">Allow</button>
+      <div class="pane rows">
+        <div v-for="p in [
+          { icon: Bell, label: 'Notifications', ok: status.notifications, allow: reminders.requestNotifications },
+          { icon: AlarmClock, label: 'Exact alarms', ok: status.exactAlarms, allow: reminders.openExactAlarmSettings },
+          { icon: BatteryFull, label: 'Unrestricted battery', ok: status.batteryUnrestricted, allow: reminders.openBatterySettings },
+        ]" :key="p.label" class="item">
+          <component :is="p.icon" :size="20" class="muted" />
+          <span class="flex">{{ p.label }}</span>
+          <span v-if="p.ok" class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
+          <button v-else class="btn" @click="run(p.allow)">Allow</button>
+        </div>
       </div>
-      <div class="perm">
-        <span>Exact alarms</span>
-        <span v-if="status.exactAlarms">✅</span>
-        <button v-else class="btn" @click="run(reminders.openExactAlarmSettings)">Allow</button>
-      </div>
-      <div class="perm">
-        <span>Unrestricted battery</span>
-        <span v-if="status.batteryUnrestricted">✅</span>
-        <button v-else class="btn" @click="run(reminders.openBatterySettings)">Allow</button>
-      </div>
-      </div>
+      <button class="btn link" @click="router.push('/welcome')">Open setup guide</button>
     </template>
+
+    <h2 class="section-title">Feedback</h2>
+    <div class="pane rows">
+      <button class="item" role="switch" :aria-checked="sound.enabled.value" @click="sound.setEnabled(!sound.enabled.value); sound.enabled.value && sound.complete()">
+        <span class="flex left">Sound when completing</span>
+        <span class="switch" :class="{ on: sound.enabled.value }"><span class="knob" /></span>
+      </button>
+    </div>
 
     <template v-if="settings">
       <h2 class="section-title">Re-remind every (minutes)</h2>
@@ -120,18 +92,18 @@ function addWord() {
       <p class="muted small">Unacted reminders come back after each interval; the last one repeats.</p>
 
       <h2 class="section-title">Time words</h2>
-      <div class="group">
-      <div v-for="(time, word) in settings.timeWords" :key="word" class="perm">
-        <span class="word">{{ word }}</span>
-        <input type="time" class="time" :value="time" @change="setWord(String(word), ($event.target as HTMLInputElement).value)" />
-        <button class="icon-btn" :aria-label="`Remove ${word}`" @click="run(() => api.removeTimeWord(String(word)))">✕</button>
+      <div class="pane rows">
+        <div v-for="(time, word) in settings.timeWords" :key="word" class="item">
+          <span class="flex word">{{ word }}</span>
+          <input type="time" class="field time" :value="time" @change="setWord(String(word), ($event.target as HTMLInputElement).value)" />
+          <button class="icon-btn" :aria-label="`Remove ${word}`" @click="run(() => api.removeTimeWord(String(word)))"><X :size="18" /></button>
+        </div>
+        <form class="item" @submit.prevent="addWord">
+          <input v-model="newWord" class="field" placeholder="New word, e.g. dawn" autocapitalize="none" />
+          <input v-model="newTime" type="time" class="field time" />
+          <button class="icon-btn" aria-label="Add time word" :disabled="!newWord || !newTime"><Plus :size="20" /></button>
+        </form>
       </div>
-      </div>
-      <form class="row add" @submit.prevent="addWord">
-        <input v-model="newWord" class="field" placeholder="dawn" />
-        <input v-model="newTime" type="time" class="field time-field" />
-        <button class="btn" :disabled="!newWord || !newTime">Add</button>
-      </form>
     </template>
 
     <p v-if="version" class="muted small version">Befikr {{ version }}</p>
@@ -139,17 +111,27 @@ function addWord() {
 </template>
 
 <style scoped>
-.perm { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.word { flex: 1; text-transform: capitalize; }
-.time { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--surface); }
+.item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
+.flex { flex: 1; }
+.left { text-align: left; }
+.word { text-transform: capitalize; }
+.time { width: 136px; flex: none; padding: 8px 10px; }
 .row { display: flex; gap: 8px; }
-.add { margin-top: 12px; }
-.time-field { width: 130px; flex: none; }
-.small { font-size: 0.85rem; }
-.error { color: var(--red); }
+.link { margin-top: 10px; width: 100%; }
+.switch {
+  width: 46px; height: 28px; border-radius: 999px; position: relative; flex: none;
+  box-shadow: inset 0 1.5px 2px var(--well-shade), inset 0 -1px 0 var(--well-rim), inset 0 0 0 1px var(--glass-edge);
+  transition: background-color 0.2s;
+}
+.switch.on {
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  box-shadow: inset 0 1px 0 var(--primary-rim), inset 0 -1px 0 color-mix(in oklch, var(--primary-under) 45%, transparent);
+}
+.knob {
+  position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 90%), inset 0 -1px 0 oklch(0 0 0 / 14%), 0 1px 3px oklch(0 0 0 / 30%);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; }
-.switch { width: 22px; height: 22px; accent-color: var(--accent); }
-.designs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.design-option { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; border: 2px solid transparent; }
-.design-option[aria-pressed='true'] { border-color: var(--accent); }
 </style>
