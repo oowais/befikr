@@ -221,7 +221,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
 | 0 | **Notification spike** on a real Android phone (throwaway) | 🟡 | Code done; needs CI APK + on-device test |
-| 1 | **Parser** (`packages/parser`), test table first | ⬜ | Can run in parallel with 0 |
+| 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ⬜ | |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ⬜ | |
 | 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | ⬜ | |
@@ -257,8 +257,22 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - `setExactAndAllowWhileIdle` is throttled in Doze (~1 alarm / 9 min per app). `setAlarmClock` isn't, but shows an alarm icon. Spike tests both; pick per result.
 - Rust ↔ Kotlin: Kotlin `Native` object loads the app `.so` and calls `#[no_mangle]` JNI functions; panics/errors return `{"error": …}` JSON. The DB path is stored in SharedPreferences for cold starts.
 
+### Step 1 — parser notes
+
+API: `parse(text, now, settings?, { ignore? }) → { title, due: {date, time|null} | null, rrule, recurrenceText, spans }`. Local wall-clock out; caller converts to UTC and adds `DTSTART;TZID`. `due.time === null` → UI prompts with 09:00.
+
+How it works: recurrence first (`every …` → grow phrase token by token through `RRule.parseText`, since it ignores trailing words; custom rules for start/end of month, weekend, "every other"; "every <time word>" = daily) → mask it → chrono (custom time-word parser + refiner overriding chrono's defaults) → strip spans + connector words (on/at/by/due/before) for the title.
+
+Known gaps (add test rows when fixing):
+- "pay rent on the 1st" (no "every") isn't a date for chrono.
+- "every year on march 3" loses the day (rrule `fromText` limitation).
+- "next fri" = Friday of next week (chrono semantics); plain "fri" = coming Friday.
+- Only the first date phrase is used; others stay in the title.
+- Tests to add from dogfooding; Vikunja's test suite is a good source of phrasings (read only, AGPL).
+
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (later)** — Step 1 parser v1: `packages/parser` (chrono-node + rrule, vitest table, CI `parser.yml`). APK now also published as prerelease "Spike APK (latest)". User testing spike on phone. **Next:** record spike results; parser gaps above; then step 2 (Rust storage).
 - **Oct 15, 2026** — Plan + CLAUDE.md added; `main` branch created. Step 0 spike scaffolded (custom Kotlin plugin + JNI + Rust core + test UI + APK CI). CI green after 2 fixes (runner's preinstalled SDK; minSdk 26). **Next:** user installs APK from CI artifact `befikr-spike-apk`, runs `spike/README.md` protocol on phone, record verdict; start step 1 parser in parallel.
