@@ -79,7 +79,7 @@ async function snooze(until: number | null) {
 
     <h2 class="section-title">Or type it</h2>
     <form class="row" @submit.prevent="snooze(typedAt)">
-      <input v-model="typed" class="field" placeholder="fri 3pm" enterkeyhint="done" autocorrect="on" />
+      <input :value="typed" class="field" placeholder="fri 3pm" enterkeyhint="done" autocorrect="on" @input="typed = ($event.target as HTMLInputElement).value" />
       <button class="btn primary" :disabled="!typedAt">Go</button>
     </form>
     <p v-if="typedAt" class="muted small">{{ dayLabel(typedAt) }}</p>
