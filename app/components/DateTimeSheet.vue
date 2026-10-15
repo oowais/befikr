@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Date & time picker: a glass sheet with quick days, a month calendar,
 // time-word chips and hour/minute wheels. Emits epoch ms (local time) or null.
+// mode="time": wheels only (e.g. time words in Settings); the date part is ignored.
+// The app never uses the native Android date/time pickers (<input type="date|time">).
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -11,8 +13,9 @@ const props = withDefaults(
     /** Earliest selectable instant (e.g. now, for snooze). */
     min?: number | null
     doneLabel?: string
+    mode?: 'datetime' | 'time'
   }>(),
-  { title: 'Date & time', allowClear: false, min: null, doneLabel: 'Done' },
+  { title: 'Date & time', allowClear: false, min: null, doneLabel: 'Done', mode: 'datetime' },
 )
 const emit = defineEmits<{ 'update:modelValue': [ms: number | null]; close: [] }>()
 
@@ -125,6 +128,7 @@ function onWheelScroll() {
 onMounted(() => nextTick(() => scrollWheels()))
 
 const summary = computed(() => {
+  if (props.mode === 'time') return `${pad(hour.value)}:${pad(minute.value)}`
   const v = new Date(value.value)
   return `${v.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${pad(hour.value)}:${pad(minute.value)}`
 })
@@ -148,6 +152,7 @@ function clear() {
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>
       </header>
 
+      <template v-if="mode !== 'time'">
       <div class="chips">
         <button
           v-for="q in quickDays"
@@ -193,6 +198,8 @@ function clear() {
           <span class="cap">{{ t.word }}</span> <span class="muted">{{ t.t }}</span>
         </button>
       </div>
+
+      </template>
 
       <div class="wheels">
         <div class="band" />

@@ -89,6 +89,21 @@ async function run(f: () => Promise<unknown>) {
 const saveReremind = () =>
   run(() => api.setReremindMinutes(reremind.value.split(/[,\s]+/).filter(Boolean).map(Number)))
 const setWord = (w: string, t: string) => run(() => api.setTimeWord(w, t))
+// Time words use our own picker (time mode), never the native one.
+/** Word being edited (null = the new word's time), or nothing open. */
+const pickingFor = ref<{ word: string | null; time: string } | null>(null)
+const todayAt = (t: string) => {
+  const d = new Date()
+  return localMs(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`, t)
+}
+const hhmm = (ms: number) => new Date(ms).toTimeString().slice(0, 5)
+function pickedTime(ms: number | null) {
+  const p = pickingFor.value
+  if (ms == null || !p) return
+  if (p.word == null) newTime.value = hhmm(ms)
+  else setWord(p.word, hhmm(ms))
+}
+
 function addWord() {
   if (!newWord.value || !newTime.value) return
   const [w, t] = [newWord.value, newTime.value]
@@ -196,16 +211,27 @@ function addWord() {
       <div class="pane rows">
         <div v-for="(time, word) in settings.timeWords" :key="word" class="item">
           <span class="flex word">{{ word }}</span>
-          <input type="time" class="field time" :value="time" @change="setWord(String(word), ($event.target as HTMLInputElement).value)" />
+          <button type="button" class="field time" @click="pickingFor = { word: String(word), time }">{{ timeLabel(todayAt(time)) }}</button>
           <button class="icon-btn" :aria-label="`Remove ${word}`" @click="run(() => api.removeTimeWord(String(word)))"><X :size="18" /></button>
         </div>
         <form class="item" @submit.prevent="addWord">
           <input v-model="newWord" class="field" placeholder="e.g. dawn" autocapitalize="none" />
-          <input v-model="newTime" type="time" class="field time" />
+          <button type="button" class="field time" :class="{ muted: !newTime }" @click="pickingFor = { word: null, time: newTime || '09:00' }">
+            {{ newTime ? timeLabel(todayAt(newTime)) : 'Time' }}
+          </button>
           <button class="icon-btn" aria-label="Add time word" :disabled="!newWord || !newTime"><Plus :size="20" /></button>
         </form>
       </div>
     </template>
+
+    <DateTimeSheet
+      v-if="pickingFor"
+      mode="time"
+      :model-value="todayAt(pickingFor.time)"
+      :title="pickingFor.word ? `${pickingFor.word[0]!.toUpperCase()}${pickingFor.word.slice(1)}` : 'Time'"
+      @update:model-value="pickedTime"
+      @close="pickingFor = null"
+    />
 
     <p v-if="version" class="muted small version">Befikr {{ version }}</p>
   </main>
@@ -216,7 +242,7 @@ function addWord() {
 .flex { flex: 1; }
 .left { text-align: left; }
 .word { text-transform: capitalize; }
-.time { width: 136px; flex: none; padding: 8px 10px; }
+.time { width: 136px; flex: none; padding: 8px 10px; text-align: left; }
 .row { display: flex; gap: 8px; }
 .link { margin-top: 10px; width: 100%; }
 .switch {

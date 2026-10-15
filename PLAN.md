@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (no native pickers)** — Settings time words used `<input type="time">` (native Android picker); now our `DateTimeSheet` in a new time-only mode. Rule added to CLAUDE.md. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (time prompt)** — Quick add: a date typed without a time shows "No time given" with the time words as chips (09:00 picked; Add accepts it, "Other…" opens the picker). Disappears once a time is typed or picked. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (ordinals)** — Parser: bare numeric ordinals ("pay rent 21st", "21st 5pm") set the next such day; 66 tests. Workflow now: commit straight to local `main` after checks; user pushes. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (UX polish 2)** — Missed occurrences of late fixed recurring tasks logged as `missed` events (stats only). Quick add: dropped the `→ title` preview line (highlights already show it); with More open, date/repeat show only as fields, not also as chips. Task view: notes grow with their text (no fixed box/resize handle); "+ Notes" focuses the field. **Next:** device checks; more polish from dogfooding.

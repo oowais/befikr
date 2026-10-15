@@ -28,6 +28,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 - Recurrence/next-occurrence + scheduling logic in Rust (must run with no webview, e.g. "Complete" from a notification).
 - Parser is a pure function, tested with an input → expected-output table. English only.
 - UX: show controls only when context needs them; every action optimistic/instant.
+- Dates/times are picked only with our own `DateTimeSheet` (`mode="time"` for time only). Never the native Android pickers: no `<input type="date|time|datetime-local">`, no `DatePickerDialog`/`TimePickerDialog`.
 - Vikunja Quick Add Magic is AGPL — read for ideas, never copy code.
 
 ## Environment notes
