@@ -49,7 +49,7 @@ async function undo(c: Completion) {
         <NuxtLink :to="`/task/${c.taskId}`" class="text">
           <span>{{ c.title }}</span>
           <span class="muted small">
-            {{ dayLabel(c.completedAt) }}<template v-if="late(c)"> · was due {{ dayLabel(c.dueAtThen!) }}</template>
+            {{ dayLabel(c.completedAt) }}<template v-if="late(c)"> · {{ span(c.completedAt - c.dueAtThen!) }} late</template>
           </span>
         </NuxtLink>
       </li>

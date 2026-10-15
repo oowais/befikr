@@ -24,12 +24,16 @@ function at(daysAhead: number, h: number, m = 0) {
   return d.getTime()
 }
 
+// Relative picks land on the next 5 minutes: 15:10, not 15:07.
+const FIVE = 5 * 60_000
+const roundUp = (ms: number) => Math.ceil(ms / FIVE) * FIVE
+
 const picks = computed(() => {
   const now = Date.now()
   const today = new Date()
   const list: { label: string; at: number }[] = [
-    { label: 'In 1 hour', at: now + HOUR },
-    { label: 'In 3 hours', at: now + 3 * HOUR },
+    { label: 'In 1 hour', at: roundUp(now + HOUR) },
+    { label: 'In 3 hours', at: roundUp(now + 3 * HOUR) },
   ]
   if (today.getHours() < 18) list.push({ label: 'This evening', at: at(0, 18) })
   if (today.getHours() < 21) list.push({ label: 'Tonight', at: at(0, 21) })
@@ -45,6 +49,10 @@ const typedAt = computed(() => {
   const d = typedParse.value?.due
   return d ? localMs(d.date, d.time ?? '09:00') : null
 })
+
+// The label already names the day ("Tomorrow morning"): show only the time.
+const pickSub = (p: { label: string; at: number }) =>
+  isToday(p.at) || p.label.startsWith('Tomorrow') ? timeLabel(p.at) : dayLabel(p.at)
 
 async function snooze(until: number | null) {
   if (until == null) return
@@ -71,7 +79,7 @@ async function snooze(until: number | null) {
     <div class="grid">
       <button v-for="p in picks" :key="p.label" class="pick pane tap" @click="snooze(p.at)">
         <span>{{ p.label }}</span>
-        <span class="muted small">{{ dayLabel(p.at) }}</span>
+        <span class="muted small">{{ pickSub(p) }}</span>
       </button>
     </div>
 

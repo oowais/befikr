@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ListChecks, Plus, Settings } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
+import type { Section } from '~/composables/format'
 
 const router = useRouter()
 const { show } = useToast()
@@ -46,6 +47,17 @@ async function complete(row: Row) {
   setTimeout(refresh, 400)
 }
 
+// Overdue / Today / Upcoming / No date. Headers only when there is more than one.
+const sections = computed(() => {
+  const by = new Map<Section, Row[]>()
+  for (const r of rows.value) {
+    const s = sectionOf(r.snoozedUntil ?? r.dueAt, now.value)
+    by.set(s, [...(by.get(s) ?? []), r])
+  }
+  return (Object.keys(sectionTitles) as Section[]).filter((s) => by.has(s)).map((s) => ({ id: s, rows: by.get(s)! }))
+})
+const headed = computed(() => sections.value.length > 1)
+
 let tick: ReturnType<typeof setInterval>
 const onVisible = () => document.visibilityState === 'visible' && refresh()
 onMounted(() => {
@@ -69,19 +81,23 @@ onUnmounted(() => {
 
     <p v-if="error" class="muted">{{ error }}</p>
 
-    <TransitionGroup v-if="rows.length" tag="ul" name="list" class="list pane rows">
-      <TaskRow
-        v-for="r in rows"
-        :key="r.id"
-        :row="r"
-        :now="now"
-        :done="completing.has(r.id)"
-        @complete="complete(r)"
-        @open="router.push(`/task/${r.id}`)"
-        @snooze="router.push(`/snooze?id=${r.id}`)"
-      />
-    </TransitionGroup>
-    <div v-else-if="!error" class="empty">
+    <section v-for="s in sections" :key="s.id" class="section">
+      <h2 v-if="headed" class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
+      <TransitionGroup tag="ul" name="list" class="list pane rows">
+        <TaskRow
+          v-for="r in s.rows"
+          :key="r.id"
+          :row="r"
+          :now="now"
+          :time-only="headed && s.id === 'today'"
+          :done="completing.has(r.id)"
+          @complete="complete(r)"
+          @open="router.push(`/task/${r.id}`)"
+          @snooze="router.push(`/snooze?id=${r.id}`)"
+        />
+      </TransitionGroup>
+    </section>
+    <div v-if="!rows.length && !error" class="empty">
       <p>Nothing to do.</p>
       <p class="muted">Tap + and type something like “call mom tomorrow 6pm”.</p>
     </div>
@@ -93,6 +109,9 @@ onUnmounted(() => {
 
 <style scoped>
 .list { margin: 8px 0 0; position: relative; overflow: hidden; }
+.section .section-title { margin: 20px 0 0; }
+.section:first-of-type .section-title { margin-top: 4px; }
+.section-title.overdue { color: var(--red); }
 .list-leave-active { transition: opacity 0.25s ease; position: absolute; left: 14px; right: 14px; }
 .list-leave-to { opacity: 0; }
 .list-move { transition: transform 0.3s ease; }
