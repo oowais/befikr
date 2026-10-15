@@ -7,6 +7,7 @@ const rows = ref<Row[]>([])
 const adding = ref(false)
 const now = ref(Date.now())
 const error = ref('')
+const sound = useSound()
 
 async function refresh() {
   now.value = Date.now()
@@ -21,6 +22,7 @@ async function refresh() {
 // Optimistic: the row leaves at once; the write happens behind it.
 async function complete(row: Row) {
   haptic()
+  sound.complete()
   rows.value = rows.value.filter((r) => r.id !== row.id)
   try {
     await api.completeTask(row.id)

@@ -16,6 +16,7 @@ const newSub = ref('')
 const error = ref('')
 const showRepeat = ref(false)
 const showNotes = ref(false)
+const sound = useSound()
 
 async function load() {
   try {
@@ -67,12 +68,14 @@ async function addSub() {
 }
 async function toggleSub(s: Task) {
   haptic()
+  if (!s.completedAt) sound.tick()
   await (s.completedAt ? api.reopenTask(s.id) : api.completeTask(s.id))
   subtasks.value = await api.listSubtasks(id.value)
 }
 
 async function complete() {
   haptic()
+  sound.complete()
   const t = await api.completeTask(id.value)
   show({ message: 'Completed', action: { label: 'Undo', run: () => api.reopenTask(t.id) } })
   router.back()
@@ -96,7 +99,7 @@ async function remove() {
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="task">
-      <input v-model="title" class="title-input" @blur="saveTitle" @keydown.enter="($event.target as HTMLInputElement).blur()" />
+      <input v-model="title" class="title-input" autocapitalize="sentences" autocorrect="on" spellcheck="true" @blur="saveTitle" @keydown.enter="($event.target as HTMLInputElement).blur()" />
 
       <div class="props">
         <label class="prop">
@@ -124,6 +127,7 @@ async function remove() {
           class="field"
           rows="4"
           placeholder="Notes"
+          autocapitalize="sentences" autocorrect="on" spellcheck="true"
           @blur="saveNotes"
         />
 
@@ -141,7 +145,7 @@ async function remove() {
         </li>
       </ul>
       <form @submit.prevent="addSub">
-        <input v-model="newSub" class="field" placeholder="+ Add subtask" enterkeyhint="done" />
+        <input v-model="newSub" class="field" placeholder="+ Add subtask" enterkeyhint="done" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
       </form>
 
       <button class="btn danger delete" @click="remove">Delete task</button>

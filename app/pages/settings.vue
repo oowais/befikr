@@ -4,6 +4,7 @@ import type { Settings, Status } from '~/composables/api'
 
 const router = useRouter()
 const { design, set: setDesign } = useDesign()
+const sound = useSound()
 const settings = ref<Settings | null>(null)
 const status = ref<Status | null>(null)
 const reremind = ref('')
@@ -71,6 +72,24 @@ function addWord() {
       </button>
     </div>
 
+    <h2 class="section-title">Feedback</h2>
+    <div class="group">
+      <label class="perm">
+        <span>Sound when completing</span>
+        <input
+          type="checkbox"
+          class="switch"
+          :checked="sound.enabled.value"
+          @change="
+            (e) => {
+              sound.setEnabled((e.target as HTMLInputElement).checked)
+              if ((e.target as HTMLInputElement).checked) sound.complete()
+            }
+          "
+        />
+      </label>
+    </div>
+
     <template v-if="status">
       <h2 class="section-title">Reminders</h2>
       <div class="group">
@@ -129,6 +148,7 @@ function addWord() {
 .small { font-size: 0.85rem; }
 .error { color: var(--red); }
 .version { margin-top: 40px; text-align: center; }
+.switch { width: 22px; height: 22px; accent-color: var(--accent); }
 .designs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .design-option { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; border: 2px solid transparent; }
 .design-option[aria-pressed='true'] { border-color: var(--accent); }

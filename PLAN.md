@@ -315,6 +315,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (sound)** — Completion sounds (Web Audio, toggle in Settings); keyboard suggestions enabled in text fields; main builds queued.
 - **Oct 15, 2026 (glass)** — Added Glass design (Solid Glass-inspired) alongside Classic, switchable in Settings; Geist font bundled.
 - **Oct 15, 2026 (later still)** — Versioning: semver 0.x.y from Conventional Commits, releases from `main` only, version shown in Settings.
 - **Oct 15, 2026 (late night)** — App icon chosen (breeze checklist, sage / charcoal+mint), wired into Android build + notifications; app theme matched.

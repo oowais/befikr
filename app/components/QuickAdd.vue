@@ -98,7 +98,7 @@ async function save() {
         rows="1"
         placeholder="buy milk tomorrow evening"
         enterkeyhint="done"
-        autocomplete="off"
+        autocapitalize="sentences" autocorrect="on" spellcheck="true"
         @keydown.enter.prevent="save"
       />
 
@@ -141,12 +141,12 @@ async function save() {
         </label>
         <label>
           <span class="muted">Repeat</span>
-          <input v-model="repeatText" class="field" placeholder="every monday" />
+          <input v-model="repeatText" class="field" placeholder="every monday" autocorrect="on" />
         </label>
         <p v-if="repeatText && repeat.text" class="muted small">↻ {{ repeat.text }}</p>
         <label>
           <span class="muted">Notes</span>
-          <textarea v-model="description" class="field" rows="3" />
+          <textarea v-model="description" class="field" rows="3" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
         </label>
       </div>
 
