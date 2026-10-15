@@ -321,6 +321,8 @@ How it works: recurrence first (`every …` → grow phrase token by token throu
 
 Fixed Oct 15 (night): "on the 1st", "every year on march 3" / "every 3rd of march", "every last friday" / "first monday" / "second tuesday of the month" (monthly `BYDAY=±nXX`), "every 2nd tuesday" (= every other week), "every 15th", "every last day of the month", "every fortnight/quarter", "daily/weekly/biweekly/monthly/yearly"; "every 2 weeks on monday" starts next Monday. `firstDue(rrule, now, time)` exported for the repeat builder (`app/components/RepeatSheet.vue`), which covers anything typing can't.
 
+Oct 15 (late): bare ordinals "21st", "on 21st", "21st 5pm" → next such day (this month, else next). Spelled-out ordinals ("twenty-first") deliberately not supported. A noun after an ordinal ("3rd floor") is also read as a date; ✕ on the chip keeps it as text.
+
 Known gaps (add test rows when fixing):
 - "next fri" = Friday of next week (chrono semantics); plain "fri" = coming Friday.
 - Only the first date phrase is used; others stay in the title.
@@ -330,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (ordinals)** — Parser: bare numeric ordinals ("pay rent 21st", "21st 5pm") set the next such day; 66 tests. Workflow now: commit straight to local `main` after checks; user pushes. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (UX polish 2)** — Missed occurrences of late fixed recurring tasks logged as `missed` events (stats only). Quick add: dropped the `→ title` preview line (highlights already show it); with More open, date/repeat show only as fields, not also as chips. Task view: notes grow with their text (no fixed box/resize handle); "+ Notes" focuses the field. **Next:** device checks; more polish from dogfooding.
 - **Oct 15, 2026 (undo)** — Undo on every complete and delete: delete gets an Undo toast (`restore_task` in core brings back the task and subtasks deleted with it); task-view Complete/Delete undo now refreshes the list. Fixed recurring task done late no longer comes back later the same day (overdue daily done at 08:00 → next is tomorrow 09:00, not today 09:00). **Next:** decide on recording missed occurrences; polish quick add + task view.
 - **Oct 15, 2026 (UX polish 1)** — First local setup on CachyOS; lockfile deps stepped back past pnpm's 24 h release age. UX pass 1: main list in Overdue / Today / Upcoming / No date sections (headers only when >1), Today rows show only the time, times without leading zero, compact "2h late"; snooze picks rounded to 5 min with time-only subtitles; completed shows "1h late". Commits stay local (not pushed). **Next:** more polish (quick add, task view), device checks.

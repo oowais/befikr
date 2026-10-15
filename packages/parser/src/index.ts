@@ -294,9 +294,9 @@ function findDate(text: string, now: Date, settings: Settings): DateMatch | null
     })
   }
 
-  // "on the 1st", "the 15th": next such day of the month.
+  // "21st", "on the 1st": next such day of the month (a month name after it is chrono's).
   c.parsers.push({
-    pattern: () => /\bthe\s+(\d{1,2})(?:st|nd|rd|th)\b(?!\s+of\b)(?!\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i,
+    pattern: () => /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)\b(?!\s+of\b)(?!\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i,
     extract: (ctx, match) => {
       const day = Number(match[1])
       if (!validDay(day)) return null

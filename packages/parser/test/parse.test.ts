@@ -61,6 +61,15 @@ const CASES: Case[] = [
   { input: 'pay bills on the 15th', title: 'pay bills', due: '2026-10-15' },
   { input: 'dentist on the 3rd at 4pm', title: 'dentist', due: '2026-11-03 16:00' },
   { input: 'gift on the 31st', title: 'gift', due: '2026-10-31' },
+  { input: 'pay rent 21st', title: 'pay rent', due: '2026-10-21' },
+  { input: 'pay rent 3rd', title: 'pay rent', due: '2026-11-03' },
+  { input: 'call 28th', title: 'call', due: '2026-10-28' },
+  { input: 'pay rent on 21st', title: 'pay rent', due: '2026-10-21' },
+  { input: 'pay rent 21st 5pm', title: 'pay rent', due: '2026-10-21 17:00' },
+  { input: 'pay rent 21st at 5pm', title: 'pay rent', due: '2026-10-21 17:00' },
+  { input: 'pay rent 21st march', title: 'pay rent', due: '2027-03-21' },
+  { input: 'pay rent 3rd of november', title: 'pay rent', due: '2026-11-03' },
+  { input: 'buy 21 eggs', title: 'buy 21 eggs', due: null },
 
   // Monthly / yearly patterns
   { input: 'team call every last friday', title: 'team call', due: '2026-10-30', rrule: 'FREQ=MONTHLY;BYDAY=-1FR' },
