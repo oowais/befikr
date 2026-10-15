@@ -117,6 +117,25 @@ mod tests {
     }
 
     #[test]
+    fn parser_rule_shapes() {
+        // Rules the quick-add parser and repeat builder produce.
+        let due = berlin(2026, 10, 30, 9, 0); // last Friday of October
+        assert_eq!(next_due("FREQ=MONTHLY;BYDAY=-1FR", B, due, false, due).unwrap(), Some(berlin(2026, 11, 27, 9, 0)));
+        let due = berlin(2026, 11, 2, 9, 0); // first Monday of November
+        assert_eq!(next_due("FREQ=MONTHLY;BYDAY=+1MO", B, due, false, due).unwrap(), Some(berlin(2026, 12, 7, 9, 0)));
+        let due = berlin(2027, 3, 3, 9, 0);
+        assert_eq!(
+            next_due("FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=3", B, due, false, due).unwrap(),
+            Some(berlin(2028, 3, 3, 9, 0))
+        );
+        let due = berlin(2026, 10, 19, 9, 0);
+        assert_eq!(
+            next_due("INTERVAL=2;FREQ=WEEKLY;BYDAY=MO", B, due, false, due).unwrap(),
+            Some(berlin(2026, 11, 2, 9, 0))
+        );
+    }
+
+    #[test]
     fn monthly_end_of_month() {
         let due = berlin(2026, 10, 31, 18, 0);
         assert_eq!(

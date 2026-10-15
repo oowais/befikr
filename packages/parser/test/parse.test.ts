@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, parse, type ParseResult } from '../src/index'
+import { DEFAULT_SETTINGS, firstDue, parse, type ParseResult } from '../src/index'
 
 // Thursday 2026-10-15 10:00 local (tests run with TZ=UTC).
 const NOW = new Date(2026, 9, 15, 10, 0)
@@ -56,6 +56,28 @@ const CASES: Case[] = [
   { input: 'gym every monday and thursday 7am', title: 'gym', due: '2026-10-19 07:00', rrule: 'FREQ=WEEKLY;BYDAY=MO,TH' },
   { input: 'gym every monday and thursday 6pm', title: 'gym', due: '2026-10-15 18:00', rrule: 'FREQ=WEEKLY;BYDAY=MO,TH' },
 
+  // Day of month
+  { input: 'pay bills on the 1st', title: 'pay bills', due: '2026-11-01' },
+  { input: 'pay bills on the 15th', title: 'pay bills', due: '2026-10-15' },
+  { input: 'dentist on the 3rd at 4pm', title: 'dentist', due: '2026-11-03 16:00' },
+  { input: 'gift on the 31st', title: 'gift', due: '2026-10-31' },
+
+  // Monthly / yearly patterns
+  { input: 'team call every last friday', title: 'team call', due: '2026-10-30', rrule: 'FREQ=MONTHLY;BYDAY=-1FR' },
+  { input: 'every first monday book club', title: 'book club', due: '2026-11-02', rrule: 'FREQ=MONTHLY;BYDAY=+1MO' },
+  { input: 'meetup every second tuesday of the month', title: 'meetup', due: '2026-11-10', rrule: 'FREQ=MONTHLY;BYDAY=+2TU' },
+  { input: 'bins every 2nd tuesday', title: 'bins', due: '2026-10-20', rrule: 'FREQ=WEEKLY;INTERVAL=2;BYDAY=TU' },
+  { input: 'invoice every 15th', title: 'invoice', due: '2026-10-15', rrule: 'FREQ=MONTHLY;BYMONTHDAY=15' },
+  { input: 'backup every last day of the month', title: 'backup', due: '2026-10-31', rrule: 'FREQ=MONTHLY;BYMONTHDAY=-1' },
+  { input: 'birthday every year on march 3', title: 'birthday', due: '2027-03-03', rrule: 'FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=3' },
+  { input: 'anniversary every 3rd of march', title: 'anniversary', due: '2027-03-03', rrule: 'FREQ=YEARLY;BYMONTH=3;BYMONTHDAY=3' },
+  { input: 'clean every fortnight', title: 'clean', due: '2026-10-15', rrule: 'FREQ=WEEKLY;INTERVAL=2' },
+  { input: 'review every quarter', title: 'review', due: '2026-10-15', rrule: 'FREQ=MONTHLY;INTERVAL=3' },
+  { input: 'sync every 2 weeks on monday', title: 'sync', due: '2026-10-19', rrule: 'INTERVAL=2;FREQ=WEEKLY;BYDAY=MO' },
+  { input: 'weekly review', title: 'review', due: '2026-10-15', rrule: 'FREQ=WEEKLY' },
+  { input: 'biweekly sync', title: 'sync', due: '2026-10-15', rrule: 'FREQ=WEEKLY;INTERVAL=2' },
+  { input: 'daily standup 9:30', title: 'standup', due: '2026-10-16 09:30', rrule: 'FREQ=DAILY' },
+
   // Un-parse: user tapped the highlight to keep it literal
   { input: 'watch Friday Night Lights', title: 'watch Lights', due: '2026-10-16 21:00' },
   { input: 'watch Friday Night Lights', title: 'watch Friday Night Lights', due: null, ignore: [[6, 18]] },
@@ -99,5 +121,13 @@ describe('recurrence text', () => {
   it('gives a human label for the chip', () => {
     expect(parse('bins every monday', NOW).recurrenceText).toBe('every week on Monday')
     expect(parse('rent every start of the month', NOW).recurrenceText).toBe('every month on the 1st')
+  })
+})
+
+describe('firstDue', () => {
+  it('finds the first matching day for a rule', () => {
+    expect(firstDue('FREQ=WEEKLY;BYDAY=MO', NOW, '09:00')).toEqual({ date: '2026-10-19', time: '09:00' })
+    expect(firstDue('FREQ=MONTHLY;BYDAY=-1FR', NOW, null)).toEqual({ date: '2026-10-30', time: null })
+    expect(firstDue('FREQ=DAILY', NOW, '08:00')).toEqual({ date: '2026-10-16', time: '08:00' })
   })
 })

@@ -114,11 +114,61 @@ function timeWordRegex(words: Iterable<string>): RegExp | null {
 
 type Recurrence = { start: number; end: number; options: Partial<RRuleOptions> }
 
-/** Phrases RRule.fromText doesn't handle. Matched right after "every". */
-const CUSTOM_RULES: [RegExp, Partial<RRuleOptions>][] = [
-  [/^\s+(?:the\s+)?(?:start|beginning)\s+of\s+(?:the\s+|each\s+)?month\b/i, { freq: RRule.MONTHLY, bymonthday: [1] }],
-  [/^\s+(?:the\s+)?end\s+of\s+(?:the\s+|each\s+)?month\b/i, { freq: RRule.MONTHLY, bymonthday: [-1] }],
-  [/^\s+weekend\b/i, { freq: RRule.WEEKLY, byweekday: [RRule.SA, RRule.SU] }],
+const WEEKDAYS = [RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA, RRule.SU]
+const WD = '(mon|tue|wed|thu|fri|sat|sun)[a-z]*'
+const MON = '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*'
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+const ORD = '(first|1st|second|2nd|third|3rd|fourth|4th|last)'
+const ORDINALS: Record<string, number> = { first: 1, '1st': 1, second: 2, '2nd': 2, third: 3, '3rd': 3, fourth: 4, '4th': 4, last: -1 }
+const OF_MONTH = '(\\s+of\\s+(?:the\\s+|each\\s+|every\\s+)?month)?'
+const DAY_NTH = '(\\d{1,2})(?:st|nd|rd|th)'
+
+const weekday = (w: string) => WEEKDAYS[['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].indexOf(w.slice(0, 3).toLowerCase())]!
+const month = (m: string) => MONTHS.indexOf(m.slice(0, 3).toLowerCase()) + 1
+const validDay = (d: number) => d >= 1 && d <= 31
+
+type Rule = [RegExp, (m: RegExpMatchArray) => Partial<RRuleOptions> | null]
+
+/** Phrases RRule.fromText doesn't handle (or gets wrong). Matched right after "every". */
+const CUSTOM_RULES: Rule[] = [
+  [/^\s+(?:the\s+)?(?:start|beginning)\s+of\s+(?:the\s+|each\s+)?month\b/i, () => ({ freq: RRule.MONTHLY, bymonthday: [1] })],
+  [/^\s+(?:the\s+)?(?:end|last\s+day)\s+of\s+(?:the\s+|each\s+)?month\b/i, () => ({ freq: RRule.MONTHLY, bymonthday: [-1] })],
+  [/^\s+weekend\b/i, () => ({ freq: RRule.WEEKLY, byweekday: [RRule.SA, RRule.SU] })],
+  [/^\s+fortnight\b/i, () => ({ freq: RRule.WEEKLY, interval: 2 })],
+  [/^\s+quarter\b/i, () => ({ freq: RRule.MONTHLY, interval: 3 })],
+  // "every year on march 3", "every 3rd of march", "every jan 1"
+  [
+    new RegExp(`^\\s+(?:year\\s+)?(?:on\\s+)?(?:${MON}\\s+(\\d{1,2})(?:st|nd|rd|th)?|(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+${MON})\\b`, 'i'),
+    (m) => {
+      const [mo, d] = m[1] ? [month(m[1]), Number(m[2])] : [month(m[4]!), Number(m[3])]
+      return validDay(d) ? { freq: RRule.YEARLY, bymonth: [mo], bymonthday: [d] } : null
+    },
+  ],
+  // "every 2nd tuesday" = every other week; "of the month" makes it monthly.
+  [
+    new RegExp(`^\\s+(?:month\\s+on\\s+)?(?:the\\s+)?${ORD}\\s+${WD}${OF_MONTH}\\b`, 'i'),
+    (m) => {
+      const n = ORDINALS[m[1]!.toLowerCase()]!
+      const wd = weekday(m[2]!)
+      if (n === 2 && !m[3] && !/month\s+on/i.test(m[0])) return { freq: RRule.WEEKLY, interval: 2, byweekday: [wd] }
+      return { freq: RRule.MONTHLY, byweekday: [wd.nth(n)] }
+    },
+  ],
+  // "every 15th", "every 1st of the month"
+  [
+    new RegExp(`^\\s+(?:the\\s+)?${DAY_NTH}${OF_MONTH}\\b`, 'i'),
+    (m) => (validDay(Number(m[1])) ? { freq: RRule.MONTHLY, bymonthday: [Number(m[1])] } : null),
+  ],
+]
+
+/** Single words that mean a repeat ("weekly review"), used when there's no "every". */
+const ADVERBS: [RegExp, Partial<RRuleOptions>][] = [
+  [/\bdaily\b/i, { freq: RRule.DAILY }],
+  [/\b(?:fortnightly|biweekly|bi-weekly)\b/i, { freq: RRule.WEEKLY, interval: 2 }],
+  [/\bweekly\b/i, { freq: RRule.WEEKLY }],
+  [/\bmonthly\b/i, { freq: RRule.MONTHLY }],
+  [/\bquarterly\b/i, { freq: RRule.MONTHLY, interval: 3 }],
+  [/\b(?:yearly|annually)\b/i, { freq: RRule.YEARLY }],
 ]
 
 const MAX_RULE_TOKENS = 8
@@ -130,9 +180,10 @@ function findRecurrence(text: string, settings: Settings): Recurrence | null {
     const after = start + m[0].length
     const rest = text.slice(after)
 
-    for (const [re, options] of CUSTOM_RULES) {
+    for (const [re, build] of CUSTOM_RULES) {
       const cm = rest.match(re)
-      if (cm) return { start, end: after + cm[0].length, options }
+      const options = cm && build(cm)
+      if (options) return { start, end: after + cm[0].length, options }
     }
 
     // "every morning" → daily; the time word stays for the date parser.
@@ -158,6 +209,10 @@ function findRecurrence(text: string, settings: Settings): Recurrence | null {
     }
     if (best) return best
   }
+  for (const [re, options] of ADVERBS) {
+    const m = text.match(re)
+    if (m) return { start: m.index!, end: m.index! + m[0].length, options }
+  }
   return null
 }
 
@@ -171,6 +226,12 @@ function ruleFromText(phrase: string): Partial<RRuleOptions> | null {
   }
 }
 
+/** First day a rule (RRULE body) falls on, at `time`, not before now. For the repeat builder. */
+export function firstDue(rrule: string, now: Date, time: string | null): Due {
+  const { dtstart: _d, ...options } = RRule.parseString(rrule)
+  return firstOccurrence(options, time ? { start: 0, end: 0, dateCertain: false, due: { date: '', time } } : null, now)
+}
+
 /** First occurrence on/after now. Explicit start dates win. */
 function firstOccurrence(options: Partial<RRuleOptions>, date: DateMatch | null, now: Date): Due {
   const time = date?.due.time ?? null
@@ -179,7 +240,9 @@ function firstOccurrence(options: Partial<RRuleOptions>, date: DateMatch | null,
   // RRule works in UTC; treat local wall-clock as fake UTC.
   const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
   const nowWall = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes())
-  const rule = new RRule({ ...options, dtstart: new Date(today) })
+  // The first matching day, not the first of an interval counted from today
+  // ("every 2 weeks on monday" starts next Monday; the series anchors there).
+  const rule = new RRule({ ...options, interval: 1, dtstart: new Date(today) })
   const [h, m] = time ? parseHHMM(time) : [0, 0]
 
   let cursor = new Date(today)
@@ -230,6 +293,26 @@ function findDate(text: string, now: Date, settings: Settings): DateMatch | null
       },
     })
   }
+
+  // "on the 1st", "the 15th": next such day of the month.
+  c.parsers.push({
+    pattern: () => /\bthe\s+(\d{1,2})(?:st|nd|rd|th)\b(?!\s+of\b)(?!\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec))/i,
+    extract: (ctx, match) => {
+      const day = Number(match[1])
+      if (!validDay(day)) return null
+      const ref = ctx.reference.instant
+      let y = ref.getFullYear()
+      let mo = ref.getMonth()
+      // Skip past days and months too short for it (the 31st in November).
+      for (let i = 0; i < 13; i++) {
+        const fits = new Date(y, mo + 1, 0).getDate() >= day
+        if (fits && (i > 0 || day >= ref.getDate())) break
+        mo++
+        if (mo > 11) [y, mo] = [y + 1, 0]
+      }
+      return { day, month: mo + 1, year: y }
+    },
+  })
 
   const [r] = c.parse(text, now, { forwardDate: true })
   if (!r) return null
