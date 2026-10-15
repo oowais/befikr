@@ -15,13 +15,13 @@ export function span(ms: number): string {
   return `${Math.round(ms / DAY)}d`
 }
 
-/** `timeOnly`: the list already says it's today, so "18:00" instead of "Today 18:00". */
+/** `timeOnly`: the list heading already names the day ("Tomorrow"), so just "18:00". */
 export function dueLabel(ms: number | null, now = Date.now(), timeOnly = false): string {
   if (ms == null) return ''
   const diff = ms - now
   if (diff < 0) return `${span(-diff)} late`
   if (diff < HOUR) return `in ${span(diff)}`
-  if (timeOnly && isToday(ms, now)) return time(new Date(ms))
+  if (timeOnly) return time(new Date(ms))
   return dayLabel(ms, now)
 }
 
@@ -29,14 +29,30 @@ export const isToday = (ms: number, now = Date.now()) => startOfDay(new Date(ms)
 
 export const timeLabel = (ms: number) => time(new Date(ms))
 
-/** List sections, in display order. */
-export type Section = 'overdue' | 'today' | 'later' | 'none'
-export const sectionTitles: Record<Section, string> = { overdue: 'Overdue', today: 'Today', later: 'Upcoming', none: 'No date' }
+/** List sections, in display order. Each excludes the ones before it. */
+export type Section = 'overdue' | 'today' | 'tomorrow' | 'week' | 'month' | 'later' | 'none'
+export const sectionTitles: Record<Section, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  week: 'This week',
+  month: 'This month',
+  later: 'Later',
+  none: 'No date',
+}
 
+/** "This week" = the next 7 days (rolling); "This month" = the rest of the calendar month. */
 export function sectionOf(ms: number | null, now = Date.now()): Section {
   if (ms == null) return 'none'
   if (ms < now) return 'overdue'
-  return isToday(ms, now) ? 'today' : 'later'
+  const n = new Date(now)
+  const days = Math.round((startOfDay(new Date(ms)) - startOfDay(n)) / DAY)
+  if (days === 0) return 'today'
+  if (days === 1) return 'tomorrow'
+  if (days < 7) return 'week'
+  const d = new Date(ms)
+  if (d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()) return 'month'
+  return 'later'
 }
 
 /** "Today 18:00", "Tomorrow 09:00", "Fri 15:00", "23 Oct 15:00". */

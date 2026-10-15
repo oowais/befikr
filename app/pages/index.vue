@@ -47,7 +47,7 @@ async function complete(row: Row) {
   setTimeout(refresh, 400)
 }
 
-// Overdue / Today / Upcoming / No date. Headers only when there is more than one.
+// Overdue / Today / Tomorrow / This week / This month / Later / No date.
 const sections = computed(() => {
   const by = new Map<Section, Row[]>()
   for (const r of rows.value) {
@@ -56,7 +56,6 @@ const sections = computed(() => {
   }
   return (Object.keys(sectionTitles) as Section[]).filter((s) => by.has(s)).map((s) => ({ id: s, rows: by.get(s)! }))
 })
-const headed = computed(() => sections.value.length > 1)
 
 watch(listVersion, refresh)
 
@@ -84,14 +83,14 @@ onUnmounted(() => {
     <p v-if="error" class="muted">{{ error }}</p>
 
     <section v-for="s in sections" :key="s.id" class="section">
-      <h2 v-if="headed" class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
+      <h2 class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
       <TransitionGroup tag="ul" name="list" class="list pane rows">
         <TaskRow
           v-for="r in s.rows"
           :key="r.id"
           :row="r"
           :now="now"
-          :time-only="headed && s.id === 'today'"
+          :time-only="s.id === 'today' || s.id === 'tomorrow'"
           :done="completing.has(r.id)"
           @complete="complete(r)"
           @open="router.push(`/task/${r.id}`)"
