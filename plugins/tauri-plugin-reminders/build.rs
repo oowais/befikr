@@ -13,6 +13,9 @@ const COMMANDS: &[&str] = &[
     "backup_now",
     "export_backup",
     "pick_import_file",
+    // addPluginListener (launch route from a notification while the app is open)
+    "register_listener",
+    "remove_listener",
 ];
 
 fn main() {

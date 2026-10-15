@@ -7,16 +7,14 @@ const { current: toast, dismiss } = useToast()
 
 onMounted(async () => {
   loadTimeWords()
-  try {
-    // Notification "Snooze" opens the app on a route (cold or warm start).
-    const { route: launch } = await reminders.takeLaunchRoute()
-    await addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route))
-    if (launch && launch !== '/') return router.push(launch)
-    // First launch, or permissions revoked: the setup tour.
-    if (route.path === '/' && (await needsSetup())) router.replace('/welcome')
-  } catch {
-    /* desktop / browser: no reminders plugin */
-  }
+  // Each step on its own: one failing (desktop/browser has no reminders
+  // plugin) must not skip the others.
+  // Notification "Snooze" opens the app on a route (cold or warm start).
+  addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route)).catch(() => {})
+  const launch = await reminders.takeLaunchRoute().then((r) => r.route, () => undefined)
+  if (launch && launch !== '/') return router.push(launch)
+  // First launch, or a permission revoked: the setup tour.
+  if (route.path === '/' && (await needsSetup().catch(() => false))) router.replace('/welcome')
 })
 
 function runAction() {
