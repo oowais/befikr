@@ -47,6 +47,24 @@ fn first_after(rrule: &str, dtstart: DateTime<Tz>, after: DateTime<Tz>) -> Resul
     Ok(res.dates.into_iter().next().map(|d| d.with_timezone(&dtstart.timezone())))
 }
 
+/// Most missed occurrences recorded per completion.
+pub const MISSED_CAP: u16 = 1000;
+
+/// Occurrences strictly between `due_at` and `now`: the ones that came and
+/// went while the task sat overdue.
+pub fn missed(rrule: &str, tz: Tz, due_at: i64, now: i64) -> Result<Vec<i64>> {
+    if now <= due_at {
+        return Ok(vec![]);
+    }
+    let due = from_ms(due_at, tz);
+    let rtz: rrule::Tz = tz.into();
+    let res = set(rrule, due)?
+        .after((due + Duration::seconds(1)).with_timezone(&rtz))
+        .before((from_ms(now, tz) - Duration::seconds(1)).with_timezone(&rtz))
+        .all(MISSED_CAP);
+    Ok(res.dates.into_iter().map(|d| to_utc_ms(d.with_timezone(&tz))).collect())
+}
+
 /// Next due after completing an occurrence.
 ///
 /// * fixed: next scheduled occurrence after both the current due and now
@@ -107,6 +125,18 @@ mod tests {
         // Done early (before today's due): next is tomorrow's.
         let due = berlin(2026, 10, 15, 9, 0);
         assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+    }
+
+    #[test]
+    fn missed_between_due_and_now() {
+        let due = berlin(2026, 10, 10, 9, 0);
+        let now = berlin(2026, 10, 15, 14, 0);
+        let days: Vec<i64> = (11..=15).map(|d| berlin(2026, 10, d, 9, 0)).collect();
+        assert_eq!(missed("FREQ=DAILY", B, due, now).unwrap(), days);
+        // Before today's 09:00: today isn't missed.
+        let now = berlin(2026, 10, 15, 8, 0);
+        assert_eq!(missed("FREQ=DAILY", B, due, now).unwrap(), days[..4]);
+        assert!(missed("FREQ=DAILY", B, due, due - 1).unwrap().is_empty());
     }
 
     #[test]

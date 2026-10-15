@@ -225,6 +225,25 @@ fn soft_delete() {
 }
 
 #[test]
+fn late_fixed_completion_records_missed() {
+    let (mut s, clock) = store(); // Oct 15 10:00
+    let mut t = task("pills", Some(at(10, 9, 0)));
+    t.rrule = Some("FREQ=DAILY".into());
+    let id = s.add_task(t).unwrap().task.id;
+
+    clock.store(at(15, 8, 0), Ordering::SeqCst);
+    let c = s.complete_task(&id, Source::App).unwrap();
+    assert_eq!(c.task.due_at, Some(at(16, 9, 0)), "not again at 09:00 today");
+    let days: Vec<i64> = (11..=14).map(|d| at(d, 9, 0)).collect();
+    assert_eq!(s.missed_occurrences(&id).unwrap(), days);
+
+    // Undo drops them from the count.
+    clock.store(at(15, 8, 1), Ordering::SeqCst);
+    s.reopen_task(&id).unwrap();
+    assert!(s.missed_occurrences(&id).unwrap().is_empty());
+}
+
+#[test]
 fn restore_undoes_delete() {
     let (mut s, clock) = store();
     let id = s.add_task(task("x", Some(at(15, 18, 0)))).unwrap().task.id;

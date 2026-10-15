@@ -306,7 +306,7 @@ Device checklist:
 Decisions:
 - `due_at` UTC ms + `tz` per task; RRULE body stored bare, DTSTART built from current `due_at` in `tz` (keeps wall-clock time across DST).
 - Snooze sets `snoozed_until`; `due_at` stays for stats. Effective due = snooze ?? due. Editing the date clears the snooze.
-- Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped (not recorded anywhere). Done late → also skips the rest of today. Adaptive: counted from completion day, keeping time of day.
+- Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped. Done late → also skips the rest of today. Each skipped past occurrence is logged as a `missed` task event (`due_at_then` = that occurrence, `at` = the completion) for stats; not shown in the UI. `Store::missed_occurrences` ignores those of undone completions. Adaptive tasks log none. Adaptive: counted from completion day, keeping time of day.
 - Recurring completion: `completions` row + due advances + subtasks unchecked. Undo restores previous due.
 - Parent completion auto-checks open subtasks with the same timestamp; undo reopens exactly those.
 - Re-remind state is device-local (`alarm_state`, not synced). Fires escalate per `reremind_minutes` (default 5/15/30/60). Title edits keep escalation; date/snooze changes restart it.
