@@ -28,3 +28,16 @@ jobs:
       - run: mkdir -p .output/public
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+
+  # The desktop code has Windows-only parts (toasts, start menu id); compile
+  # and lint the app crate there too.
+  windows:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: New-Item -ItemType Directory -Force .output/public
+      - run: cargo clippy -p befikr --all-targets -- -D warnings
