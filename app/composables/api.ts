@@ -21,6 +21,17 @@ export type Task = {
 export type Urgency = 'red' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
 export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
+export type WeekStats = { start: number; onTime: number; late: number; undated: number }
+export type Stats = {
+  completed: number
+  onTime: number
+  late: number
+  lateMedianMs: number | null
+  snoozes: number
+  snoozedTasks: number
+  missed: number
+  weeks: WeekStats[]
+}
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
 
@@ -55,6 +66,7 @@ export const api = {
   getTask: (id: string) => invoke<Task>('get_task', { id }),
   listSubtasks: (id: string) => invoke<Task[]>('list_subtasks', { id }),
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),
+  stats: (since: number | null, weekStarts: number[]) => invoke<Stats>('stats', { since, weekStarts }),
   addTask: (task: NewTask) => invoke<Task>('add_task', { task }),
   updateTask: (id: string, patch: TaskPatch) => invoke<Task>('update_task', { id, patch }),
   completeTask: (id: string) => invoke<Task>('complete_task', { id }),

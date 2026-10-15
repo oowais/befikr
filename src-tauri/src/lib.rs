@@ -5,7 +5,7 @@ mod jni;
 use std::sync::Mutex;
 
 use befikr_core::{
-    urgency, AlarmChange, Change, Completion, ListItem, NewTask, Settings, Source, Store, Task, TaskPatch, Urgency,
+    urgency, AlarmChange, Change, Completion, ListItem, NewTask, Settings, Source, Stats, Store, Task, TaskPatch, Urgency,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -102,6 +102,11 @@ fn list_subtasks(db: State<Db>, id: String) -> Res<Vec<Task>> {
 #[tauri::command]
 fn list_completed(db: State<Db>, limit: u32) -> Res<Vec<Completion>> {
     db.store.lock().map_err(err)?.list_completed(limit).map_err(err)
+}
+
+#[tauri::command]
+fn stats(db: State<Db>, since: Option<i64>, week_starts: Vec<i64>) -> Res<Stats> {
+    db.store.lock().map_err(err)?.stats(since, &week_starts).map_err(err)
 }
 
 #[tauri::command]
@@ -257,6 +262,7 @@ pub fn run() {
             get_task,
             list_subtasks,
             list_completed,
+            stats,
             add_task,
             update_task,
             complete_task,

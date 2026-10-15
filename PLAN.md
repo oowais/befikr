@@ -194,7 +194,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 3. **Share-to-app** — share a link from browser → new task. ✅ Oct 15: own intent filter (reminders plugin manifest, merged into MainActivity) → route `/?shareText=…&shareSubject=…` → quick add with title from the page title / text, link in notes.
 4. **Native snooze overlay** — true Android bottom sheet without opening the full app (custom Kotlin). Low priority; MVP opens the app on the snooze route.
 5. **Completion history analysis** — suggest/reuse past tasks while adding.
-6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time.
+6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time. ✅ Oct 16: Completed page became **Stats** (`/stats`, chart icon): range switch (7 days / 30 days / all time), tiles (done, % on time, median lateness, snoozes, missed repeats), last-8-weeks stacked bars (on time / late / no date), completion list below. Numbers from `Store::stats` in core.
 7. **Gamification** (way later) — Todoist Karma-style levels, streaks, goals, built on the same stats.
 8. **More views** — only if needed.
 9. **Shopping list** — own view behind a dedicated button on the main screen.
@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (stats)** — Stats page replaces Completed: tiles + 8-week chart on top, completion history below; `Store::stats` (core, tested) → `stats` command. Checked in mocked Chromium. **Next:** completion history suggestions in quick add (Post-MVP 5) or shopping list (9).
 - **Oct 15, 2026 (share)** — Android "Share → Befikr" opens quick add prefilled (title = page title or text, link in notes). Kotlin first compiles in CI. **Next:** stats page.
 - **Oct 15, 2026 (desktop packages)** — Release workflow builds Linux `.deb` + Arch `PKGBUILD` and Windows installer in parallel with the APK and attaches them to the release. `scripts/install-arch.sh` installs/updates `befikr-bin` via makepkg + pacman (from Vicinae it opens a terminal for sudo). AUR registration closed, so no AUR yet. **Next:** first CI run of the desktop jobs (Windows untested).
 - **Oct 15, 2026 (desktop)** — Desktop reminders: Rust scheduler thread (`src-tauri/src/desktop/`), re-armed from the DB on start; notify-rust notifications with Open / Complete / Snooze (D-Bus on Linux, toasts on Windows; tested on Linux: fire, Complete from the notification). Tray (Open, Quick add, Quit), close to tray, single instance, `--hidden`; Settings → Startup (start at login, start hidden). CI: Windows clippy job in `core.yml`. **Next:** desktop packages (AppImage/deb, Windows installer) in CI releases.

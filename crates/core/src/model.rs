@@ -89,6 +89,33 @@ pub struct Completion {
     pub due_at_then: Option<i64>,
 }
 
+/// Completion stats for a time range (see `Store::stats`).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stats {
+    pub completed: u32,
+    /// Done by the due time (+1 min grace). `on_time + late` = completions with a due date.
+    pub on_time: u32,
+    pub late: u32,
+    /// Median of how long late completions sat overdue.
+    pub late_median_ms: Option<i64>,
+    pub snoozes: u32,
+    pub snoozed_tasks: u32,
+    /// Occurrences of fixed-schedule repeats that passed while overdue.
+    pub missed: u32,
+    pub weeks: Vec<WeekStats>,
+}
+
+/// Completions per bucket; buckets start at the caller's local week starts.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeekStats {
+    pub start: i64,
+    pub on_time: u32,
+    pub late: u32,
+    pub undated: u32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Source {

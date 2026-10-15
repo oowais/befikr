@@ -8,6 +8,9 @@ use crate::model::*;
 use crate::recurrence::{self, parse_tz};
 use crate::{schema, Error, Result};
 
+/// A completion up to this long after its due time still counts as on time.
+const LATE_GRACE_MS: i64 = 60_000;
+
 const DEFAULT_REREMIND: &[i64] = &[5, 15, 30, 60];
 /// Alarms that should have fired already are re-armed this far in the future.
 const CATCH_UP_MS: i64 = 5_000;
@@ -112,6 +115,64 @@ impl Store {
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Stats for completions, snoozes and missed repeats since `since`
+    /// (`None` = all time), up to now. `week_starts` (ascending, the
+    /// caller's local week starts) bucket completions for a chart; the last
+    /// bucket runs to now. Undone completions and deleted tasks don't count.
+    pub fn stats(&self, since: Option<i64>, week_starts: &[i64]) -> Result<Stats> {
+        let since = since.unwrap_or(i64::MIN);
+        let from = since.min(week_starts.first().copied().unwrap_or(since));
+        let mut st = self.conn.prepare(
+            "SELECT c.completed_at, c.due_at_then FROM completions c JOIN tasks t ON t.id = c.task_id
+             WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.completed_at >= ?1",
+        )?;
+        let rows = st.query_map([from], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?)))?;
+        let mut s = Stats {
+            weeks: week_starts.iter().map(|&start| WeekStats { start, ..Default::default() }).collect(),
+            ..Default::default()
+        };
+        let mut lateness = Vec::new();
+        for row in rows {
+            let (done, due) = row?;
+            let late = due.map(|d| done > d + LATE_GRACE_MS);
+            if done >= since {
+                s.completed += 1;
+                match (late, due) {
+                    (Some(true), Some(d)) => {
+                        s.late += 1;
+                        lateness.push(done - d);
+                    }
+                    (Some(false), _) => s.on_time += 1,
+                    _ => {}
+                }
+            }
+            if let Some(w) = s.weeks.iter_mut().rev().find(|w| done >= w.start) {
+                match late {
+                    Some(true) => w.late += 1,
+                    Some(false) => w.on_time += 1,
+                    None => w.undated += 1,
+                }
+            }
+        }
+        lateness.sort_unstable();
+        s.late_median_ms = lateness.get(lateness.len() / 2).copied();
+        (s.snoozes, s.snoozed_tasks) = self.conn.query_row(
+            "SELECT COUNT(*), COUNT(DISTINCT e.task_id) FROM task_events e JOIN tasks t ON t.id = e.task_id
+             WHERE e.kind = 'snoozed' AND t.deleted_at IS NULL AND e.at >= ?1",
+            [since],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )?;
+        s.missed = self.conn.query_row(
+            "SELECT COUNT(*) FROM task_events e JOIN tasks t ON t.id = e.task_id
+             WHERE e.kind = 'missed' AND t.deleted_at IS NULL AND e.at >= ?1 AND NOT EXISTS (
+               SELECT 1 FROM completions c
+               WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)",
+            [since],
+            |r| r.get(0),
+        )?;
+        Ok(s)
     }
 
     /// Occurrences of a recurring task that passed while it sat overdue

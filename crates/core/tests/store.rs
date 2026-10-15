@@ -320,3 +320,41 @@ fn import_restores_snapshot_into_live_store() {
     assert_eq!(titles(&s).len(), 2, "failed imports change nothing");
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn stats_count_lateness_snoozes_and_missed() {
+    let (mut s, clock) = store(); // Thu Oct 15 10:00
+    clock.store(at(6, 12, 0), Ordering::SeqCst);
+    let old = s.add_task(task("old", None)).unwrap().task.id;
+    s.complete_task(&old, Source::App).unwrap(); // before `since`, still in week 1
+
+    clock.store(at(15, 10, 0), Ordering::SeqCst);
+    let early = s.add_task(task("early", Some(at(15, 18, 0)))).unwrap().task.id;
+    let late = s.add_task(task("late", Some(at(14, 9, 0)))).unwrap().task.id;
+    let undated = s.add_task(task("undated", None)).unwrap().task.id;
+    let gone = s.add_task(task("gone", None)).unwrap().task.id;
+    let mut t = task("pills", Some(at(10, 9, 0)));
+    t.rrule = Some("FREQ=DAILY".into());
+    let pills = s.add_task(t).unwrap().task.id;
+    s.snooze_task(&late, at(15, 11, 0), Source::App).unwrap();
+    s.snooze_task(&late, at(15, 11, 30), Source::App).unwrap();
+
+    clock.store(at(15, 12, 0), Ordering::SeqCst);
+    for id in [&early, &late, &undated, &gone, &pills] {
+        s.complete_task(id, Source::App).unwrap();
+    }
+    s.delete_task(&gone).unwrap();
+
+    let st = s.stats(Some(at(10, 0, 0)), &[at(5, 0, 0), at(12, 0, 0)]).unwrap();
+    assert_eq!((st.completed, st.on_time, st.late), (4, 1, 2));
+    assert_eq!(st.late_median_ms, Some(at(15, 12, 0) - at(10, 9, 0)), "upper median of 27h and 5d3h");
+    assert_eq!((st.snoozes, st.snoozed_tasks), (2, 1));
+    assert_eq!(st.missed, 5, "Oct 11–15 09:00");
+    assert_eq!(st.weeks[0], WeekStats { start: at(5, 0, 0), on_time: 0, late: 0, undated: 1 });
+    assert_eq!(st.weeks[1], WeekStats { start: at(12, 0, 0), on_time: 1, late: 2, undated: 1 });
+
+    // Undo takes a completion and its missed repeats back out.
+    s.reopen_task(&pills).unwrap();
+    let st = s.stats(None, &[]).unwrap();
+    assert_eq!((st.completed, st.late, st.missed), (4, 1, 0));
+}

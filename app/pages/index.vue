@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ListChecks, Plus, Settings } from 'lucide-vue-next'
+import { ChartColumn, Plus, Settings } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -99,7 +99,7 @@ onUnmounted(() => {
   <main class="page">
     <header class="topbar">
       <h1>Befikr</h1>
-      <NuxtLink to="/completed" class="icon-btn" aria-label="Completed"><ListChecks :size="22" /></NuxtLink>
+      <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
       <NuxtLink to="/settings" class="icon-btn" aria-label="Settings"><Settings :size="22" /></NuxtLink>
     </header>
 
