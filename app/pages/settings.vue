@@ -1,10 +1,22 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
 import { AlarmClock, ArrowLeft, BatteryFull, Bell, Check, ChevronDown, ChevronUp, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
-import type { BackupStatus, Settings, Status } from '~/composables/api'
+import type { BackupStatus, DesktopPrefs, Settings, Status } from '~/composables/api'
 
 const router = useRouter()
 const sound = useSound()
+// This computer's startup (desktop only; null on Android).
+const desktop = ref<DesktopPrefs | null>(null)
+onMounted(async () => (desktop.value = await api.desktopPrefs().catch(() => null)))
+async function setAutostart(on: boolean) {
+  desktop.value!.autostart = on
+  await run(() => api.setAutostart(on))
+  desktop.value = await api.desktopPrefs().catch(() => desktop.value)
+}
+async function setStartHidden(on: boolean) {
+  desktop.value!.startHidden = on
+  await run(() => api.setStartHidden(on))
+}
 const settings = ref<Settings | null>(null)
 const status = ref<Status | null>(null)
 // All permissions granted: one collapsed "set up" row; tap to see them.
@@ -155,6 +167,20 @@ function addWord() {
       </button>
     </div>
 
+    <template v-if="desktop">
+      <h2 class="section-title">Startup</h2>
+      <div class="pane rows">
+        <button class="item" role="switch" :aria-checked="desktop.autostart" @click="setAutostart(!desktop.autostart)">
+          <span class="flex left">Start at login</span>
+          <span class="switch" :class="{ on: desktop.autostart }"><span class="knob" /></span>
+        </button>
+        <button v-if="desktop.autostart" class="item" role="switch" :aria-checked="desktop.startHidden" @click="setStartHidden(!desktop.startHidden)">
+          <span class="flex left">Start hidden<span class="muted small hint">In the tray, no window; reminders still come</span></span>
+          <span class="switch" :class="{ on: desktop.startHidden }"><span class="knob" /></span>
+        </button>
+      </div>
+    </template>
+
     <template v-if="backup">
       <h2 class="section-title">Backup</h2>
       <div class="pane rows">
@@ -251,6 +277,7 @@ function addWord() {
 .item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
 .flex { flex: 1; }
 .left { text-align: left; }
+.hint { display: block; margin-top: 2px; }
 .word { text-transform: capitalize; }
 .time { width: 136px; flex: none; padding: 8px 10px; text-align: left; }
 .row { display: flex; gap: 8px; }

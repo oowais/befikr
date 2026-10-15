@@ -21,6 +21,7 @@ export type Task = {
 export type Urgency = 'red' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
 export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
+export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
 
 export type NewTask = {
@@ -66,6 +67,10 @@ export const api = {
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),
   setReremindMinutes: (minutes: number[]) => invoke<void>('set_reremind_minutes', { minutes }),
   importBackup: (path: string) => invoke<void>('import_backup', { path }),
+  /** Desktop only; rejects on Android. */
+  desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
+  setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),
+  setStartHidden: (on: boolean) => invoke<void>('set_start_hidden', { on }),
 }
 
 export type BackupStatus = { folder: string | null; lastAt: number | null; lastError: string | null }

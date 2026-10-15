@@ -179,6 +179,47 @@ fn import_backup(app: AppHandle, db: State<Db>, path: String) -> Res<()> {
     Ok(())
 }
 
+// ---- This computer's startup settings (desktop; Android has none).
+
+#[cfg(desktop)]
+#[tauri::command]
+fn desktop_prefs(app: AppHandle) -> desktop::prefs::DesktopPrefs {
+    desktop::prefs::get(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn set_autostart(app: AppHandle, on: bool) -> Res<()> {
+    desktop::prefs::set_autostart(&app, on)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn set_start_hidden(app: AppHandle, on: bool) -> Res<()> {
+    desktop::prefs::set_start_hidden(&app, on)
+}
+
+#[cfg(mobile)]
+const DESKTOP_ONLY: &str = "desktop only";
+
+#[cfg(mobile)]
+#[tauri::command]
+fn desktop_prefs() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn set_autostart() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn set_start_hidden() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -186,6 +227,7 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
+        .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
         .on_window_event(desktop::on_window_event);
     builder
         .plugin(tauri_plugin_reminders::init())
@@ -227,6 +269,9 @@ pub fn run() {
             remove_time_word,
             set_reremind_minutes,
             import_backup,
+            desktop_prefs,
+            set_autostart,
+            set_start_hidden,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

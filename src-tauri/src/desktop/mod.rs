@@ -4,6 +4,7 @@
 //! Kotlin plugin instead.
 
 mod notify;
+pub mod prefs;
 mod scheduler;
 mod tray;
 
@@ -32,13 +33,13 @@ pub fn open_route(app: &AppHandle, route: &str) {
 /// Whether the tray is up; without it, closing the window must quit.
 static TRAY: AtomicBool = AtomicBool::new(false);
 
-/// Tray, then the window: shown unless started with `--hidden`.
+/// Tray, then the window: shown unless starting hidden (see `prefs`).
 pub fn setup(app: &AppHandle) {
     match tray::create(app) {
         Ok(()) => TRAY.store(true, Ordering::Relaxed),
         Err(e) => eprintln!("tray unavailable: {e}"),
     }
-    let hidden = std::env::args().any(|a| a == "--hidden");
+    let hidden = prefs::launch_hidden(app);
     if !hidden || !TRAY.load(Ordering::Relaxed) {
         show_main(app);
     }
