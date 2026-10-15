@@ -220,7 +220,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
-| 0 | **Notification spike** on a real Android phone (throwaway) | 🟡 | See checklist below |
+| 0 | **Notification spike** on a real Android phone (throwaway) | 🟡 | Code done; needs CI APK + on-device test |
 | 1 | **Parser** (`packages/parser`), test table first | ⬜ | Can run in parallel with 0 |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ⬜ | |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ⬜ | |
@@ -229,19 +229,36 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 
 ### Step 0 — spike checklist
 
-Goal: prove Android reminders are reliable before building anything. Code lives in `spike/` and is thrown away afterward.
+Goal: prove Android reminders are reliable before building anything. Code lives in `spike/` (throwaway); test protocol in `spike/README.md`.
 
-- [ ] Tauri 2 + Nuxt SPA builds and runs on device
+Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminders` (Kotlin AlarmManager + notifications, receivers → JNI → Rust), Rust core with escalation logic + tests, Nuxt test UI, CI workflow `spike-android` that builds a debug APK.
+
+- [x] Code scaffolded; Rust tests + clippy pass; JNI symbols exported; Nuxt builds
+- [ ] CI builds the APK (Kotlin compiled for the first time there — no Android SDK in cloud sessions)
+- [ ] App runs on device
 - [ ] Exact notification scheduled 2 min out fires on time with app closed (also under forced Doze: `adb shell dumpsys deviceidle force-idle`)
+- [ ] `exact` vs `alarmClock` mode under Doze, incl. two reminders due the same minute
 - [ ] Exact-alarm permission flow (Android 12+) works
-- [ ] **Complete** action writes to DB without opening the app
-- [ ] Swipe-dismiss triggers a delete intent → next re-fire scheduled
-- [ ] **Snooze** action opens app on the snooze route
-- [ ] Alarms survive reboot (`BOOT_COMPLETED` reschedule)
-- [ ] Verdict recorded: Tauri notification plugin enough, or custom Kotlin plugin needed
+- [ ] **Complete** action writes to DB without opening the app (event source `native`)
+- [ ] Re-remind escalation fires while ignored; swipe-dismiss logged and re-fire still comes
+- [ ] **Snooze** action opens app on the snooze sheet (cold + warm)
+- [ ] Alarms survive reboot (`BOOT_COMPLETED` restore)
+- [ ] 4+ notifications: separate or bundled?
+- [ ] Verdict recorded
+
+**Findings so far (from reading `tauri-plugin-notification` 2.7.0 source):**
+- Its action buttons are `PendingIntent.getActivity` → always open the app. "Complete without opening" is impossible with it.
+- Its dismiss receiver only deletes stored data; no hook to re-fire.
+- It does use `setExactAndAllowWhileIdle` when exact-alarm permission is granted.
+- ⇒ Custom Kotlin plugin is required (as built in the spike). Official plugin kept in the spike only for comparison.
+
+**Design notes from the spike:**
+- Re-fire is scheduled when a reminder *fires* (not on dismiss), so ignoring and swiping both lead to the next re-fire. Dismiss is only logged.
+- `setExactAndAllowWhileIdle` is throttled in Doze (~1 alarm / 9 min per app). `setAlarmClock` isn't, but shows an alarm icon. Spike tests both; pick per result.
+- Rust ↔ Kotlin: Kotlin `Native` object loads the app `.so` and calls `#[no_mangle]` JNI functions; panics/errors return `{"error": …}` JSON. The DB path is stored in SharedPreferences for cold starts.
 
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
 
-- **Oct 15, 2026** — Plan + CLAUDE.md committed; `main` created as default branch. Started step 0 spike.
+- **Oct 15, 2026** — Plan + CLAUDE.md added; `main` branch created. Step 0 spike scaffolded (custom Kotlin plugin + JNI + Rust core + test UI + APK CI). Push blocked by missing GitHub access at the time. **Next:** get APK from CI (fix Kotlin compile errors if any), run `spike/README.md` protocol on phone, record verdict; start step 1 parser in parallel.

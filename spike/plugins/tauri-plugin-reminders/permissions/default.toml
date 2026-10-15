@@ -1,0 +1,11 @@
+[default]
+description = "Allows all reminders commands (spike)."
+permissions = [
+  "allow-schedule",
+  "allow-cancel",
+  "allow-status",
+  "allow-request-notifications",
+  "allow-open-exact-alarm-settings",
+  "allow-open-battery-settings",
+  "allow-take-launch-route",
+]

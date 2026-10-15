@@ -29,6 +29,11 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 - UX: show controls only when context needs them; every action optimistic/instant.
 - Vikunja Quick Add Magic is AGPL — read for ideas, never copy code.
 
+## Environment notes
+
+- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/spike-android.yml`); Kotlin compile errors only show there.
+- Linux desktop build works after `apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev`.
+
 ## Git
 
 - Default branch: `main`. Feature work on branches, merged via PR.
