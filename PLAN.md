@@ -187,8 +187,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - **System tray** on both: open / quick add / quit; closing the window hides to tray so reminders keep running.
    - **Notifications** on both: native toasts at due time with Complete / Snooze actions where the OS allows; scheduler runs in the Rust process (no AlarmManager on desktop), re-arms from the DB on start.
    - Single instance: a second launch focuses the running one.
-2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online.
-   - Candidates: iroh (P2P transport, NAT traversal); Loro or Automerge only if full CRDT is ever needed.
+2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online. 🟡 Planned Oct 16 — see **P2P sync — plan** below.
    - Conflict strategy: per-field last-write-wins.
    - **Conflicts page**: every overwritten value is logged; review and restore from there.
 3. **Share-to-app** — share a link from browser → new task. ✅ Oct 15: own intent filter (reminders plugin manifest, merged into MainActivity) → route `/?shareText=…&shareSubject=…` → quick add with title from the page title / text, link in notes.
@@ -271,6 +270,44 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - `setExactAndAllowWhileIdle` is throttled in Doze (~1 alarm / 9 min per app). `setAlarmClock` isn't, but shows an alarm icon. Spike tests both; pick per result.
 - Rust ↔ Kotlin: Kotlin `Native` object loads the app `.so` and calls `#[no_mangle]` JNI functions; panics/errors return `{"error": …}` JSON. The DB path is stored in SharedPreferences for cold starts.
 
+### P2P sync — plan
+
+Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN always on with NetShield).
+
+**Transport: iroh** (Rust library by n0, MIT/Apache; not a service). Each device has a key pair; its public key is its address. QUIC + TLS 1.3, end-to-end encrypted, peers authenticated by key. iroh always tries the direct path first (local discovery on the same network) and only falls back to a relay when direct fails.
+
+**Two modes, one setting** (Settings → Sync):
+- **Same network only** (default): relays off, local discovery only. No third party at all.
+- **Also away from home (via relay)**: same as above, plus n0's public relays as fallback. On the same Wi-Fi traffic still goes direct.
+- Public relays: free, on by default in iroh, rate-limited per connection (limits not published, tuned by n0; throttling slows, never drops). n0 calls them "development and hobby use" — fine here: a sync is a few KB. A relay sees IPs, device keys, timing and volume, never content. Options if that ever matters: paid shared relays ($19/month) or self-host `iroh-relay` (no limits by default).
+
+**Proton VPN** (user runs it always):
+- Android: Proton → Settings → Connection → Advanced → **LAN connections** must be on (paid plan; on by default). "Allow direct device connections" is not needed (that's for devices that make their own Wi-Fi).
+- Linux: LAN is always allowed with a paid plan (no switch in the app). If peers can't see each other, suspect the kill switch / firewall.
+- NetShield is DNS blocking; no effect on LAN sync. Through the VPN a direct path between phone and desktop usually fails → relay mode carries it.
+
+**Pairing** (works phone↔desktop and desktop↔desktop, no camera needed):
+- Device A: Settings → Sync → "Add device" shows a QR code and a short code (6 digits) for a few minutes.
+- Device B, same network: picks A from nearby devices and types the code (or scans the QR). Away from home: scan the QR or paste A's link (it carries A's key).
+- The code is checked over the encrypted connection; few attempts, then the pairing window closes. Both save each other's key in a device-local `peers` table. Only paired keys may sync. Unpair from Settings.
+
+**What syncs**
+- Synced rows: tasks, completions, task_events, settings (shared ones), time_words, shopping_items, staples. Not synced: `alarm_state`, `peers`, device identity, backup folder, desktop startup prefs.
+- Every write already goes through the Rust repository layer; it also appends to a **change log**: (table, row id, field, value, HLC timestamp, origin device). HLC = hybrid logical clock, so phone/desktop clock drift can't reorder edits.
+- Each device remembers, per origin device, the newest change it has. On connect both sides send what the other lacks (so A→B→C forwards too).
+- Merge: per field, newest HLC wins. Inserts are by UUIDv7 id (append-only tables never conflict). Soft deletes are a field like any other.
+- A local edit overwritten by a newer remote one is written to `conflicts` (for the Conflicts page later).
+- "Marked completed elsewhere" needs no special message: the completion row + task fields arrive, then the receiving device re-runs its alarm logic for touched tasks (cancel / reschedule notifications, list refresh). Same for snooze, skip, delete.
+
+**When:** only while both are running. Desktop runs in the tray, so it's usually there. Phone: sync on app open/resume and while open; background sync (WorkManager) later if needed. Both devices may ring for the same task until they've synced.
+
+**Build steps**
+1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network.
+2. iroh endpoint in the app (Rust, `src-tauri`): device key, same-network discovery, sync protocol over one QUIC stream, pairing by code/QR, Settings → Sync UI (devices, last synced, mode switch).
+3. Relay mode switch; then the Conflicts page.
+
+**Check per step:** iroh builds for Android (arm64) and Windows in CI before relying on it.
+
 ### Step 3 — app notes
 
 Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed, settings) → Tauri commands in `src-tauri/src/lib.rs` → `befikr-core`. Kotlin plugin promoted to `plugins/tauri-plugin-reminders`; its receivers call `src-tauri/src/jni.rs` → core (Complete from a notification uses the same `complete_task` as the app, recurring tasks reschedule their next occurrence natively). Spike deleted (git history has it).
@@ -333,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (sync plan)** — P2P sync planned (see **P2P sync — plan**): iroh, same-network by default + optional relay fallback, pairing by code/QR, change log + HLC + per-field LWW in core. **Next:** sync step 1 (core change log + merge).
 - **Oct 16, 2026 (shopping)** — Shopping list (Post-MVP 9): `/shopping` behind a cart button; items + staple chips in their own tables (migration 2), core-tested. Checked in mocked Chromium. **Next:** P2P sync (Post-MVP 2).
 - **Oct 16, 2026 (skip)** — Issue #6: Skip for repeating tasks — moves to the next occurrence on the schedule, no completion recorded (`Store::skip_task`, event `skipped`). In the notification (Android + desktop, repeating tasks only), the task view header and the snooze page ("Skip this one"); toast Undo puts the old due date back. Kotlin first compiles in CI. **Next:** completion history suggestions (Post-MVP 5) or shopping list (9).
 - **Oct 16, 2026 (stats)** — Stats page replaces Completed: tiles + 8-week chart on top, completion history below; `Store::stats` (core, tested) → `stats` command. Checked in mocked Chromium. **Next:** completion history suggestions in quick add (Post-MVP 5) or shopping list (9).
