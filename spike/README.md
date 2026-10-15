@@ -12,7 +12,7 @@ Spike re-remind intervals are 1 → 2 → 5 min (plan: 5 → 15 → 30 → 60).
 
 ## Get the APK
 
-CI: GitHub Actions → `spike-android` → artifact `befikr-spike-apk` (debug-signed, arm64). Install with `adb install -r <apk>` or open on the phone.
+Easiest (on phone): GitHub repo → **Releases** → "Spike APK (latest)" → `befikr-spike.apk`. Also attached to each CI run as artifact `befikr-spike-apk` (zip; logged-in web only). Debug-signed, arm64. Install with `adb install -r <apk>` or open on the phone.
 
 Local (needs Android SDK + NDK, `ANDROID_HOME`, `NDK_HOME`):
 

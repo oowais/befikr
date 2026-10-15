@@ -5,6 +5,9 @@ on:
     paths: ["spike/**", ".github/workflows/spike-android.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write # publish the APK as a release
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -54,3 +57,17 @@ jobs:
           name: befikr-spike-apk
           path: spike/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
+      # Phone-friendly download: Releases → "Spike APK (latest)".
+      - name: Rename APK
+        run: cp "$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)" befikr-spike.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: spike-latest
+          name: Spike APK (latest)
+          body: "Step 0 spike, debug build of ${{ github.sha }}. Install on an arm64 Android 8+ phone. Test protocol: spike/README.md"
+          prerelease: true
+          make_latest: false
+          target_commitish: ${{ github.sha }}
+          files: spike/befikr-spike.apk
