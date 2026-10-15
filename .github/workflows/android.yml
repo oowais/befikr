@@ -51,6 +51,8 @@ jobs:
           echo "VERSION=$V" >> "$GITHUB_ENV"
           echo "Version $V"
           jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
+          .github/scripts/release-notes.sh > release-notes.md
+          cat release-notes.md
 
       - uses: actions/setup-java@v5
         with:
@@ -108,7 +110,7 @@ jobs:
         with:
           tag_name: v${{ env.VERSION }}
           name: Befikr ${{ env.VERSION }}
-          body: "Build of ${{ github.ref_name }} @ ${{ github.sha }}. Arm64, Android 8+. Installs over the previous version."
+          body_path: release-notes.md
           make_latest: true
           target_commitish: ${{ github.sha }}
           files: befikr.apk
