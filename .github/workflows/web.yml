@@ -1,0 +1,28 @@
+name: web
+
+on:
+  push:
+    paths: ["app/**", "packages/**", "package.json", "pnpm-lock.yaml", "nuxt.config.ts", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["app/**", "packages/**", "package.json", "pnpm-lock.yaml", "nuxt.config.ts"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @befikr/parser typecheck
+      - run: pnpm --filter @befikr/parser test
+      - name: Parser is time-zone independent
+        working-directory: packages/parser
+        run: TZ=Pacific/Auckland npx vitest run && TZ=America/Los_Angeles npx vitest run
+      - run: pnpm generate
+      - run: pnpm typecheck

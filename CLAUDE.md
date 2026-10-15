@@ -18,8 +18,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 - `crates/core/` — `befikr-core`: storage, recurrence, reminders (pure Rust, no Tauri)
 - `src-tauri/` — Tauri app: commands wrapping core, JNI entry points, Android project
 - `packages/parser/` — pure TS NL parser, vitest table tests
-- `plugins/tauri-plugin-reminders/` — Kotlin alarms/notifications (to be promoted from `spike/` in step 3)
-- `spike/` — step 0 reference; delete once step 3 replaces it
+- `plugins/tauri-plugin-reminders/` — Kotlin alarms/notifications; receivers call core via JNI (`src-tauri/src/jni.rs`)
 
 ## Non-negotiable rules
 
@@ -33,7 +32,10 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Environment notes
 
-- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/spike-android.yml`); Kotlin compile errors only show there.
+- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. The APK is published to the prerelease `befikr-latest`.
+- APK is signed with the committed sideload key (`src-tauri/android/`). Never change it, or updates stop installing over the old app.
+- CI: `core.yml` (cargo clippy/test), `web.yml` (parser tests, Nuxt build + typecheck), `android.yml` (APK).
+- Quick UI check without a device: `pnpm generate`, then render `.output/public` in Playwright with a mocked `window.__TAURI_INTERNALS__.invoke` (Chromium at `/opt/pw-browsers/chromium`).
 - Linux desktop build works after `apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev`.
 
 ## Git

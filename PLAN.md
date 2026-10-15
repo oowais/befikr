@@ -223,7 +223,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
 | 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
-| 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ⬜ | |
+| 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI release `befikr-latest`. Needs on-device check (see step 3 notes) |
 | 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | ⬜ | |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | ⬜ | |
 
@@ -260,6 +260,23 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - `setExactAndAllowWhileIdle` is throttled in Doze (~1 alarm / 9 min per app). `setAlarmClock` isn't, but shows an alarm icon. Spike tests both; pick per result.
 - Rust ↔ Kotlin: Kotlin `Native` object loads the app `.so` and calls `#[no_mangle]` JNI functions; panics/errors return `{"error": …}` JSON. The DB path is stored in SharedPreferences for cold starts.
 
+### Step 3 — app notes
+
+Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed, settings) → Tauri commands in `src-tauri/src/lib.rs` → `befikr-core`. Kotlin plugin promoted to `plugins/tauri-plugin-reminders`; its receivers call `src-tauri/src/jni.rs` → core (Complete from a notification uses the same `complete_task` as the app, recurring tasks reschedule their next occurrence natively). Spike deleted (git history has it).
+
+- App id `com.befikr.app` (spike was `com.befikr.spike`; uninstall it).
+- CI `android.yml` builds a **release** APK signed with the committed sideload key (`src-tauri/android/`), so updates install in place. Download: Releases → "Befikr APK (latest)".
+- UI checked in desktop Chromium with mocked commands (light/dark); not yet on device.
+- Known MVP gaps: editing a title doesn't re-parse dates; no swipe gestures; highlight shown as chips (tap to un-parse), not inline in the text; desktop builds have no reminder scheduler.
+
+Device checklist:
+- [ ] Quick add: "call mom tomorrow 6pm", "buy milk friday" (time prompt), "bins every monday evening" (repeat chip + schedule toggle)
+- [ ] Reminder fires; Complete from notification with app closed; list updates on reopen
+- [ ] Recurring: Complete from notification → next occurrence scheduled and fires
+- [ ] Snooze from notification → snooze sheet → reminder at the new time
+- [ ] Undo after completing; completed history; subtasks; settings (time word "dawn", re-remind minutes)
+- [ ] Update install: next CI build installs over the previous one, data kept
+
 ### Step 2 — core notes
 
 `crates/core` = `befikr-core`: `Store` (repository; only writer), `recurrence` (rrule crate, evaluated in the task's IANA zone), models. Every write returns `Change { task, alarm: Schedule|Cancel }` for the platform scheduler.
@@ -291,6 +308,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (night)** — Step 3 built: Nuxt UI + Tauri commands + JNI on core; plugin promoted, spike removed; signed release APK in CI (`befikr-latest`); CI split into `core`, `web`, `android`. **Next:** user installs and dogfoods; fix what hurts; then step 4.
 - **Oct 15, 2026 (evening)** — Step 0 closed (custom plugin verdict). Step 2 done: `crates/core` with schema, recurrence, repository, reminders, settings, backup export; CI `core.yml`. **Next:** step 3 — real app (`app/` + `src-tauri/`), promote reminders plugin out of `spike/`, wire core via Tauri commands + JNI, parser in quick add.
 - **Oct 15, 2026 (device test 2)** — vibration, swipe-dismiss re-fire, 8 simultaneous reminders all ✅ (bundled by Android, accepted). **Left:** Doze (both modes), two-at-once under Doze, reboot, snooze from cold start.
 - **Oct 15, 2026 (device test 1)** — Pixel 9 / SDK 37: exact fire, escalation, snooze, native Complete all work. Custom plugin clearly better than official. User wants vibration → added. **Next:** Doze, swipe-dismiss, reboot, alarmClock mode, 4+ notifications, vibration.

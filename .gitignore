@@ -7,3 +7,6 @@ dist/
 *.aab
 .DS_Store
 /target/
+.nuxt/
+.output/
+dist
