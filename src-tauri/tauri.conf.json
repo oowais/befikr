@@ -15,6 +15,9 @@
   },
   "bundle": {
     "active": true,
+    "shortDescription": "Private, local-first to-do list with reliable reminders",
+    "longDescription": "Type a task in plain English, get a reliable reminder. No server; your data stays on your devices.",
+    "category": "Productivity",
     "targets": "all",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "android": { "minSdkVersion": 26 }

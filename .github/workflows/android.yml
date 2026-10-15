@@ -1,7 +1,9 @@
 name: android
 
-# Builds and releases the APK only after a merge to main (or by hand).
-# PRs get lint and tests only (core.yml, web.yml).
+# Builds and releases the APK only after a merge to main (or by hand); the
+# desktop packages (Linux .deb + Arch PKGBUILD, Windows installer) build
+# alongside and are attached to the same release. PRs get lint and tests only
+# (core.yml, web.yml).
 on:
   push:
     branches: [main]
@@ -17,6 +19,7 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/android.yml"
+      - "packaging/**"
       - "!**/*.md"
   workflow_dispatch:
 
@@ -32,6 +35,9 @@ concurrency:
 jobs:
   apk:
     runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to 26 (Android SDK/NDK come from the image)
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -40,15 +46,19 @@ jobs:
       # Semver 0.x.y from Conventional Commits (.github/scripts/next-version.sh).
       # Android versionCode derives from it, so every release is an update.
       - name: Version
+        id: version
         run: |
           V=$(.github/scripts/next-version.sh)
+          R=true
           if [ "$V" = none ]; then
             V=$(git describe --tags --abbrev=0 --match 'v0.*'); V=${V#v}
-            echo "RELEASE=false" >> "$GITHUB_ENV"
-          else
-            echo "RELEASE=true" >> "$GITHUB_ENV"
+            R=false
           fi
+          echo "RELEASE=$R" >> "$GITHUB_ENV"
           echo "VERSION=$V" >> "$GITHUB_ENV"
+          # For the desktop-release job.
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "release=$R" >> "$GITHUB_OUTPUT"
           echo "Version $V"
           jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
           .github/scripts/release-notes.sh > release-notes.md
@@ -114,3 +124,88 @@ jobs:
           make_latest: true
           target_commitish: ${{ github.sha }}
           files: befikr.apk
+
+  # Linux: the .deb, and the Arch PKGBUILD that repackages it
+  # (scripts/install-arch.sh installs it; the AUR befikr-bin would be the same).
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - run: .github/scripts/desktop-version.sh
+      - name: Tauri build dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tauri build --bundles deb --ci
+      - name: Package
+        run: |
+          DEB="befikr_${VERSION}_amd64.deb"
+          cp target/release/bundle/deb/*.deb "$DEB"
+          SHA=$(sha256sum "$DEB" | cut -d' ' -f1)
+          sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA/" packaging/arch/PKGBUILD.in > PKGBUILD
+          ls -la "$DEB" PKGBUILD
+      - uses: actions/upload-artifact@v7
+        with:
+          name: befikr-${{ env.VERSION }}-linux
+          path: |
+            befikr_*_amd64.deb
+            PKGBUILD
+
+  # Windows: the NSIS installer (unsigned, so SmartScreen asks once).
+  windows:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: .github/scripts/desktop-version.sh
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tauri build --bundles nsis --ci
+      - name: Package
+        run: |
+          cp target/release/bundle/nsis/*-setup.exe "befikr_${VERSION}_x64-setup.exe"
+          ls -la befikr_*_x64-setup.exe
+      - uses: actions/upload-artifact@v7
+        with:
+          name: befikr-${{ env.VERSION }}-windows
+          path: befikr_*_x64-setup.exe
+
+  # After the APK job has created the release: add the desktop files to it.
+  desktop-release:
+    needs: [apk, linux, windows]
+    if: github.ref == 'refs/heads/main' && needs.apk.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: befikr-${{ needs.apk.outputs.version }}-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ needs.apk.outputs.version }}
+          files: |
+            befikr_*_amd64.deb
+            PKGBUILD
+            befikr_*_x64-setup.exe

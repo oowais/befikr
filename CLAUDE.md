@@ -34,6 +34,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 ## Environment notes
 
 - Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. Pushes to `main` publish release `v0.x.y` (latest); stable link: `releases/latest/download/befikr.apk`. Discoverium tracks these releases. The APK is built only on `main` (or a manual `workflow_dispatch` run, which uploads an artifact without releasing).
+- Desktop packages: `android.yml` also builds the Linux `.deb` + Arch `PKGBUILD` (from `packaging/arch/PKGBUILD.in`) and the Windows NSIS installer, and attaches them to the same release. Arch/CachyOS install/update: `scripts/install-arch.sh` (also the user's Vicinae script, copied to `~/.local/share/vicinae/scripts/befikr-install.sh`; re-copy when it changes). AUR `befikr-bin` later (AUR registration was closed on Oct 15, 2026).
 - APK is signed with the committed sideload key (`src-tauri/android/`). Never change it, or updates stop installing over the old app.
 - CI: PRs run `core.yml` (cargo clippy + tests, whole workspace) and `web.yml` (parser tests, Nuxt build + typecheck); `android.yml` (APK + release) runs only on `main`. Kotlin is therefore first compiled after merge — or trigger `android` by hand on the branch to check it early.
 - Quick UI check without a device: `pnpm generate`, then render `.output/public` in Playwright with a mocked `window.__TAURI_INTERNALS__.invoke` (Chromium at `/opt/pw-browsers/chromium`).
