@@ -1,10 +1,16 @@
 name: core
 
+# Rust lint + tests: on PRs, and on main after a merge.
 on:
   push:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/core.yml"]
+    branches: [main]
+    paths: ["crates/**", "src-tauri/**", "plugins/**", "Cargo.toml", "Cargo.lock", ".github/workflows/core.yml"]
   pull_request:
-    paths: ["crates/**", "Cargo.toml", "Cargo.lock"]
+    paths: ["crates/**", "src-tauri/**", "plugins/**", "Cargo.toml", "Cargo.lock", ".github/workflows/core.yml"]
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -15,5 +21,10 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy -p befikr-core --all-targets -- -D warnings
-      - run: cargo test -p befikr-core
+      # The Tauri app crate needs the Linux webview headers to compile.
+      - name: Tauri build dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
+      # Tauri's build script expects the frontend output to exist.
+      - run: mkdir -p .output/public
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace

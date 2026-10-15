@@ -1,10 +1,16 @@
 name: web
 
+# Parser tests, Nuxt build + typecheck: on PRs, and on main after a merge.
 on:
   push:
+    branches: [main]
     paths: ["app/**", "packages/**", "package.json", "pnpm-lock.yaml", "nuxt.config.ts", ".github/workflows/web.yml"]
   pull_request:
-    paths: ["app/**", "packages/**", "package.json", "pnpm-lock.yaml", "nuxt.config.ts"]
+    paths: ["app/**", "packages/**", "package.json", "pnpm-lock.yaml", "nuxt.config.ts", ".github/workflows/web.yml"]
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
