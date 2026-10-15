@@ -242,11 +242,11 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - [x] Permissions flow: notifications, exact alarms, battery unrestricted all granted
 - [x] **Complete** action writes to DB without opening the app (event source `native`)
 - [x] Re-remind escalation fires while ignored (+1, +2 min observed)
-- [ ] Swipe-dismiss logged and re-fire still comes
+- [x] Swipe-dismiss logged (`dismissed · native`) and re-fire still comes
 - [x] **Snooze** opens app on the snooze sheet; snoozed reminder fired on time and escalation restarted
 - [ ] Alarms survive reboot (`BOOT_COMPLETED` restore)
-- [ ] 4+ notifications: separate or bundled?
-- [ ] Vibration on reminders (added after first test: new channel `reminders-v2` with vibration)
+- [x] 8 at once: all fired on time (≤1 s). Android bundles them into one app group (count badge); each child still expandable with its own actions. Unique `setGroup` doesn't prevent it — accepted (plan already expected this)
+- [x] Vibration on reminders (new channel `reminders-v2`)
 - [ ] Verdict recorded
 
 **Findings so far (from reading `tauri-plugin-notification` 2.7.0 source):**
@@ -277,6 +277,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (device test 2)** — vibration, swipe-dismiss re-fire, 8 simultaneous reminders all ✅ (bundled by Android, accepted). **Left:** Doze (both modes), two-at-once under Doze, reboot, snooze from cold start.
 - **Oct 15, 2026 (device test 1)** — Pixel 9 / SDK 37: exact fire, escalation, snooze, native Complete all work. Custom plugin clearly better than official. User wants vibration → added. **Next:** Doze, swipe-dismiss, reboot, alarmClock mode, 4+ notifications, vibration.
 - **Oct 15, 2026 (later)** — Step 1 parser v1: `packages/parser` (chrono-node + rrule, vitest table, CI `parser.yml`). APK now also published as prerelease "Spike APK (latest)". User testing spike on phone. **Next:** record spike results; parser gaps above; then step 2 (Rust storage).
 - **Oct 15, 2026** — Plan + CLAUDE.md added; `main` branch created. Step 0 spike scaffolded (custom Kotlin plugin + JNI + Rust core + test UI + APK CI). CI green after 2 fixes (runner's preinstalled SDK; minSdk 26). **Next:** user installs APK from CI artifact `befikr-spike-apk`, runs `spike/README.md` protocol on phone, record verdict; start step 1 parser in parallel.

@@ -2,7 +2,7 @@ name: spike-android
 
 on:
   push:
-    paths: ["spike/**", ".github/workflows/spike-android.yml"]
+    paths: ["spike/**", "!spike/**/*.md", ".github/workflows/spike-android.yml"]
   workflow_dispatch:
 
 permissions:
