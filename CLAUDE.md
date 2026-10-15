@@ -14,7 +14,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Layout (target)
 
-- `app/` — Nuxt SPA
+- `app/` — Nuxt SPA. Design system: Glass (`app/assets/main.css`, adapted from Solid Glass, MIT) — use its building blocks (`.pane`, `.popover`, `.btn`, `.chip`, `.field`, `.checkbox`, `.icon-btn`, `.ink`) and Lucide icons (`lucide-vue-next`), no emoji/unicode glyphs as icons
 - `crates/core/` — `befikr-core`: storage, recurrence, reminders (pure Rust, no Tauri)
 - `src-tauri/` — Tauri app: commands wrapping core, JNI entry points, Android project
 - `packages/parser/` — pure TS NL parser, vitest table tests
@@ -40,7 +40,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Git
 
-- Default branch: `main`. Feature work on branches, merged into `main` to release.
+- Default branch: `main`. **Work goes into one open PR** from the working branch to `main`; keep adding commits to it. **Never merge or push to `main` unless the user says so** — merging releases (Discoverium picks it up).
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `perf:`; `!` or `BREAKING CHANGE` for breaking). They drive the version.
 - **Versioning:** semver, always `0.x.y` (`.github/scripts/next-version.sh`): `feat` or breaking → minor, anything else → patch. Tags `v0.x.y` are created by the release step; don't tag by hand or edit `version` in `tauri.conf.json` (CI sets it).
 - Don't commit build outputs (`target/`, `.output/`, `node_modules/`, APKs).

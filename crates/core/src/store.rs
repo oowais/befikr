@@ -386,7 +386,33 @@ impl Store {
 
     /// Consistent snapshot via `VACUUM INTO`.
     pub fn export_to(&self, path: &str) -> Result<()> {
+        // VACUUM INTO refuses to overwrite.
+        let _ = std::fs::remove_file(path);
         self.conn.execute("VACUUM INTO ?1", [path])?;
+        Ok(())
+    }
+
+    /// Replace everything with a snapshot made by [`Store::export_to`]. The
+    /// live connection stays open (SQLite backup API), then migrations bring
+    /// an older snapshot up to date. Refuses files that aren't Befikr
+    /// databases or come from a newer app version.
+    pub fn import_from(&mut self, path: &str) -> Result<()> {
+        let src = Connection::open_with_flags(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(|_| Error::Invalid("not a database file".into()))?;
+        let is_befikr: bool = src
+            .query_row("SELECT count(*) = 1 FROM sqlite_master WHERE type = 'table' AND name = 'tasks'", [], |r| r.get(0))
+            .map_err(|_| Error::Invalid("not a database file".into()))?;
+        if !is_befikr {
+            return Err(Error::Invalid("not a Befikr backup".into()));
+        }
+        let version: i64 = src.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        let latest: i64 = self.conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+        if version > latest {
+            return Err(Error::Invalid("backup is from a newer version of Befikr; update the app first".into()));
+        }
+        rusqlite::backup::Backup::new(&src, &mut self.conn)?
+            .run_to_completion(256, std::time::Duration::from_millis(0), None)?;
+        schema::migrations().to_latest(&mut self.conn).map_err(|e| Error::Migration(e.to_string()))?;
         Ok(())
     }
 }

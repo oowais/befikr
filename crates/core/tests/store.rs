@@ -254,3 +254,31 @@ fn export_snapshot_is_openable() {
     assert_eq!(titles(&copy), ["keep me"]);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn import_restores_snapshot_into_live_store() {
+    let (mut s, _) = store();
+    s.add_task(task("before backup", Some(at(16, 9, 0)))).unwrap();
+    let dir = std::env::temp_dir().join(format!("befikr-test-{}", uuid::Uuid::now_v7()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let snap = dir.join("snap.db");
+    let snap = snap.to_str().unwrap();
+    s.export_to(snap).unwrap();
+    s.export_to(snap).unwrap(); // overwrites
+
+    s.add_task(task("after backup", None)).unwrap();
+    s.import_from(snap).unwrap();
+    assert_eq!(titles(&s), ["before backup"]);
+    assert_eq!(s.pending_alarms().unwrap().len(), 1, "alarms come from the restored data");
+    // Still writable afterwards.
+    s.add_task(task("new", None)).unwrap();
+
+    let junk = dir.join("junk.db");
+    std::fs::write(&junk, b"not sqlite").unwrap();
+    assert!(s.import_from(junk.to_str().unwrap()).is_err());
+    let other = dir.join("other.db");
+    rusqlite::Connection::open(&other).unwrap().execute_batch("CREATE TABLE x (y)").unwrap();
+    assert!(s.import_from(other.to_str().unwrap()).is_err());
+    assert_eq!(titles(&s).len(), 2, "failed imports change nothing");
+    std::fs::remove_dir_all(dir).unwrap();
+}

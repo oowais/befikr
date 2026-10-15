@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // One text field. Parsed parts appear as chips; tap a chip to keep that text
 // literal. Full controls hide behind "More".
+import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, X } from 'lucide-vue-next'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
 const text = ref('')
@@ -8,7 +9,8 @@ const ignored = ref<string[]>([])
 const timePrompt = ref('09:00')
 const adaptive = ref(false)
 const expanded = ref(false)
-const manualDue = ref('')
+const manualDue = ref<number | null>(null)
+const picking = ref(false)
 const repeatText = ref('')
 const description = ref('')
 const saving = ref(false)
@@ -41,14 +43,14 @@ const repeat = computed(() => {
 })
 
 const dueAt = computed<number | null>(() => {
-  if (manualDue.value) return fromInputValue(manualDue.value)
+  if (manualDue.value != null) return manualDue.value
   const d = parsed.value.due
   return d ? localMs(d.date, d.time ?? timePrompt.value) : null
 })
-const needsTime = computed(() => !manualDue.value && parsed.value.due && !parsed.value.due.time)
+const needsTime = computed(() => manualDue.value == null && parsed.value.due && !parsed.value.due.time)
 const dateChip = computed(() => {
   const d = parsed.value.due
-  if (!d || manualDue.value) return null
+  if (!d || manualDue.value != null) return null
   return d.time ? dayLabel(localMs(d.date, d.time)) : dateOnlyLabel(d.date)
 })
 
@@ -90,7 +92,7 @@ async function save() {
 
 <template>
   <div class="backdrop" @click.self="emit('close')">
-    <form class="sheet" @submit.prevent="save">
+    <form class="sheet popover" @submit.prevent="save">
       <textarea
         ref="input"
         v-model="text"
@@ -106,11 +108,14 @@ async function save() {
 
       <div class="chips">
         <button v-if="dateChip" type="button" class="chip" title="Tap to keep as text" @click="unparse('date')">
-          📅 {{ dateChip }}
+          <CalendarDays :size="16" /> {{ dateChip }}
         </button>
         <label v-if="needsTime" class="chip">
-          <input v-model="timePrompt" type="time" class="time" aria-label="Time" />
+          <Clock :size="16" /> <input v-model="timePrompt" type="time" class="time" aria-label="Time" />
         </label>
+        <button v-if="manualDue != null" type="button" class="chip" @click="picking = true">
+          <CalendarDays :size="16" /> {{ dayLabel(manualDue) }}
+        </button>
         <button
           v-if="parsed.recurrenceText && !repeatText"
           type="button"
@@ -118,58 +123,52 @@ async function save() {
           title="Tap to keep as text"
           @click="unparse('recurrence')"
         >
-          ↻ {{ parsed.recurrenceText }}
+          <Repeat :size="16" /> {{ parsed.recurrenceText }}
         </button>
-        <button
-          v-if="repeat.rrule"
-          type="button"
-          class="chip"
-          :class="{ off: !adaptive }"
-          @click="adaptive = !adaptive"
-        >
+        <button v-if="repeat.rrule" type="button" class="chip" :class="{ off: !adaptive }" @click="adaptive = !adaptive">
           {{ adaptive ? 'From completion' : 'On schedule' }}
         </button>
         <button v-for="(s, i) in ignored" :key="s + i" type="button" class="chip off" @click="ignored.splice(i, 1)">
-          “{{ s }}” as text
+          “{{ s }}” as text <X :size="14" />
         </button>
       </div>
 
       <div v-if="expanded" class="more">
-        <label>
-          <span class="muted">Date &amp; time</span>
-          <input v-model="manualDue" type="datetime-local" class="field" />
-        </label>
-        <label>
-          <span class="muted">Repeat</span>
+        <button type="button" class="field pick-date" @click="picking = true">
+          <CalendarDays :size="18" />
+          <span :class="{ muted: dueAt == null }">{{ dueAt != null ? dayLabel(dueAt) : 'Pick date & time' }}</span>
+        </button>
+        <label class="labeled">
+          <Repeat :size="18" class="muted" />
           <input v-model="repeatText" class="field" placeholder="every monday" autocorrect="on" />
         </label>
-        <p v-if="repeatText && repeat.text" class="muted small">↻ {{ repeat.text }}</p>
-        <label>
-          <span class="muted">Notes</span>
-          <textarea v-model="description" class="field" rows="3" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
-        </label>
+        <p v-if="repeatText && repeat.text" class="muted small">{{ repeat.text }}</p>
+        <textarea v-model="description" class="field" rows="3" placeholder="Notes" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
 
       <div class="actions">
-        <button type="button" class="btn" @click="expanded = !expanded">{{ expanded ? 'Less' : 'More' }}</button>
+        <button type="button" class="btn" @click="expanded = !expanded">
+          <component :is="expanded ? ChevronUp : ChevronDown" :size="18" /> {{ expanded ? 'Less' : 'More' }}
+        </button>
         <button type="submit" class="btn primary" :disabled="!parsed.title.trim() || saving">Add</button>
       </div>
     </form>
+    <DateTimeSheet v-if="picking" :model-value="dueAt" title="When" allow-clear @update:model-value="manualDue = $event" @close="picking = false" />
   </div>
 </template>
 
 <style scoped>
 .backdrop {
-  position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.3);
-  display: flex; align-items: flex-end; animation: fade 0.15s;
+  position: fixed; inset: 0; z-index: 40; background: oklch(0 0 0 / 18%);
+  display: flex; align-items: flex-end; animation: fade-in 0.15s;
 }
 .sheet {
-  width: 100%; max-width: 640px; margin: 0 auto; background: var(--surface);
-  border-radius: 20px 20px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
-  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px;
-  animation: up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  width: calc(100% - 16px); max-width: 640px; margin: 0 auto 8px; border-radius: 22px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 10px;
+  animation: float-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .main-input { border: 0; outline: none; background: none; font-size: 1.2rem; padding: 6px 2px; width: 100%; resize: none; overflow: hidden; }
 .preview { margin: 0; font-size: 0.9rem; }
@@ -177,10 +176,9 @@ async function save() {
 .chips:empty { display: none; }
 .time { border: 0; background: none; padding: 0; }
 .more { display: flex; flex-direction: column; gap: 10px; }
-.more label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
-.small { margin: 0; font-size: 0.85rem; }
+.pick-date { display: flex; align-items: center; gap: 10px; text-align: left; }
+.labeled { display: flex; align-items: center; gap: 10px; }
+.small { margin: 0; }
 .actions { display: flex; justify-content: space-between; }
-.error { color: var(--red); margin: 0; font-size: 0.9rem; }
-@keyframes up { from { transform: translateY(100%); } }
-@keyframes fade { from { opacity: 0; } }
+.error { margin: 0; font-size: 0.9rem; }
 </style>

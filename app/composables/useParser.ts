@@ -5,6 +5,9 @@ import { api } from './api'
 const timeWords = ref<Record<string, string>>({ ...DEFAULT_SETTINGS.timeWords })
 let loaded = false
 
+/** Time words from settings, e.g. { morning: '09:00' } (defaults until loaded). */
+export const useTimeWords = () => timeWords
+
 export async function loadTimeWords(force = false) {
   if (loaded && !force) return
   try {

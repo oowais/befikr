@@ -50,6 +50,22 @@ impl<R: Runtime> Reminders<R> {
 }
 
 impl<R: Runtime> Reminders<R> {
+    /// Tell the native side where the database is (receivers, backups).
+    pub fn configure(&self, db_path: &str) -> Result<(), String> {
+        #[cfg(target_os = "android")]
+        {
+            self.0
+                .run_mobile_plugin::<serde_json::Value>("configure", serde_json::json!({ "dbPath": db_path }))
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = db_path;
+            Ok(())
+        }
+    }
+
     /// Cancel the task's alarm and any notification shown for it.
     pub fn cancel(&self, id: &str) -> Result<(), String> {
         #[cfg(target_os = "android")]

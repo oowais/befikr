@@ -73,3 +73,17 @@ pub extern "system" fn Java_com_befikr_reminders_Native_pendingAlarms<'l>(
         serde_json::to_value(alarms).map_err(|e| e.to_string())
     })
 }
+
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_exportTo<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    out_path: JString<'l>,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (db, out) = (arg(env, &db_path)?, arg(env, &out_path)?);
+        store(&db)?.export_to(&out).map_err(|e| e.to_string())?;
+        Ok(json!({}))
+    })
+}

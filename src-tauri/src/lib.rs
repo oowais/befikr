@@ -127,6 +127,26 @@ fn set_reremind_minutes(db: State<Db>, minutes: Vec<i64>) -> Res<()> {
     db.store.lock().map_err(err)?.set_reremind_minutes(minutes).map_err(err)
 }
 
+/// Replace all data with a backup file (path from the native file picker).
+/// The current data is snapshotted to the cache first; alarms are re-armed.
+#[tauri::command]
+fn import_backup(app: AppHandle, db: State<Db>, path: String) -> Res<()> {
+    let pending = {
+        let mut s = db.store.lock().map_err(err)?;
+        if let Ok(dir) = app.path().app_cache_dir() {
+            let _ = std::fs::create_dir_all(&dir);
+            let _ = s.export_to(&dir.join("befikr-before-import.db").to_string_lossy());
+        }
+        s.import_from(&path).map_err(err)?;
+        s.pending_alarms().map_err(err)?
+    };
+    let _ = std::fs::remove_file(&path);
+    for a in pending {
+        apply(&app, &db, &AlarmChange::Schedule(a));
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -136,6 +156,9 @@ pub fn run() {
             std::fs::create_dir_all(&dir)?;
             let path = dir.join("befikr.db").to_string_lossy().into_owned();
             let store = Store::open(&path)?;
+            if let Err(e) = app.reminders().configure(&path) {
+                eprintln!("reminders configure failed: {e}");
+            }
             let db = Db { store: Mutex::new(store), path };
             // Re-arm everything on start (same as the boot receiver).
             let pending = db.store.lock().map_err(err)?.pending_alarms()?;
@@ -160,6 +183,7 @@ pub fn run() {
             set_time_word,
             remove_time_word,
             set_reremind_minutes,
+            import_backup,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

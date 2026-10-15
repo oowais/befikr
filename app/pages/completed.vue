@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowLeft, Check } from 'lucide-vue-next'
 import type { Completion } from '~/composables/api'
 
 const router = useRouter()
@@ -12,23 +13,26 @@ const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtTh
 <template>
   <main class="page">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()">←</button>
+      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <h1>Completed</h1>
     </header>
-    <ul class="list">
+    <ul v-if="items.length" class="pane rows list">
       <li v-for="c in items" :key="c.id">
-        <span>{{ c.title }}</span>
-        <span class="muted small">
-          {{ dayLabel(c.completedAt) }}<template v-if="late(c)"> · was due {{ dayLabel(c.dueAtThen!) }}</template>
+        <span class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
+        <span class="text">
+          <span>{{ c.title }}</span>
+          <span class="muted small">
+            {{ dayLabel(c.completedAt) }}<template v-if="late(c)"> · was due {{ dayLabel(c.dueAtThen!) }}</template>
+          </span>
         </span>
       </li>
     </ul>
-    <p v-if="!items.length" class="muted">Nothing completed yet.</p>
+    <p v-else class="muted">Nothing completed yet.</p>
   </main>
 </template>
 
 <style scoped>
-.list { list-style: none; padding: 0; }
-.list li { display: flex; flex-direction: column; padding: 10px 0; border-bottom: 1px solid var(--line); }
-.small { font-size: 0.85rem; }
+.list { list-style: none; margin: 8px 0 0; }
+.list li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; }
+.text { display: flex; flex-direction: column; gap: 2px; }
 </style>

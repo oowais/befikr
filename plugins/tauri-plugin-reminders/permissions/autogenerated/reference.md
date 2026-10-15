@@ -1,6 +1,6 @@
 ## Default Permission
 
-Allows all reminders commands (spike).
+Allows all reminders and backup commands.
 
 #### This default permission set includes the following:
 
@@ -11,6 +11,13 @@ Allows all reminders commands (spike).
 - `allow-open-exact-alarm-settings`
 - `allow-open-battery-settings`
 - `allow-take-launch-route`
+- `allow-configure`
+- `allow-backup-status`
+- `allow-pick-backup-folder`
+- `allow-clear-backup-folder`
+- `allow-backup-now`
+- `allow-export-backup`
+- `allow-pick-import-file`
 
 ## Permission Table
 
@@ -20,6 +27,58 @@ Allows all reminders commands (spike).
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`reminders:allow-backup-now`
+
+</td>
+<td>
+
+Enables the backup_now command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-backup-now`
+
+</td>
+<td>
+
+Denies the backup_now command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-backup-status`
+
+</td>
+<td>
+
+Enables the backup_status command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-backup-status`
+
+</td>
+<td>
+
+Denies the backup_status command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -43,6 +102,84 @@ Enables the cancel command without any pre-configured scope.
 <td>
 
 Denies the cancel command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-clear-backup-folder`
+
+</td>
+<td>
+
+Enables the clear_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-clear-backup-folder`
+
+</td>
+<td>
+
+Denies the clear_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-configure`
+
+</td>
+<td>
+
+Enables the configure command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-configure`
+
+</td>
+<td>
+
+Denies the configure command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-export-backup`
+
+</td>
+<td>
+
+Enables the export_backup command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-export-backup`
+
+</td>
+<td>
+
+Denies the export_backup command without any pre-configured scope.
 
 </td>
 </tr>
@@ -95,6 +232,58 @@ Enables the open_exact_alarm_settings command without any pre-configured scope.
 <td>
 
 Denies the open_exact_alarm_settings command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-pick-backup-folder`
+
+</td>
+<td>
+
+Enables the pick_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-pick-backup-folder`
+
+</td>
+<td>
+
+Denies the pick_backup_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-pick-import-file`
+
+</td>
+<td>
+
+Enables the pick_import_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-pick-import-file`
+
+</td>
+<td>
+
+Denies the pick_import_file command without any pre-configured scope.
 
 </td>
 </tr>

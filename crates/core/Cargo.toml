@@ -6,7 +6,7 @@ publish = false
 description = "Storage, recurrence and reminder logic. No Tauri dependency: called from Tauri commands and from Kotlin via JNI."
 
 [dependencies]
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled", "backup"] }
 rusqlite_migration = "2"
 uuid = { version = "1", features = ["v7"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
@@ -19,3 +19,4 @@ thiserror = "2"
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 uuid = { version = "1", features = ["v7"] }
+rusqlite = { version = "0.40", features = ["bundled"] }

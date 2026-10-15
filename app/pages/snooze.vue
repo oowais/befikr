@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // Opened from the notification's Snooze button (or the task view).
+import { CalendarDays, X } from 'lucide-vue-next'
 import type { Task } from '~/composables/api'
 
 const route = useRoute()
@@ -7,7 +8,7 @@ const router = useRouter()
 const { show } = useToast()
 const id = computed(() => String(route.query.id ?? ''))
 const task = ref<Task | null>(null)
-const custom = ref('')
+const picking = ref(false)
 const typed = ref('')
 const error = ref('')
 
@@ -62,44 +63,45 @@ async function snooze(until: number | null) {
 <template>
   <main class="page">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Close" @click="router.replace('/')">✕</button>
+      <button class="icon-btn" aria-label="Close" @click="router.replace('/')"><X :size="22" /></button>
       <h1>Snooze</h1>
     </header>
     <p class="task-title">{{ task?.title }}</p>
 
     <div class="grid">
-      <button v-for="p in picks" :key="p.label" class="pick" @click="snooze(p.at)">
+      <button v-for="p in picks" :key="p.label" class="pick pane tap" @click="snooze(p.at)">
         <span>{{ p.label }}</span>
-        <span class="muted">{{ dayLabel(p.at) }}</span>
+        <span class="muted small">{{ dayLabel(p.at) }}</span>
       </button>
     </div>
 
+    <button class="btn wide" @click="picking = true"><CalendarDays :size="18" /> Pick date &amp; time</button>
+
     <h2 class="section-title">Or type it</h2>
     <form class="row" @submit.prevent="snooze(typedAt)">
-      <input v-model="typed" class="field" placeholder="fri 3pm" enterkeyhint="done" />
+      <input v-model="typed" class="field" placeholder="fri 3pm" enterkeyhint="done" autocorrect="on" />
       <button class="btn primary" :disabled="!typedAt">Go</button>
     </form>
-    <p v-if="typedAt" class="muted">{{ dayLabel(typedAt) }}</p>
-
-    <h2 class="section-title">Pick a time</h2>
-    <form class="row" @submit.prevent="snooze(fromInputValue(custom))">
-      <input v-model="custom" type="datetime-local" class="field" />
-      <button class="btn primary" :disabled="!custom">Go</button>
-    </form>
+    <p v-if="typedAt" class="muted small">{{ dayLabel(typedAt) }}</p>
 
     <p v-if="error" class="error">{{ error }}</p>
+
+    <DateTimeSheet
+      v-if="picking"
+      :model-value="null"
+      title="Snooze until"
+      :min="Date.now()"
+      done-label="Snooze"
+      @update:model-value="snooze"
+      @close="picking = false"
+    />
   </main>
 </template>
 
 <style scoped>
 .task-title { font-size: 1.15rem; font-weight: 600; margin: 4px 0 16px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.pick {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
-  padding: 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line);
-}
-.pick:active { background: var(--chip); }
-.pick .muted { font-size: 0.85rem; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 14px; }
+.wide { width: 100%; }
 .row { display: flex; gap: 8px; }
-.error { color: var(--red); }
 </style>

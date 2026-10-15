@@ -1,5 +1,5 @@
 [default]
-description = "Allows all reminders commands (spike)."
+description = "Allows all reminders and backup commands."
 permissions = [
   "allow-schedule",
   "allow-cancel",
@@ -8,4 +8,11 @@ permissions = [
   "allow-open-exact-alarm-settings",
   "allow-open-battery-settings",
   "allow-take-launch-route",
+  "allow-configure",
+  "allow-backup-status",
+  "allow-pick-backup-folder",
+  "allow-clear-backup-folder",
+  "allow-backup-now",
+  "allow-export-backup",
+  "allow-pick-import-file",
 ]

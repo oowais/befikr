@@ -18,4 +18,7 @@ object Native {
 
     /** Alarms to (re)arm: `[{"taskId","title","atMs"}]` */
     external fun pendingAlarms(dbPath: String): String
+
+    /** Consistent snapshot of the database to [outPath]. → `{}` */
+    external fun exportTo(dbPath: String, outPath: String): String
 }

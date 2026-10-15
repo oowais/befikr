@@ -1,79 +1,297 @@
+/*
+ * Befikr design system — "Glass", adapted from Solid Glass by DeepLethe:
+ * https://github.com/deeplethe/solid-glass
+ * Copyright (c) 2026 DeepLethe. Licensed under the MIT License; values and rules adapted.
+ *
+ * Four rules:
+ *   1. The finish is at the edge: rim (light on top) + hairline + shadow,
+ *      never a gradient across the face.
+ *   2. Heavy, not airy: neutral smoky glass, little see-through.
+ *   3. Depth is thickness: .pane (card) < .popover (sheets, toast).
+ *   4. One state: pressed / chosen all wear the same clear pane.
+ * Primary is the ink (black on light, white on dark). Hue only where it means
+ * something: urgency, failure.
+ *
+ * Building blocks: .pane .popover .btn(.primary/.danger) .chip(.off) .field
+ * .icon-btn .checkbox .section-title
+ */
+
 :root {
-  /* Light: "sage paper" (matches the light app icon). */
-  --bg: #f4f7f1;
-  --surface: #ffffff;
-  --text: #1c2a1e;
-  --muted: #7d8a7b;
-  --line: #e2e9dd;
-  --accent: #24452a;
-  --on-accent: #ffffff;
-  --red: #d2563b;
-  --yellow: #d99a1e;
-  --green: #5f8a5a;
-  --gray: #b7c2b4;
-  --chip: #e3ecdc;
   --radius: 14px;
-  --shadow: 0 8px 30px rgba(28, 42, 30, 0.14);
+  --radius-control: 11px;
+
+  --bg: oklch(0.925 0.007 265);
+  --text: oklch(0.16 0 0);
+  --muted: oklch(0.47 0 0);
+  --line: oklch(0.3 0.02 265 / 13%);
+
+  /* Thickness: pane < popover. */
+  --pane: oklch(0.98 0.004 265 / 60%);
+  --popover: oklch(0.985 0.003 265 / 96%);
+
+  /* Ink. */
+  --accent: oklch(0.2 0 0);
+  --on-accent: oklch(0.985 0 0);
+  --primary-solid: 88%;
+  --primary-rim: oklch(1 0 0 / 30%);
+  --primary-under: oklch(0 0 0 / 45%);
+  --primary-inner: oklch(1 0 0 / 7%);
+  --primary-edge: oklch(0.2 0 0 / 30%);
+
+  /* The finish. */
+  --glass-rim: oklch(1 0 0 / 90%);
+  --glass-inner: oklch(1 0 0 / 35%);
+  --glass-edge: oklch(0.38 0.03 265 / 10%);
+  --popover-edge: oklch(0.38 0.03 265 / 22%);
+  --popover-under: oklch(0.38 0.03 265 / 16%);
+  --glass-shade: oklch(0.3 0.06 265 / 28%);
+  --glass-contact: oklch(0.25 0.03 265 / 6%);
+  --glass-lift: oklch(0.25 0.03 265 / 14%);
+  --glass-control: oklch(1 0 0 / 55%);
+  --glass-control-rim: oklch(1 0 0 / 80%);
+  --glass-state: oklch(0.3 0.02 265 / 9%);
+  --glass-state-rim: oklch(1 0 0 / 85%);
+  --glass-state-edge: oklch(0.3 0.02 265 / 13%);
+  --field: oklch(1 0 0 / 60%);
+  --field-rim: oklch(1 0 0);
+  --field-edge: oklch(0.3 0.02 265 / 14%);
+  --well-shade: oklch(0.3 0.06 265 / 22%);
+  --well-rim: oklch(1 0 0 / 85%);
+  --focus-line: oklch(0.2 0 0 / 50%);
+  --glass-blur: blur(26px) saturate(180%);
+  --glass-blur-control: blur(14px);
+
+  /* Faint light under the page (light only). */
+  --light-1: oklch(0.68 0.13 165 / 7%);
+  --light-2: oklch(0.75 0.08 240 / 11%);
+  --light-3: oklch(0.68 0.13 165 / 4%);
+
+  /* Hue that means something. */
+  --red: oklch(0.6 0.2 27);
+  --yellow: oklch(0.66 0.16 58);
+  --green: oklch(0.6 0.13 165);
+  --gray: oklch(0.7 0 0);
+
   color-scheme: light dark;
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Dark: "charcoal + mint" (matches the dark app icon). */
-    --bg: #1a1c20;
-    --surface: #23262b;
-    --text: #eef1ee;
-    --muted: #8b9198;
-    --line: #2e3238;
-    --accent: #69f0ae;
-    --on-accent: #10261a;
-    --red: #ff7a66;
-    --yellow: #ffd166;
-    --green: #69f0ae;
-    --gray: #4a4f56;
-    --chip: #263a2e;
-    --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    --bg: oklch(0.16 0 0);
+    --text: oklch(0.985 0 0);
+    --muted: oklch(0.72 0 0);
+    --line: oklch(1 0 0 / 9%);
+
+    --pane: oklch(0.31 0 0 / 46%);
+    --popover: oklch(0.22 0 0 / 96%);
+
+    --accent: oklch(0.94 0 0);
+    --on-accent: oklch(0.18 0 0);
+    --primary-solid: 86%;
+    --primary-rim: oklch(1 0 0);
+    --primary-under: oklch(0 0 0 / 22%);
+    --primary-inner: oklch(0 0 0 / 7%);
+    --primary-edge: oklch(1 0 0 / 26%);
+
+    --glass-rim: oklch(1 0 0 / 16%);
+    --glass-inner: oklch(1 0 0 / 4%);
+    --glass-edge: oklch(1 0 0 / 6%);
+    --popover-edge: oklch(1 0 0 / 6%);
+    --popover-under: oklch(0 0 0 / 0%);
+    --glass-shade: oklch(0 0 0 / 60%);
+    --glass-contact: oklch(0 0 0 / 10%);
+    --glass-lift: oklch(0 0 0 / 22%);
+    --glass-control: oklch(1 0 0 / 7%);
+    --glass-control-rim: oklch(1 0 0 / 11%);
+    --glass-state: oklch(1 0 0 / 7%);
+    --glass-state-rim: oklch(1 0 0 / 11%);
+    --glass-state-edge: oklch(1 0 0 / 6%);
+    --field: oklch(1 0 0 / 6%);
+    --field-rim: oklch(1 0 0 / 15%);
+    --field-edge: oklch(1 0 0 / 8%);
+    --well-shade: oklch(0 0 0 / 45%);
+    --well-rim: oklch(1 0 0 / 9%);
+    --focus-line: oklch(1 0 0 / 40%);
+    --glass-blur: blur(26px);
+
+    --light-1: transparent;
+    --light-2: transparent;
+    --light-3: transparent;
+
+    --red: oklch(0.7 0.19 22);
+    --yellow: oklch(0.77 0.15 62);
+    --green: oklch(0.78 0.13 166);
+    --gray: oklch(0.5 0 0);
   }
 }
+
+/* ---- Base ---------------------------------------------------------------- */
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; background: var(--bg); color: var(--text); }
+html, body { margin: 0; color: var(--text); }
 body {
-  font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font: 15px/1.45 'Geist Variable', system-ui, -apple-system, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   overscroll-behavior: none;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(40rem 30rem at 10% -6rem, var(--light-1), transparent 62%),
+    radial-gradient(36rem 28rem at 95% 4rem, var(--light-2), transparent 60%),
+    radial-gradient(44rem 32rem at 55% 110%, var(--light-3), transparent 62%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 input, textarea, select { font: inherit; color: inherit; }
 a { color: inherit; text-decoration: none; }
+svg.lucide { flex: none; }
 
-.page { max-width: 640px; margin: 0 auto; padding: 12px 16px 120px; }
-.topbar { display: flex; align-items: center; gap: 8px; min-height: 48px; }
-.topbar h1 { font-size: 1.5rem; margin: 0; flex: 1; }
-.icon-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
-.icon-btn:active { background: var(--line); }
+.page { max-width: 640px; margin: 0 auto; padding: 8px 16px 120px; }
+.topbar { display: flex; align-items: center; gap: 4px; min-height: 56px; }
+.topbar h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; margin: 0; flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+.section-title { font-size: 0.8rem; font-weight: 500; color: var(--muted); margin: 24px 0 8px; }
+.error { color: var(--red); }
 
+/* ---- Panes --------------------------------------------------------------- */
+
+.pane {
+  background-color: var(--pane);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 0 0 1px var(--glass-inner),
+    0 0 0 1px var(--glass-edge),
+    0 1px 2px var(--glass-contact),
+    0 12px 32px -14px var(--glass-shade);
+}
+/* A pane that holds rows divided by hairlines. */
+.pane.rows { padding: 2px 14px; }
+.pane.rows > * + * { border-top: 1px solid var(--line); }
+
+.popover {
+  background-color: var(--popover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 -1px 0 var(--popover-under),
+    0 0 0 1px var(--popover-edge),
+    0 24px 60px -18px var(--glass-shade),
+    0 6px 16px -6px var(--glass-lift);
+}
+
+/* ---- Controls ------------------------------------------------------------ */
+
+/* Clear glass. */
+.btn,
 .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 999px; background: var(--chip);
-  font-size: 0.9rem; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  background-color: var(--glass-control);
+  -webkit-backdrop-filter: var(--glass-blur-control);
+  backdrop-filter: var(--glass-blur-control);
+  box-shadow:
+    inset 0 1px 0 var(--glass-control-rim),
+    inset 0 0 0 1px var(--glass-edge),
+    0 1px 2px var(--glass-contact);
 }
-.chip.off { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
-
-.field {
-  width: 100%; padding: 12px 14px; border-radius: 12px;
-  border: 1px solid var(--line); background: var(--surface); outline: none;
+.btn { min-height: 40px; padding: 8px 16px; border-radius: var(--radius-control); font-weight: 500; }
+.chip { padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; white-space: nowrap; }
+.chip.off {
+  background: transparent; color: var(--muted);
+  box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);
 }
-.field:focus { border-color: var(--accent); }
-
-.btn {
-  padding: 10px 16px; border-radius: 12px; background: var(--line); font-weight: 500;
-}
-.btn.primary { background: var(--accent); color: var(--on-accent); }
-.btn.danger { color: var(--red); }
 .btn:disabled { opacity: 0.4; }
 
-.muted { color: var(--muted); }
-.section-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 24px 0 8px; }
+/* The one state: pressed, chosen. */
+:is(.btn, .chip, .icon-btn, .tap):active:not(:disabled),
+.chosen {
+  background-color: var(--glass-state);
+  box-shadow: inset 0 1px 0 var(--glass-state-rim), 0 0 0 1px var(--glass-state-edge);
+}
 
+/* The thing that asks to be pressed: a solid pane of ink. */
+.btn.primary,
+.ink {
+  background-color: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  color: var(--on-accent);
+  -webkit-backdrop-filter: var(--glass-blur-control);
+  backdrop-filter: var(--glass-blur-control);
+  border: 1px solid color-mix(in oklab, var(--accent) 55%, var(--primary-edge));
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 -1px 0 var(--primary-under),
+    inset 0 0 0 1px var(--primary-inner),
+    0 1px 2px var(--glass-contact),
+    0 8px 18px -9px var(--glass-shade);
+}
+:is(.btn.primary, .ink):active:not(:disabled) {
+  background-color: color-mix(in oklch, var(--accent) calc(var(--primary-solid) - 10%), transparent);
+  box-shadow: inset 0 1px 0 var(--primary-rim), inset 0 -1px 0 var(--primary-under), 0 1px 1px var(--glass-contact);
+}
+.btn.danger {
+  color: var(--red);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--red) 30%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, var(--red) 16%, transparent);
+}
+
+/* Icon buttons: 44px target, 22px icon. */
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-grid; place-items: center; color: var(--text); flex: none;
+}
+
+/* Fields: clear glass to type on; typing brightens the hairline. */
+.field {
+  width: 100%; padding: 11px 14px; outline: none;
+  background-color: var(--field);
+  border: 1px solid var(--field-edge);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0 var(--field-rim);
+}
+.field:focus { border-color: var(--focus-line); }
+
+/* Checkbox / complete circle: a groove until ticked, then a pane of ink. */
+.checkbox {
+  width: 24px; height: 24px; flex: none; border-radius: 50%;
+  display: grid; place-items: center; color: transparent;
+  background: color-mix(in oklch, var(--text) 4%, transparent);
+  box-shadow:
+    inset 0 1.5px 2px var(--well-shade),
+    inset 0 -1px 0 var(--well-rim),
+    inset 0 0 0 1.5px color-mix(in oklch, var(--text) 28%, transparent);
+  transition: background-color 0.15s, color 0.15s;
+}
+.checkbox.square { border-radius: 7px; }
+.checkbox.checked {
+  color: var(--on-accent);
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 -1px 0 color-mix(in oklch, var(--primary-under) 45%, transparent);
+}
+
+/* Urgency dot. */
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gray); flex: none; }
+.dot.red { background: var(--red); }
+.dot.yellow { background: var(--yellow); }
+.dot.green { background: var(--green); }
+
+@keyframes float-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.985); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
