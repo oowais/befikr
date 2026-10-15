@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeft, BatteryFull, Bell, Check, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, BatteryFull, Bell, Check, ChevronDown, ChevronUp, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
 import type { BackupStatus, Settings, Status } from '~/composables/api'
 
 const router = useRouter()
 const sound = useSound()
 const settings = ref<Settings | null>(null)
 const status = ref<Status | null>(null)
+// All permissions granted: one collapsed "set up" row; tap to see them.
+const permsOpen = ref(false)
+const allSet = computed(() => !!status.value && allGranted(status.value))
 const reremind = ref('')
 const newWord = ref('')
 const newTime = ref('')
@@ -123,6 +126,12 @@ function addWord() {
     <template v-if="status">
       <h2 class="section-title">Reminders</h2>
       <div class="pane rows">
+        <button v-if="allSet" class="item" :aria-expanded="permsOpen" @click="permsOpen = !permsOpen">
+          <Check :size="20" class="muted" />
+          <span class="flex left">All set up</span>
+          <component :is="permsOpen ? ChevronUp : ChevronDown" :size="20" class="muted" />
+        </button>
+        <template v-if="!allSet || permsOpen">
         <div v-for="p in [
           { icon: Bell, label: 'Notifications', ok: status.notifications, allow: reminders.requestNotifications },
           { icon: AlarmClock, label: 'Exact alarms', ok: status.exactAlarms, allow: reminders.openExactAlarmSettings },
@@ -133,8 +142,9 @@ function addWord() {
           <span v-if="p.ok" class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
           <button v-else class="btn" @click="run(p.allow)">Allow</button>
         </div>
+        </template>
       </div>
-      <button class="btn link" @click="router.push('/welcome')">Open setup guide</button>
+      <button v-if="!allSet || permsOpen" class="btn link" @click="router.push('/welcome')">Open setup guide</button>
     </template>
 
     <h2 class="section-title">Feedback</h2>

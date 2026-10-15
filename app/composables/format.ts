@@ -41,7 +41,7 @@ export const sectionTitles: Record<Section, string> = {
   none: 'No date',
 }
 
-/** "This week" = the next 7 days (rolling); "This month" = the rest of the calendar month. */
+/** "This week" ends on Sunday; "This month" = the rest of the calendar month. */
 export function sectionOf(ms: number | null, now = Date.now()): Section {
   if (ms == null) return 'none'
   if (ms < now) return 'overdue'
@@ -49,7 +49,8 @@ export function sectionOf(ms: number | null, now = Date.now()): Section {
   const days = Math.round((startOfDay(new Date(ms)) - startOfDay(n)) / DAY)
   if (days === 0) return 'today'
   if (days === 1) return 'tomorrow'
-  if (days < 7) return 'week'
+  const toSunday = (7 - n.getDay()) % 7 // weeks run Monday–Sunday
+  if (days <= toSunday) return 'week'
   const d = new Date(ms)
   if (d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth()) return 'month'
   return 'later'

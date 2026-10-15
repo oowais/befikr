@@ -332,7 +332,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
-- **Oct 15, 2026 (sections v2)** — v0.6.0 on device showed no headings (all tasks were "Upcoming", and headings hid with one group). List now: Overdue / Today / Tomorrow / This week (next 7 days) / This month (rest of it) / Later / No date, headings always shown; Today and Tomorrow rows show only the time. **Next:** device checks; polish from dogfooding.
+- **Oct 15, 2026 (week + settings)** — "This week" now ends on Sunday (Monday–Sunday weeks), not 7 rolling days. Settings: with every permission granted, Reminders collapses to one "All set up" row (tap to see them and the setup guide). **Next:** device checks; polish from dogfooding.
+- **Oct 15, 2026 (sections v2)** — v0.6.0 on device showed no headings (all tasks were "Upcoming", and headings hid with one group). List now: Overdue / Today / Tomorrow / This week (to Sunday) / This month (rest of it) / Later / No date, headings always shown; Today and Tomorrow rows show only the time. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (no native pickers)** — Settings time words used `<input type="time">` (native Android picker); now our `DateTimeSheet` in a new time-only mode. Rule added to CLAUDE.md. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (time prompt)** — Quick add: a date typed without a time shows "No time given" with the time words as chips (09:00 picked; Add accepts it, "Other…" opens the picker). Disappears once a time is typed or picked. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (ordinals)** — Parser: bare numeric ordinals ("pay rent 21st", "21st 5pm") set the next such day; 66 tests. Workflow now: commit straight to local `main` after checks; user pushes. **Next:** device checks; polish from dogfooding.
