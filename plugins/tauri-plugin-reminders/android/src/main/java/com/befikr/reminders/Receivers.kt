@@ -12,7 +12,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
         val dbPath = Prefs.dbPath(ctx) ?: return
         val outcome = parseOutcome(Native.onFired(dbPath, id)) ?: return
-        if (outcome.optBoolean("show")) Notifier.show(ctx, id, title)
+        if (outcome.optBoolean("show")) Notifier.show(ctx, id, title, outcome.optBoolean("repeats"))
         if (!outcome.isNull("nextAtMs")) Scheduler.schedule(ctx, id, title, outcome.getLong("nextAtMs"))
     }
 }
@@ -23,9 +23,10 @@ class ActionReceiver : BroadcastReceiver() {
         val id = intent.getStringExtra(EXTRA_ID) ?: return
         val dbPath = Prefs.dbPath(ctx) ?: return
         when (intent.action) {
-            ACTION_COMPLETE -> {
+            ACTION_COMPLETE, ACTION_SKIP -> {
                 // Recurring tasks come back with the next occurrence to schedule.
-                val change = parseOutcome(Native.onAction(dbPath, id, "complete"))
+                val op = if (intent.action == ACTION_SKIP) "skip" else "complete"
+                val change = parseOutcome(Native.onAction(dbPath, id, op))
                 Notifier.cancel(ctx, id)
                 if (change != null) Scheduler.apply(ctx, change) else Scheduler.cancel(ctx, id)
             }

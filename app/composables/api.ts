@@ -71,6 +71,7 @@ export const api = {
   updateTask: (id: string, patch: TaskPatch) => invoke<Task>('update_task', { id, patch }),
   completeTask: (id: string) => invoke<Task>('complete_task', { id }),
   reopenTask: (id: string) => invoke<Task>('reopen_task', { id }),
+  skipTask: (id: string) => invoke<Task>('skip_task', { id }),
   snoozeTask: (id: string, until: number) => invoke<Task>('snooze_task', { id, until }),
   deleteTask: (id: string) => invoke<Task>('delete_task', { id }),
   restoreTask: (id: string) => invoke<Task>('restore_task', { id }),

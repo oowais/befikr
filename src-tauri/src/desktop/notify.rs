@@ -1,6 +1,6 @@
-//! Reminder notifications with Complete and Snooze, like on Android: tap opens
-//! the list, Complete runs the same core call as the app, Snooze opens the
-//! snooze sheet. Each notification waits for its answer on its own thread.
+//! Reminder notifications with Complete and Snooze (and Skip for repeating
+//! tasks), like on Android: tap opens the list, Complete and Skip run the same
+//! core calls as the app, Snooze opens the snooze sheet. Each notification waits for its answer on its own thread.
 
 use std::collections::BTreeMap;
 use std::sync::{Mutex, MutexGuard};
@@ -18,21 +18,23 @@ fn shown() -> MutexGuard<'static, BTreeMap<String, (u32, u64)>> {
     SHOWN.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn build(title: &str) -> Notification {
+fn build(title: &str, repeats: bool) -> Notification {
     let mut n = Notification::new();
     n.appname("Befikr")
         .summary(title)
         .action("default", "Open")
         .action("complete", "Complete")
-        .action("snooze", "Snooze")
-        // Stays until answered (Windows: reminder toast).
-        .urgency(Urgency::Critical)
-        .timeout(Timeout::Never);
+        .action("snooze", "Snooze");
+    if repeats {
+        n.action("skip", "Skip");
+    }
+    // Stays until answered (Windows: reminder toast).
+    n.urgency(Urgency::Critical).timeout(Timeout::Never);
     n
 }
 
-pub fn show(app: &AppHandle, id: &str, title: &str) {
-    let mut n = build(title);
+pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool) {
+    let mut n = build(title, repeats);
     let prev = shown().get(id).copied();
     if let Some((nid, _)) = prev {
         if cfg!(target_os = "linux") {
@@ -66,7 +68,8 @@ pub fn show(app: &AppHandle, id: &str, title: &str) {
             // Answered: it's gone, nothing to close later.
             shown().remove(&id);
             match r {
-                NotificationResponse::Action(a) if a == "complete" => complete(&app, &id),
+                NotificationResponse::Action(a) if a == "complete" => act(&app, &id, false),
+                NotificationResponse::Action(a) if a == "skip" => act(&app, &id, true),
                 NotificationResponse::Action(a) if a == "snooze" => super::open_route(&app, &format!("/snooze?id={id}")),
                 NotificationResponse::Closed(_) => dismissed(&app, &id),
                 _ => super::open_route(&app, "/"),
@@ -90,17 +93,19 @@ pub fn close(id: &str) {
     let _ = nid;
 }
 
-fn complete(app: &AppHandle, id: &str) {
+/// Complete, or skip to the next occurrence.
+fn act(app: &AppHandle, id: &str, skip: bool) {
     let db = app.state::<crate::Db>();
     let change = db.store.lock().map_err(|e| e.to_string()).and_then(|mut s| {
-        s.complete_task(id, Source::Native).map_err(|e| e.to_string())
+        let r = if skip { s.skip_task(id, Source::Native) } else { s.complete_task(id, Source::Native) };
+        r.map_err(|e| e.to_string())
     });
     match change {
         Ok(c) => {
             crate::apply(app, &db, &c.alarm);
             let _ = app.emit("tasks-changed", ());
         }
-        Err(e) => eprintln!("complete from notification: {e}"),
+        Err(e) => eprintln!("{} from notification: {e}", if skip { "skip" } else { "complete" }),
     }
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Opened from the notification's Snooze button (or the task view).
-import { CalendarDays, X } from 'lucide-vue-next'
+// Repeating tasks can also skip this occurrence from here.
+import { CalendarDays, SkipForward, X } from 'lucide-vue-next'
 import type { Task } from '~/composables/api'
 
 const route = useRoute()
@@ -67,6 +68,21 @@ async function snooze(until: number | null) {
     error.value = String(e)
   }
 }
+
+async function skip() {
+  const due = task.value?.dueAt ?? null
+  try {
+    const t = await api.skipTask(id.value)
+    haptic()
+    show({
+      message: `Skipped · next ${dayLabel(t.dueAt!)}`,
+      action: { label: 'Undo', run: () => api.updateTask(t.id, { dueAt: due }).then(listChanged) },
+    })
+    goHome()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
 </script>
 
 <template>
@@ -85,6 +101,7 @@ async function snooze(until: number | null) {
     </div>
 
     <button class="btn wide" @click="picking = true"><CalendarDays :size="18" /> Pick date &amp; time</button>
+    <button v-if="task?.rrule" class="btn wide skip" @click="skip"><SkipForward :size="18" /> Skip this one</button>
 
     <h2 class="section-title">Or type it</h2>
     <form class="row" @submit.prevent="snooze(typedAt)">
@@ -112,5 +129,6 @@ async function snooze(until: number | null) {
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 14px; }
 .wide { width: 100%; }
+.skip { margin-top: 10px; }
 .row { display: flex; gap: 8px; }
 </style>

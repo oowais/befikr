@@ -305,6 +305,33 @@ impl Store {
         })
     }
 
+    /// Skip the current occurrence of a repeating task: move to the next one
+    /// on its schedule without recording a completion. "From when done"
+    /// repeats skip along their pattern too (counting from now could land
+    /// before the occurrence being skipped).
+    pub fn skip_task(&mut self, id: &str, source: Source) -> Result<Change> {
+        self.write(|c, now| {
+            let t = get(c, id)?;
+            let (Some(rule), Some(due), Some(tz), None, true) = (&t.rrule, t.due_at, &t.tz, &t.parent_id, t.is_open())
+            else {
+                return Err(Error::Invalid("only open repeating tasks can be skipped".into()));
+            };
+            let Some(next) = recurrence::next_due(rule, parse_tz(tz)?, due, false, now)? else {
+                return Err(Error::Invalid("no later occurrence to skip to".into()));
+            };
+            c.execute(
+                "UPDATE tasks SET due_at = ?2, snoozed_until = NULL, updated_at = ?3 WHERE id = ?1",
+                params![id, next, now],
+            )?;
+            c.execute(
+                "UPDATE tasks SET completed_at = NULL, updated_at = ?2 WHERE parent_id = ?1 AND completed_at IS NOT NULL",
+                params![id, now],
+            )?;
+            log(c, id, "skipped", now, t.effective_due(), None, source)?;
+            finish(c, id, true)
+        })
+    }
+
     pub fn snooze_task(&mut self, id: &str, until: i64, source: Source) -> Result<Change> {
         self.write(|c, now| {
             let t = get(c, id)?;
@@ -357,7 +384,7 @@ impl Store {
     pub fn on_fired(&mut self, id: &str, source: Source) -> Result<FireOutcome> {
         let reremind = self.settings()?.reremind_minutes;
         self.write(|c, now| {
-            let none = FireOutcome { show: false, next_at_ms: None };
+            let none = FireOutcome { show: false, next_at_ms: None, repeats: false };
             let Ok(t) = get(c, id) else { return Ok(none) };
             let fires: Option<i64> =
                 c.query_row("SELECT fires FROM alarm_state WHERE task_id = ?1", [id], |r| r.get(0)).optional()?;
@@ -369,7 +396,7 @@ impl Store {
                 "UPDATE alarm_state SET fires = ?2, next_fire_at = ?3 WHERE task_id = ?1",
                 params![id, fires + 1, next],
             )?;
-            Ok(FireOutcome { show: true, next_at_ms: Some(next) })
+            Ok(FireOutcome { show: true, next_at_ms: Some(next), repeats: t.rrule.is_some() })
         })
     }
 
@@ -546,6 +573,7 @@ fn get(c: &Connection, id: &str) -> Result<Task> {
     Ok(t)
 }
 
+/// Event kinds: see the `task_events` comment in `schema.rs`, plus `skipped`.
 fn log(
     c: &Connection,
     task_id: &str,

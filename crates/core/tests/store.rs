@@ -187,7 +187,7 @@ fn rereminds_escalate_until_acted_on() {
     s.update_task(&id, TaskPatch { title: Some("y".into()), ..Default::default() }).unwrap();
     assert_eq!(s.pending_alarms().unwrap()[0].title, "y");
     s.complete_task(&id, Source::Native).unwrap();
-    assert_eq!(s.on_fired(&id, Source::Native).unwrap(), FireOutcome { show: false, next_at_ms: None });
+    assert_eq!(s.on_fired(&id, Source::Native).unwrap(), FireOutcome { show: false, next_at_ms: None, repeats: false });
     assert!(s.pending_alarms().unwrap().is_empty());
 }
 
@@ -357,4 +357,27 @@ fn stats_count_lateness_snoozes_and_missed() {
     s.reopen_task(&pills).unwrap();
     let st = s.stats(None, &[]).unwrap();
     assert_eq!((st.completed, st.late, st.missed), (4, 1, 0));
+}
+
+#[test]
+fn skip_moves_repeat_on_without_completing() {
+    let (mut s, _) = store(); // Thu Oct 15 10:00
+    let mut t = task("gym", Some(at(15, 9, 0)));
+    t.rrule = Some("FREQ=DAILY".into());
+    t.adaptive = true;
+    let id = s.add_task(t).unwrap().task.id;
+    s.snooze_task(&id, at(15, 11, 0), Source::App).unwrap();
+
+    let c = s.skip_task(&id, Source::Native).unwrap();
+    assert_eq!(c.task.due_at, Some(at(16, 9, 0)));
+    assert_eq!((c.task.snoozed_until, c.task.completed_at), (None, None));
+    assert_eq!(c.alarm, AlarmChange::Schedule(Alarm { task_id: id.clone(), title: "gym".into(), at_ms: at(16, 9, 0) }));
+    assert!(s.list_completed(10).unwrap().is_empty());
+
+    // A future occurrence skips to the one after it, even "from when done".
+    let c = s.skip_task(&id, Source::App).unwrap();
+    assert_eq!(c.task.due_at, Some(at(17, 9, 0)));
+
+    let plain = s.add_task(task("once", Some(at(15, 18, 0)))).unwrap().task.id;
+    assert!(s.skip_task(&plain, Source::App).is_err());
 }

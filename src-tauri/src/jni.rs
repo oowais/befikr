@@ -53,6 +53,10 @@ pub extern "system" fn Java_com_befikr_reminders_Native_onAction<'l>(
                 let change = s.complete_task(&id, Source::Native).map_err(|e| e.to_string())?;
                 serde_json::to_value(change.alarm).map_err(|e| e.to_string())
             }
+            "skip" => {
+                let change = s.skip_task(&id, Source::Native).map_err(|e| e.to_string())?;
+                serde_json::to_value(change.alarm).map_err(|e| e.to_string())
+            }
             "dismiss" => {
                 s.on_dismissed(&id, Source::Native).map_err(|e| e.to_string())?;
                 Ok(json!({ "op": "none" }))

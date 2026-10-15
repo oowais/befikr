@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, Moon, Plus, Repeat, RotateCcw, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
 import type { Task } from '~/composables/api'
 
@@ -124,6 +124,20 @@ async function complete() {
   })
   router.back()
 }
+async function skip() {
+  haptic()
+  const due = task.value?.dueAt ?? null
+  try {
+    const t = await api.skipTask(id.value)
+    show({
+      message: `Skipped · next ${dayLabel(t.dueAt!)}`,
+      action: { label: 'Undo', run: () => api.updateTask(t.id, { dueAt: due }).then(listChanged) },
+    })
+    router.back()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
 async function reopen() {
   haptic()
   try {
@@ -148,6 +162,7 @@ async function remove() {
       <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> Undo</button>
       <template v-else-if="task">
         <NuxtLink v-if="task.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
+        <button v-if="task.rrule && !task.parentId" class="btn" @click="skip"><SkipForward :size="18" /> Skip</button>
         <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
       </template>
     </header>

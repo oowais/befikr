@@ -162,6 +162,8 @@ pub struct Change {
 pub struct FireOutcome {
     pub show: bool,
     pub next_at_ms: Option<i64>,
+    /// Repeating task: the notification offers Skip.
+    pub repeats: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

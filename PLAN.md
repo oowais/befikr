@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (skip)** — Issue #6: Skip for repeating tasks — moves to the next occurrence on the schedule, no completion recorded (`Store::skip_task`, event `skipped`). In the notification (Android + desktop, repeating tasks only), the task view header and the snooze page ("Skip this one"); toast Undo puts the old due date back. Kotlin first compiles in CI. **Next:** completion history suggestions (Post-MVP 5) or shopping list (9).
 - **Oct 16, 2026 (stats)** — Stats page replaces Completed: tiles + 8-week chart on top, completion history below; `Store::stats` (core, tested) → `stats` command. Checked in mocked Chromium. **Next:** completion history suggestions in quick add (Post-MVP 5) or shopping list (9).
 - **Oct 15, 2026 (share)** — Android "Share → Befikr" opens quick add prefilled (title = page title or text, link in notes). Kotlin first compiles in CI. **Next:** stats page.
 - **Oct 15, 2026 (desktop packages)** — Release workflow builds Linux `.deb` + Arch `PKGBUILD` and Windows installer in parallel with the APK and attaches them to the release. `scripts/install-arch.sh` installs/updates `befikr-bin` via makepkg + pacman (from Vicinae it opens a terminal for sudo). AUR registration closed, so no AUR yet. **Next:** first CI run of the desktop jobs (Windows untested).

@@ -13,7 +13,7 @@ object Native {
     /** Alarm went off. → `{"show": Boolean, "nextAtMs": Long?}` */
     external fun onFired(dbPath: String, taskId: String): String
 
-    /** Notification action: "complete" | "dismiss". → AlarmChange JSON or `{"op":"none"}` */
+    /** Notification action: "complete" | "skip" | "dismiss". → AlarmChange JSON or `{"op":"none"}` */
     external fun onAction(dbPath: String, taskId: String, action: String): String
 
     /** Alarms to (re)arm: `[{"taskId","title","atMs"}]` */

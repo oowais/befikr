@@ -25,6 +25,7 @@ internal const val EXTRA_ROUTE = "befikr.route"
 internal const val ACTION_FIRE = "com.befikr.reminders.FIRE"
 internal const val ACTION_COMPLETE = "com.befikr.reminders.COMPLETE"
 internal const val ACTION_DISMISS = "com.befikr.reminders.DISMISS"
+internal const val ACTION_SKIP = "com.befikr.reminders.SKIP"
 private const val PREFS = "befikr.reminders"
 private const val PREF_DB_PATH = "dbPath"
 
@@ -126,21 +127,16 @@ internal object Notifier {
         }
     }
 
-    fun show(ctx: Context, id: String, title: String) {
+    /** [repeats]: also offer Skip (move to the next occurrence, no completion). */
+    fun show(ctx: Context, id: String, title: String, repeats: Boolean) {
         ensureChannel(ctx)
-        val complete = PendingIntent.getBroadcast(
+        fun action(action: String, kind: String) = PendingIntent.getBroadcast(
             ctx, 0,
-            Intent(ctx, ActionReceiver::class.java).setAction(ACTION_COMPLETE)
-                .setData(taskUri(id, "complete")).putExtra(EXTRA_ID, id),
+            Intent(ctx, ActionReceiver::class.java).setAction(action)
+                .setData(taskUri(id, kind)).putExtra(EXTRA_ID, id),
             PI_FLAGS
         )
-        val dismiss = PendingIntent.getBroadcast(
-            ctx, 0,
-            Intent(ctx, ActionReceiver::class.java).setAction(ACTION_DISMISS)
-                .setData(taskUri(id, "dismiss")).putExtra(EXTRA_ID, id),
-            PI_FLAGS
-        )
-        val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
+        val b = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(smallIcon(ctx))
             .setContentTitle(title)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -149,10 +145,11 @@ internal object Notifier {
             // Unique group per task: try to stop Android auto-bundling.
             .setGroup("task-$id")
             .setContentIntent(launchPendingIntent(ctx, id, "/"))
-            .addAction(0, "Complete", complete)
+            .addAction(0, "Complete", action(ACTION_COMPLETE, "complete"))
             .addAction(0, "Snooze", launchPendingIntent(ctx, id, "/snooze?id=$id"))
-            .setDeleteIntent(dismiss)
-            .build()
+            .setDeleteIntent(action(ACTION_DISMISS, "dismiss"))
+        if (repeats) b.addAction(0, "Skip", action(ACTION_SKIP, "skip"))
+        val n = b.build()
         try {
             NotificationManagerCompat.from(ctx).notify(notificationId(id), n)
         } catch (e: SecurityException) {

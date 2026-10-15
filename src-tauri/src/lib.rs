@@ -130,6 +130,11 @@ fn reopen_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
 }
 
 #[tauri::command]
+fn skip_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
+    write(&app, &db, |s| s.skip_task(&id, Source::App))
+}
+
+#[tauri::command]
 fn snooze_task(app: AppHandle, db: State<Db>, id: String, until: i64) -> Res<Task> {
     write(&app, &db, |s| s.snooze_task(&id, until, Source::App))
 }
@@ -268,6 +273,7 @@ pub fn run() {
             complete_task,
             reopen_task,
             snooze_task,
+            skip_task,
             delete_task,
             restore_task,
             get_settings,
