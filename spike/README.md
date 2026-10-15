@@ -28,7 +28,7 @@ Logs: `adb logcat -s BefikrReminders`
 
 ## Test protocol
 
-Record results in `PLAN.md` → Step 0 checklist.
+Record results in `PLAN.md` → Step 0 checklist. Short phone-friendly list of what is still open: `TODO-TESTS.md`.
 
 1. Grant notifications, exact alarms, battery unrestricted (Status buttons). All ✅.
 2. Schedule 2 min (custom, exact). Swipe app away from recents. Fires on time?
