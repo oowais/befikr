@@ -68,6 +68,19 @@ const foundLabel = computed(() => {
   const when = r.due ? dayLabel(localMs(r.due.date, r.due.time ?? dueTime())) : ''
   return [when, r.recurrenceText].filter(Boolean).join(' · ')
 })
+// Notes grow with their text.
+const notesEl = ref<HTMLTextAreaElement>()
+function growNotes() {
+  const el = notesEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+watch([description, showNotes], () => nextTick(growNotes))
+function openNotes() {
+  showNotes.value = true
+  nextTick(() => notesEl.value?.focus())
+}
 const saveNotes = () => description.value !== task.value?.description && patch({ description: description.value })
 function setDue(ms: number | null) {
   patch(ms == null ? { dueAt: null, rrule: null, tz: null } : { dueAt: ms, tz: deviceTz() })
@@ -182,9 +195,10 @@ async function remove() {
         <div v-if="showNotes" class="prop top">
           <StickyNote :size="20" class="muted" />
           <textarea
+            ref="notesEl"
             v-model="description"
             class="notes"
-            rows="3"
+            rows="1"
             placeholder="Notes"
             autocapitalize="sentences" autocorrect="on" spellcheck="true"
             @blur="saveNotes"
@@ -194,7 +208,7 @@ async function remove() {
 
       <div class="add-props">
         <button v-if="!task.rrule" class="chip off" @click="pickingRepeat = true"><Plus :size="15" /> Repeat</button>
-        <button v-if="!showNotes" class="chip off" @click="showNotes = true"><Plus :size="15" /> Notes</button>
+        <button v-if="!showNotes" class="chip off" @click="openNotes"><Plus :size="15" /> Notes</button>
       </div>
 
       <h2 class="section-title">
@@ -239,7 +253,7 @@ async function remove() {
 .prop.top { align-items: flex-start; padding-top: 14px; }
 .flex { flex: 1; }
 .left { text-align: left; min-height: 44px; }
-.notes { flex: 1; border: 0; outline: none; background: none; resize: vertical; padding: 0; min-height: 60px; }
+.notes { flex: 1; border: 0; outline: none; background: none; resize: none; overflow: hidden; padding: 0 0 14px; line-height: 1.4; }
 .add-props { display: flex; gap: 8px; margin-top: 12px; }
 .sub { display: flex; align-items: center; gap: 12px; min-height: 48px; width: 100%; text-align: left; }
 .sub.done span:last-child { text-decoration: line-through; color: var(--muted); }

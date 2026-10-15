@@ -134,10 +134,9 @@ async function save() {
       />
       </div>
 
-      <p v-if="parsed.title && parsed.title !== text.trim()" class="preview muted">→ {{ parsed.title }}</p>
-
       <div class="chips">
-        <span v-if="dueAt != null" class="chip split">
+        <!-- Expanded, the fields below show date and repeat. -->
+        <span v-if="dueAt != null && !expanded" class="chip split">
           <button type="button" class="part" aria-label="Change date and time" @click="picking = true">
             <CalendarDays :size="16" /> {{ dayLabel(dueAt) }}
           </button>
@@ -145,7 +144,7 @@ async function save() {
             <X :size="15" />
           </button>
         </span>
-        <span v-if="repeat.rrule" class="chip split">
+        <span v-if="repeat.rrule && !expanded" class="chip split">
           <button type="button" class="part" aria-label="Change repeat" @click="pickingRepeat = true">
             <Repeat :size="16" /> {{ repeat.text }}
           </button>
@@ -212,7 +211,6 @@ async function save() {
   background: color-mix(in oklch, var(--accent) 22%, transparent);
 }
 .mirror .recurrence { background: color-mix(in oklch, var(--yellow) 35%, transparent); }
-.preview { margin: 0; font-size: 0.9rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips:empty { display: none; }
 .chip.split { padding: 0; gap: 0; }

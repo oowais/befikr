@@ -235,7 +235,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI releases `v0.x.y` (main only). Needs on-device check (see step 3 notes) |
 | 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | All built (backup in PR #1). Needs on-device check of backup (folder picker, daily run, restore) |
-| 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, shorter time labels, snooze/completed labels |
+| 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, shorter time labels, snooze/completed labels. Pass 2: quick add + task view tidy-ups |
 
 ### Step 0 — spike checklist
 
@@ -330,6 +330,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (UX polish 2)** — Missed occurrences of late fixed recurring tasks logged as `missed` events (stats only). Quick add: dropped the `→ title` preview line (highlights already show it); with More open, date/repeat show only as fields, not also as chips. Task view: notes grow with their text (no fixed box/resize handle); "+ Notes" focuses the field. **Next:** device checks; more polish from dogfooding.
 - **Oct 15, 2026 (undo)** — Undo on every complete and delete: delete gets an Undo toast (`restore_task` in core brings back the task and subtasks deleted with it); task-view Complete/Delete undo now refreshes the list. Fixed recurring task done late no longer comes back later the same day (overdue daily done at 08:00 → next is tomorrow 09:00, not today 09:00). **Next:** decide on recording missed occurrences; polish quick add + task view.
 - **Oct 15, 2026 (UX polish 1)** — First local setup on CachyOS; lockfile deps stepped back past pnpm's 24 h release age. UX pass 1: main list in Overdue / Today / Upcoming / No date sections (headers only when >1), Today rows show only the time, times without leading zero, compact "2h late"; snooze picks rounded to 5 min with time-only subtitles; completed shows "1h late". Commits stay local (not pushed). **Next:** more polish (quick add, task view), device checks.
 - **Oct 15, 2026 (night, 2)** — v0.4.0 merged (PR #3). Parser gaps closed (step 1 ✅), repeat builder sheet (presets, every N unit, weekdays, day-of-month / nth weekday, yearly date) in quick add + task page, inline highlight of parsed words, title edits offer their date. **Next:** user tests; UX polish (TODO #5); reliability tests (#6).
