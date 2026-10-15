@@ -234,7 +234,7 @@ Goal: prove Android reminders are reliable before building anything. Code lives 
 Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminders` (Kotlin AlarmManager + notifications, receivers → JNI → Rust), Rust core with escalation logic + tests, Nuxt test UI, CI workflow `spike-android` that builds a debug APK.
 
 - [x] Code scaffolded; Rust tests + clippy pass; JNI symbols exported; Nuxt builds
-- [ ] CI builds the APK (Kotlin compiled for the first time there — no Android SDK in cloud sessions)
+- [x] CI builds the APK (debug, arm64; minSdk 26)
 - [ ] App runs on device
 - [ ] Exact notification scheduled 2 min out fires on time with app closed (also under forced Doze: `adb shell dumpsys deviceidle force-idle`)
 - [ ] `exact` vs `alarmClock` mode under Doze, incl. two reminders due the same minute
@@ -261,4 +261,4 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 
 Newest first. One or two lines per session: what changed, what's next.
 
-- **Oct 15, 2026** — Plan + CLAUDE.md added; `main` branch created. Step 0 spike scaffolded (custom Kotlin plugin + JNI + Rust core + test UI + APK CI). Push blocked by missing GitHub access at the time. **Next:** get APK from CI (fix Kotlin compile errors if any), run `spike/README.md` protocol on phone, record verdict; start step 1 parser in parallel.
+- **Oct 15, 2026** — Plan + CLAUDE.md added; `main` branch created. Step 0 spike scaffolded (custom Kotlin plugin + JNI + Rust core + test UI + APK CI). CI green after 2 fixes (runner's preinstalled SDK; minSdk 26). **Next:** user installs APK from CI artifact `befikr-spike-apk`, runs `spike/README.md` protocol on phone, record verdict; start step 1 parser in parallel.
