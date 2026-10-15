@@ -78,6 +78,7 @@ onUnmounted(() => {
         :done="completing.has(r.id)"
         @complete="complete(r)"
         @open="router.push(`/task/${r.id}`)"
+        @snooze="router.push(`/snooze?id=${r.id}`)"
       />
     </TransitionGroup>
     <div v-else-if="!error" class="empty">
@@ -91,9 +92,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.list { margin: 8px 0 0; position: relative; }
-.list-leave-active { transition: transform 0.3s ease, opacity 0.3s ease; position: absolute; left: 14px; right: 14px; }
-.list-leave-to { transform: translateX(30px); opacity: 0; }
+.list { margin: 8px 0 0; position: relative; overflow: hidden; }
+.list-leave-active { transition: opacity 0.25s ease; position: absolute; left: 14px; right: 14px; }
+.list-leave-to { opacity: 0; }
 .list-move { transition: transform 0.3s ease; }
 .empty { text-align: center; margin-top: 30vh; }
 .fab {

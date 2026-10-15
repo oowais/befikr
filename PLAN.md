@@ -276,7 +276,8 @@ Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed,
 - Design: **Glass** only (`app/assets/main.css`, adapted from Solid Glass, MIT: smoky glass panes, ink primary, grooves for open items, one pressed state, hue only for urgency). Classic removed after comparing. Lucide icons, 44px icon buttons.
 - Permission tour (`/welcome`): shown on launch while a permission is missing (unless "Later" in the last 7 days); steps tick off as Android reports them granted. Reopen from Settings.
 - Date & time picker (`DateTimeSheet.vue`): quick days, month calendar, time-word chips, hour/minute wheels; used in quick add, task view, snooze.
-- Known MVP gaps: editing a title doesn't re-parse dates; no swipe gestures; highlight shown as chips (tap to un-parse), not inline in the text; desktop builds have no reminder scheduler.
+- Swipe gestures on list rows: right = complete (ink reveal), left = snooze sheet (amber reveal; dated tasks only). Axis-locked so vertical scroll is untouched; haptic tick at the threshold; a swipe never counts as a tap.
+- Known MVP gaps: editing a title doesn't re-parse dates; highlight shown as chips (tap to un-parse), not inline in the text; desktop builds have no reminder scheduler.
 
 Device checklist:
 - [ ] Quick add: "call mom tomorrow 6pm", "buy milk friday" (time prompt), "bins every monday evening" (repeat chip + schedule toggle)
@@ -324,6 +325,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (swipe)** — Swipe right to complete, left to snooze (in PR #1).
 - **Oct 15, 2026 (backup)** — Backup: daily to a picked folder (keep 7), export a copy, restore from file (in PR #1).
 - **Oct 15, 2026 (PR flow)** — Switched to PR workflow (no direct merges). Glass-only UI, Lucide icons, bigger icon buttons, permission tour, custom date & time picker. In PR, not released.
 - **Oct 15, 2026 (sound)** — Completion sounds (Web Audio, toggle in Settings); keyboard suggestions enabled in text fields; main builds queued.
