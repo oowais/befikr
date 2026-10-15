@@ -15,4 +15,6 @@ permissions = [
   "allow-backup-now",
   "allow-export-backup",
   "allow-pick-import-file",
+  "allow-register-listener",
+  "allow-remove-listener",
 ]

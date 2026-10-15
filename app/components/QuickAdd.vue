@@ -1,12 +1,14 @@
 <script setup lang="ts">
-// One text field. Parsed parts appear as chips; tap a chip to keep that text
-// literal. Full controls hide behind "More".
-import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, X } from 'lucide-vue-next'
+// One text field. Parsed parts appear as chips: tap the date to change it,
+// ✕ keeps the words as plain text. Full controls hide behind "More".
+// Inputs update on every keystroke (no v-model): v-model waits for the
+// keyboard to commit a word, so swipe/predictive typing lagged a word behind.
+import { CalendarDays, ChevronDown, ChevronUp, Repeat, X } from 'lucide-vue-next'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
 const text = ref('')
 const ignored = ref<string[]>([])
-const timePrompt = ref('09:00')
+const DEFAULT_TIME = '09:00'
 const adaptive = ref(false)
 const expanded = ref(false)
 const manualDue = ref<number | null>(null)
@@ -27,8 +29,11 @@ function grow() {
   el.style.height = `${el.scrollHeight}px`
 }
 watch(text, () => nextTick(grow))
+const typed = (e: Event) => (e.target as HTMLInputElement | HTMLTextAreaElement).value
 
 const parsed = computed(() => parseWith(text.value, ignored.value))
+// A task that is only a date ("tomorrow") still saves, with the words as title.
+const title = computed(() => parsed.value.title.trim() || text.value.trim())
 const spanText = (kind: 'date' | 'recurrence') => {
   const s = parsed.value.spans.find((x) => x.kind === kind)
   return s ? text.value.slice(s.start, s.end) : null
@@ -45,23 +50,21 @@ const repeat = computed(() => {
 const dueAt = computed<number | null>(() => {
   if (manualDue.value != null) return manualDue.value
   const d = parsed.value.due
-  return d ? localMs(d.date, d.time ?? timePrompt.value) : null
-})
-const needsTime = computed(() => manualDue.value == null && parsed.value.due && !parsed.value.due.time)
-const dateChip = computed(() => {
-  const d = parsed.value.due
-  if (!d || manualDue.value != null) return null
-  return d.time ? dayLabel(localMs(d.date, d.time)) : dateOnlyLabel(d.date)
+  return d ? localMs(d.date, d.time ?? DEFAULT_TIME) : null
 })
 
 function unparse(kind: 'date' | 'recurrence') {
   const s = spanText(kind)
   if (s) ignored.value.push(s)
 }
+// ✕ on the date chip: drop a picked date and keep any parsed words as text.
+function clearDate() {
+  manualDue.value = null
+  unparse('date')
+}
 
 async function save() {
-  const title = parsed.value.title.trim()
-  if (!title || saving.value) return
+  if (!title.value || saving.value) return
   saving.value = true
   error.value = ''
   try {
@@ -69,10 +72,10 @@ async function save() {
     let due = dueAt.value
     if (repeat.value.rrule && due == null) {
       const now = new Date()
-      due = localMs(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`, timePrompt.value)
+      due = localMs(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`, DEFAULT_TIME)
     }
     await api.addTask({
-      title,
+      title: title.value,
       description: description.value,
       dueAt: due,
       tz: due != null ? deviceTz() : null,
@@ -95,36 +98,31 @@ async function save() {
     <form class="sheet popover" @submit.prevent="save">
       <textarea
         ref="input"
-        v-model="text"
+        :value="text"
         class="main-input"
         rows="1"
         placeholder="buy milk tomorrow evening"
         enterkeyhint="done"
         autocapitalize="sentences" autocorrect="on" spellcheck="true"
+        @input="text = typed($event)"
         @keydown.enter.prevent="save"
       />
 
       <p v-if="parsed.title && parsed.title !== text.trim()" class="preview muted">→ {{ parsed.title }}</p>
 
       <div class="chips">
-        <button v-if="dateChip" type="button" class="chip" title="Tap to keep as text" @click="unparse('date')">
-          <CalendarDays :size="16" /> {{ dateChip }}
-        </button>
-        <label v-if="needsTime" class="chip">
-          <Clock :size="16" /> <input v-model="timePrompt" type="time" class="time" aria-label="Time" />
-        </label>
-        <button v-if="manualDue != null" type="button" class="chip" @click="picking = true">
-          <CalendarDays :size="16" /> {{ dayLabel(manualDue) }}
-        </button>
-        <button
-          v-if="parsed.recurrenceText && !repeatText"
-          type="button"
-          class="chip"
-          title="Tap to keep as text"
-          @click="unparse('recurrence')"
-        >
-          <Repeat :size="16" /> {{ parsed.recurrenceText }}
-        </button>
+        <span v-if="dueAt != null" class="chip split">
+          <button type="button" class="part" aria-label="Change date and time" @click="picking = true">
+            <CalendarDays :size="16" /> {{ dayLabel(dueAt) }}
+          </button>
+          <button type="button" class="x" :aria-label="manualDue == null ? 'Keep as text' : 'Remove date'" @click="clearDate">
+            <X :size="15" />
+          </button>
+        </span>
+        <span v-if="parsed.recurrenceText && !repeatText" class="chip split">
+          <span class="part"><Repeat :size="16" /> {{ parsed.recurrenceText }}</span>
+          <button type="button" class="x" aria-label="Keep as text" @click="unparse('recurrence')"><X :size="15" /></button>
+        </span>
         <button v-if="repeat.rrule" type="button" class="chip" :class="{ off: !adaptive }" @click="adaptive = !adaptive">
           {{ adaptive ? 'From completion' : 'On schedule' }}
         </button>
@@ -140,10 +138,10 @@ async function save() {
         </button>
         <label class="labeled">
           <Repeat :size="18" class="muted" />
-          <input v-model="repeatText" class="field" placeholder="every monday" autocorrect="on" />
+          <input :value="repeatText" class="field" placeholder="every monday" autocorrect="on" @input="repeatText = typed($event)" />
         </label>
         <p v-if="repeatText && repeat.text" class="muted small">{{ repeat.text }}</p>
-        <textarea v-model="description" class="field" rows="3" placeholder="Notes" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
+        <textarea :value="description" class="field" rows="3" placeholder="Notes" @input="description = typed($event)" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
@@ -152,7 +150,7 @@ async function save() {
         <button type="button" class="btn" @click="expanded = !expanded">
           <component :is="expanded ? ChevronUp : ChevronDown" :size="18" /> {{ expanded ? 'Less' : 'More' }}
         </button>
-        <button type="submit" class="btn primary" :disabled="!parsed.title.trim() || saving">Add</button>
+        <button type="submit" class="btn primary" :disabled="!title || saving">Add</button>
       </div>
     </form>
     <DateTimeSheet v-if="picking" :model-value="dueAt" title="When" allow-clear @update:model-value="manualDue = $event" @close="picking = false" />
@@ -174,7 +172,9 @@ async function save() {
 .preview { margin: 0; font-size: 0.9rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips:empty { display: none; }
-.time { border: 0; background: none; padding: 0; }
+.chip.split { padding: 0; gap: 0; }
+.chip.split .part { display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px 6px 12px; }
+.chip.split .x { display: grid; place-items: center; width: 34px; height: 32px; color: var(--muted); }
 .more { display: flex; flex-direction: column; gap: 10px; }
 .pick-date { display: flex; align-items: center; gap: 10px; text-align: left; }
 .labeled { display: flex; align-items: center; gap: 10px; }

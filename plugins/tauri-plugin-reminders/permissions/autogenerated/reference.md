@@ -18,6 +18,8 @@ Allows all reminders and backup commands.
 - `allow-backup-now`
 - `allow-export-backup`
 - `allow-pick-import-file`
+- `allow-register-listener`
+- `allow-remove-listener`
 
 ## Permission Table
 
@@ -284,6 +286,58 @@ Enables the pick_import_file command without any pre-configured scope.
 <td>
 
 Denies the pick_import_file command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-register-listener`
+
+</td>
+<td>
+
+Enables the register_listener command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-register-listener`
+
+</td>
+<td>
+
+Denies the register_listener command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-remove-listener`
+
+</td>
+<td>
+
+Enables the remove_listener command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-remove-listener`
+
+</td>
+<td>
+
+Denies the remove_listener command without any pre-configured scope.
 
 </td>
 </tr>

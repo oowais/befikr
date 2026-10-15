@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, ArrowLeft, CalendarDays, Check, Moon, Plus, Repeat, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, Moon, Plus, Repeat, RotateCcw, StickyNote, Trash2, X } from 'lucide-vue-next'
 import type { Task } from '~/composables/api'
 
 const route = useRoute()
@@ -78,6 +78,15 @@ async function complete() {
   show({ message: 'Completed', action: { label: 'Undo', run: () => api.reopenTask(t.id) } })
   router.back()
 }
+async function reopen() {
+  haptic()
+  try {
+    task.value = await api.reopenTask(id.value)
+    show({ message: 'Back in to-do' })
+  } catch (e) {
+    error.value = String(e)
+  }
+}
 async function remove() {
   await api.deleteTask(id.value)
   show({ message: 'Deleted' })
@@ -90,8 +99,11 @@ async function remove() {
     <header class="topbar">
       <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <span style="flex: 1" />
-      <NuxtLink v-if="task?.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
-      <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
+      <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> Undo</button>
+      <template v-else-if="task">
+        <NuxtLink v-if="task.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
+        <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
+      </template>
     </header>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -106,6 +118,9 @@ async function remove() {
       />
 
       <div class="pane rows props">
+        <div v-if="task.completedAt" class="prop">
+          <CheckCircle2 :size="20" class="muted" /> <span class="flex">Completed {{ dayLabel(task.completedAt) }}</span>
+        </div>
         <div class="prop">
           <CalendarDays :size="20" class="muted" />
           <button class="flex left" @click="picking = true">
