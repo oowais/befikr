@@ -32,7 +32,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Environment notes
 
-- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. The APK is published to the prerelease `befikr-latest`.
+- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. Each build is published as release `v0.1.<run>` (latest); stable link: `releases/latest/download/befikr.apk`. Discoverium tracks these releases.
 - APK is signed with the committed sideload key (`src-tauri/android/`). Never change it, or updates stop installing over the old app.
 - CI: `core.yml` (cargo clippy/test), `web.yml` (parser tests, Nuxt build + typecheck), `android.yml` (APK).
 - Quick UI check without a device: `pnpm generate`, then render `.output/public` in Playwright with a mocked `window.__TAURI_INTERNALS__.invoke` (Chromium at `/opt/pw-browsers/chromium`).

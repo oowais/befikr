@@ -26,6 +26,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Every build is a new version (0.1.<run>): Discoverium/Obtainium detect
+      # it as an update and Android's versionCode increases with it.
+      - name: Version from run number
+        run: |
+          V="0.1.${{ github.run_number }}"
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -78,10 +86,9 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: befikr-latest
-          name: Befikr APK (latest)
-          body: "Latest build of ${{ github.ref_name }} @ ${{ github.sha }}. Arm64, Android 8+. Updates install over the previous version."
-          prerelease: true
-          make_latest: false
+          tag_name: v${{ env.VERSION }}
+          name: Befikr ${{ env.VERSION }}
+          body: "Build of ${{ github.ref_name }} @ ${{ github.sha }}. Arm64, Android 8+. Installs over the previous version."
+          make_latest: true
           target_commitish: ${{ github.sha }}
           files: befikr.apk
