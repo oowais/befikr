@@ -325,6 +325,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (night)** — v0.3.1 released (should have been 0.4.0: version script missed squash bodies — fixed). PR #3: release notes from commits, quick add updates while the keyboard composes (swipe/predictive typing), one date chip that opens the picker (✕ keeps words as text), date-only text saves, completed list → open/undo/delete. **Next:** user tests on device; then parser gaps (TODO #4).
 - **Oct 15, 2026 (swipe)** — Swipe right to complete, left to snooze (in PR #1).
 - **Oct 15, 2026 (backup)** — Backup: daily to a picked folder (keep 7), export a copy, restore from file (in PR #1).
 - **Oct 15, 2026 (PR flow)** — Switched to PR workflow (no direct merges). Glass-only UI, Lucide icons, bigger icon buttons, permission tour, custom date & time picker. In PR, not released.
