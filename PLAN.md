@@ -220,9 +220,9 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
-| 0 | **Notification spike** on a real Android phone (throwaway) | 🟡 | Code done; needs CI APK + on-device test |
+| 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
 | 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
-| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ⬜ | |
+| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ⬜ | |
 | 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | ⬜ | |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | ⬜ | |
@@ -247,7 +247,7 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - [ ] Alarms survive reboot (`BOOT_COMPLETED` restore)
 - [x] 8 at once: all fired on time (≤1 s). Android bundles them into one app group (count badge); each child still expandable with its own actions. Unique `setGroup` doesn't prevent it — accepted (plan already expected this)
 - [x] Vibration on reminders (new channel `reminders-v2`)
-- [ ] Verdict recorded
+- [x] Verdict recorded: **custom Kotlin plugin, `setExactAndAllowWhileIdle`**. Good enough for current use. Not tested (user's call): forced Doze, two-at-once under Doze, reboot restore, snooze from cold start — retest if reminders are ever late/missing
 
 **Findings so far (from reading `tauri-plugin-notification` 2.7.0 source):**
 - Its action buttons are `PendingIntent.getActivity` → always open the app. "Complete without opening" is impossible with it.
@@ -259,6 +259,20 @@ Built (not yet run on device): custom plugin `spike/plugins/tauri-plugin-reminde
 - Re-fire is scheduled when a reminder *fires* (not on dismiss), so ignoring and swiping both lead to the next re-fire. Dismiss is only logged.
 - `setExactAndAllowWhileIdle` is throttled in Doze (~1 alarm / 9 min per app). `setAlarmClock` isn't, but shows an alarm icon. Spike tests both; pick per result.
 - Rust ↔ Kotlin: Kotlin `Native` object loads the app `.so` and calls `#[no_mangle]` JNI functions; panics/errors return `{"error": …}` JSON. The DB path is stored in SharedPreferences for cold starts.
+
+### Step 2 — core notes
+
+`crates/core` = `befikr-core`: `Store` (repository; only writer), `recurrence` (rrule crate, evaluated in the task's IANA zone), models. Every write returns `Change { task, alarm: Schedule|Cancel }` for the platform scheduler.
+
+Decisions:
+- `due_at` UTC ms + `tz` per task; RRULE body stored bare, DTSTART built from current `due_at` in `tz` (keeps wall-clock time across DST).
+- Snooze sets `snoozed_until`; `due_at` stays for stats. Effective due = snooze ?? due. Editing the date clears the snooze.
+- Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped. Adaptive: counted from completion day, keeping time of day.
+- Recurring completion: `completions` row + due advances + subtasks unchecked. Undo restores previous due.
+- Parent completion auto-checks open subtasks with the same timestamp; undo reopens exactly those.
+- Re-remind state is device-local (`alarm_state`, not synced). Fires escalate per `reremind_minutes` (default 5/15/30/60). Title edits keep escalation; date/snooze changes restart it.
+- Time words live in DB (`time_words`), seeded with defaults; parser gets them from `settings()`.
+- Backup primitive: `export_to(path)` = `VACUUM INTO`. Rotation/scheduling in step 4.
 
 ### Step 1 — parser notes
 
@@ -277,6 +291,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (evening)** — Step 0 closed (custom plugin verdict). Step 2 done: `crates/core` with schema, recurrence, repository, reminders, settings, backup export; CI `core.yml`. **Next:** step 3 — real app (`app/` + `src-tauri/`), promote reminders plugin out of `spike/`, wire core via Tauri commands + JNI, parser in quick add.
 - **Oct 15, 2026 (device test 2)** — vibration, swipe-dismiss re-fire, 8 simultaneous reminders all ✅ (bundled by Android, accepted). **Left:** Doze (both modes), two-at-once under Doze, reboot, snooze from cold start.
 - **Oct 15, 2026 (device test 1)** — Pixel 9 / SDK 37: exact fire, escalation, snooze, native Complete all work. Custom plugin clearly better than official. User wants vibration → added. **Next:** Doze, swipe-dismiss, reboot, alarmClock mode, 4+ notifications, vibration.
 - **Oct 15, 2026 (later)** — Step 1 parser v1: `packages/parser` (chrono-node + rrule, vitest table, CI `parser.yml`). APK now also published as prerelease "Spike APK (latest)". User testing spike on phone. **Next:** record spike results; parser gaps above; then step 2 (Rust storage).

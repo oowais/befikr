@@ -1,0 +1,19 @@
+name: core
+
+on:
+  push:
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock", ".github/workflows/core.yml"]
+  pull_request:
+    paths: ["crates/**", "Cargo.toml", "Cargo.lock"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -p befikr-core --all-targets -- -D warnings
+      - run: cargo test -p befikr-core

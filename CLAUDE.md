@@ -15,9 +15,11 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 ## Layout (target)
 
 - `app/` — Nuxt SPA
-- `src-tauri/` — Rust core + Android project
+- `crates/core/` — `befikr-core`: storage, recurrence, reminders (pure Rust, no Tauri)
+- `src-tauri/` — Tauri app: commands wrapping core, JNI entry points, Android project
 - `packages/parser/` — pure TS NL parser, vitest table tests
-- `spike/` — step 0 throwaway; delete when step 0 is done
+- `plugins/tauri-plugin-reminders/` — Kotlin alarms/notifications (to be promoted from `spike/` in step 3)
+- `spike/` — step 0 reference; delete once step 3 replaces it
 
 ## Non-negotiable rules
 
