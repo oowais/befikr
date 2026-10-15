@@ -181,7 +181,13 @@ fn import_backup(app: AppHandle, db: State<Db>, path: String) -> Res<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // A second launch (e.g. from the menu while in the tray) focuses this one.
+    #[cfg(desktop)]
+    let builder = builder
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
+        .on_window_event(desktop::on_window_event);
+    builder
         .plugin(tauri_plugin_reminders::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
@@ -200,6 +206,8 @@ pub fn run() {
             for a in pending {
                 apply(app.handle(), &db, &AlarmChange::Schedule(a));
             }
+            #[cfg(desktop)]
+            desktop::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

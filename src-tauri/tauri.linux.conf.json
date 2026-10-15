@@ -1,0 +1,5 @@
+{
+  "app": {
+    "windows": [{ "label": "main", "title": "Befikr", "width": 420, "height": 820, "visible": false }]
+  }
+}

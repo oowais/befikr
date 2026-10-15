@@ -18,6 +18,10 @@ onMounted(async () => {
   // and its Complete changes the list.
   listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
   listen('tasks-changed', () => listChanged()).catch(() => {})
+  listen('quick-add', async () => {
+    quickAddPending.value = true
+    if (route.path !== '/') await router.push('/')
+  }).catch(() => {})
   const launch = await reminders.takeLaunchRoute().then((r) => r?.route, () => undefined)
   if (launch && launch !== '/') return router.push(launch)
   // First launch, or a permission revoked: the setup tour.

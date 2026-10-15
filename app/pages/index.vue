@@ -58,6 +58,16 @@ const sections = computed(() => {
 })
 
 watch(listVersion, refresh)
+// Also when the list mounts after the request (opened from another page).
+watch(
+  quickAddPending,
+  (v) => {
+    if (!v) return
+    adding.value = true
+    quickAddPending.value = false
+  },
+  { immediate: true },
+)
 
 let tick: ReturnType<typeof setInterval>
 const onVisible = () => document.visibilityState === 'visible' && refresh()
