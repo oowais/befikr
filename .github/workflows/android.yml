@@ -20,6 +20,12 @@ on:
 permissions:
   contents: write # publish the APK as a release
 
+# One build per branch at a time: a queued main build computes its version
+# only after the previous release has tagged.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   apk:
     runs-on: ubuntu-latest
