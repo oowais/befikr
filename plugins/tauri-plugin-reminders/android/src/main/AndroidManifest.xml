@@ -9,6 +9,7 @@
     <application>
         <receiver android:name="com.befikr.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.ActionReceiver" android:exported="false" />
+        <receiver android:name="com.befikr.reminders.BackupReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.RestoreReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

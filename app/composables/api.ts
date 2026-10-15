@@ -59,7 +59,10 @@ export const api = {
   setTimeWord: (word: string, time: string) => invoke<void>('set_time_word', { word, time }),
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),
   setReremindMinutes: (minutes: number[]) => invoke<void>('set_reremind_minutes', { minutes }),
+  importBackup: (path: string) => invoke<void>('import_backup', { path }),
 }
+
+export type BackupStatus = { folder: string | null; lastAt: number | null; lastError: string | null }
 
 export type Status = { notifications: boolean; exactAlarms: boolean; batteryUnrestricted: boolean; sdk: number; device: string }
 
@@ -70,4 +73,10 @@ export const reminders = {
   openExactAlarmSettings: () => invoke('plugin:reminders|open_exact_alarm_settings'),
   openBatterySettings: () => invoke('plugin:reminders|open_battery_settings'),
   takeLaunchRoute: () => invoke<{ route?: string }>('plugin:reminders|take_launch_route'),
+  backupStatus: () => invoke<BackupStatus>('plugin:reminders|backup_status'),
+  pickBackupFolder: () => invoke<BackupStatus>('plugin:reminders|pick_backup_folder'),
+  clearBackupFolder: () => invoke<BackupStatus>('plugin:reminders|clear_backup_folder'),
+  backupNow: () => invoke<BackupStatus>('plugin:reminders|backup_now'),
+  exportBackup: () => invoke<{ saved: boolean }>('plugin:reminders|export_backup'),
+  pickImportFile: () => invoke<{ path?: string }>('plugin:reminders|pick_import_file'),
 }

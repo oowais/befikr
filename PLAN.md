@@ -229,7 +229,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI releases `v0.x.y` (main only). Needs on-device check (see step 3 notes) |
-| 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | Done: re-remind, snooze sheet, subtasks, history. **Left: backup** (manual export/import, daily auto-export to a picked folder, keep 7) |
+| 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | All built (backup in PR #1). Needs on-device check of backup (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | ⬜ | |
 
 ### Step 0 — spike checklist
@@ -286,6 +286,13 @@ Device checklist:
 - [ ] Undo after completing; completed history; subtasks; settings (time word "dawn", re-remind minutes)
 - [ ] Update install: next CI build installs over the previous one, data kept
 
+### Step 4 — backup notes
+
+- Snapshot: Rust `Store::export_to` (`VACUUM INTO`), reachable from the app and via JNI (`Native.exportTo`) so it runs with no webview.
+- Daily: user picks a folder once (SAF `OPEN_DOCUMENT_TREE`, persisted permission). `BackupReceiver` on an inexact daily alarm (~03:00) + a catch-up on app start if the last backup is >23 h old. Files `befikr-YYYY-MM-DD-HHmm.db`, newest 7 kept. State in Kotlin SharedPreferences (device-local).
+- Manual: "Export a copy…" (`CREATE_DOCUMENT`), "Restore from a backup…" (`OPEN_DOCUMENT` → cache → `Store::import_from`, SQLite backup API into the live connection, then migrations; refuses non-Befikr or newer-schema files). Current data is snapshotted to the app cache before a restore; alarms re-armed after.
+- On-device checklist: [ ] pick Syncthing folder → file appears; [ ] next day a new file, max 7 kept; [ ] export a copy; [ ] restore (tasks replaced, reminders fire); [ ] folder deleted/permission lost → error shown in Settings.
+
 ### Step 2 — core notes
 
 `crates/core` = `befikr-core`: `Store` (repository; only writer), `recurrence` (rrule crate, evaluated in the task's IANA zone), models. Every write returns `Change { task, alarm: Schedule|Cancel }` for the platform scheduler.
@@ -317,6 +324,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (backup)** — Backup: daily to a picked folder (keep 7), export a copy, restore from file (in PR #1).
 - **Oct 15, 2026 (PR flow)** — Switched to PR workflow (no direct merges). Glass-only UI, Lucide icons, bigger icon buttons, permission tour, custom date & time picker. In PR, not released.
 - **Oct 15, 2026 (sound)** — Completion sounds (Web Audio, toggle in Settings); keyboard suggestions enabled in text fields; main builds queued.
 - **Oct 15, 2026 (glass)** — Added Glass design (Solid Glass-inspired) alongside Classic, switchable in Settings; Geist font bundled.

@@ -9,8 +9,10 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.webkit.WebView
+import androidx.activity.result.ActivityResult
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
+import app.tauri.annotation.ActivityCallback
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -29,6 +31,11 @@ class ScheduleArgs {
 @InvokeArg
 class CancelArgs {
     lateinit var id: String
+}
+
+@InvokeArg
+class ConfigureArgs {
+    lateinit var dbPath: String
 }
 
 @TauriPlugin
@@ -101,6 +108,110 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
             Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${activity.packageName}"))
         )
         invoke.resolve()
+    }
+
+    /** Where the database lives (for receivers and backups); runs a due backup. */
+    @Command
+    fun configure(invoke: Invoke) {
+        Prefs.setDbPath(activity, invoke.parseArgs(ConfigureArgs::class.java).dbPath)
+        Backup.scheduleDaily(activity)
+        Thread { Backup.runIfDue(activity.applicationContext) }.start()
+        invoke.resolve()
+    }
+
+    // ---- Backups ----
+
+    private fun background(invoke: Invoke, work: () -> JSObject) {
+        Thread {
+            try {
+                invoke.resolve(work())
+            } catch (e: Exception) {
+                invoke.reject(e.message ?: e.toString())
+            }
+        }.start()
+    }
+
+    private fun status() = JSObject(Backup.status(activity).toString())
+
+    @Command
+    fun backupStatus(invoke: Invoke) = invoke.resolve(status())
+
+    @Command
+    fun pickBackupFolder(invoke: Invoke) {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            .addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        startActivityForResult(invoke, intent, "onBackupFolder")
+    }
+
+    @ActivityCallback
+    fun onBackupFolder(invoke: Invoke, result: ActivityResult) {
+        val uri = result.data?.data
+        if (result.resultCode != Activity.RESULT_OK || uri == null) return invoke.resolve(status())
+        activity.contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+        Backup.tree(activity)?.takeIf { it != uri }?.let { old ->
+            runCatching { activity.contentResolver.releasePersistableUriPermission(old, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+        }
+        Backup.setTree(activity, uri)
+        // First backup right away, so the folder is proven writable.
+        background(invoke) {
+            runCatching { Backup.runNow(activity) }
+            status()
+        }
+    }
+
+    @Command
+    fun clearBackupFolder(invoke: Invoke) {
+        Backup.tree(activity)?.let { old ->
+            runCatching { activity.contentResolver.releasePersistableUriPermission(old, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+        }
+        Backup.setTree(activity, null)
+        invoke.resolve(status())
+    }
+
+    @Command
+    fun backupNow(invoke: Invoke) = background(invoke) {
+        Backup.runNow(activity)
+        status()
+    }
+
+    /** Save one copy wherever the user chooses. */
+    @Command
+    fun exportBackup(invoke: Invoke) {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("application/octet-stream")
+            .putExtra(Intent.EXTRA_TITLE, Backup.fileName())
+        startActivityForResult(invoke, intent, "onExportFile")
+    }
+
+    @ActivityCallback
+    fun onExportFile(invoke: Invoke, result: ActivityResult) {
+        val uri = result.data?.data
+        if (result.resultCode != Activity.RESULT_OK || uri == null) return invoke.resolve(JSObject().apply { put("saved", false) })
+        background(invoke) {
+            Backup.exportTo(activity, uri)
+            JSObject().apply { put("saved", true) }
+        }
+    }
+
+    /** Pick a backup file; it is copied into the cache and its path returned for Rust to restore. */
+    @Command
+    fun pickImportFile(invoke: Invoke) {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*")
+        startActivityForResult(invoke, intent, "onImportFile")
+    }
+
+    @ActivityCallback
+    fun onImportFile(invoke: Invoke, result: ActivityResult) {
+        val uri = result.data?.data
+        if (result.resultCode != Activity.RESULT_OK || uri == null) return invoke.resolve(JSObject())
+        background(invoke) {
+            val file = Backup.importToCache(activity, uri)
+            JSObject().apply { put("path", file.absolutePath) }
+        }
     }
 
     /** Route the app was opened with from a notification (e.g. snooze), once. */
