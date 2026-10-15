@@ -10,6 +10,7 @@ const props = withDefaults(
   { allowClear: true, start: null },
 )
 const emit = defineEmits<{ 'update:modelValue': [rrule: string | null]; close: [] }>()
+useBackClose(() => emit('close'))
 
 type Unit = 'day' | 'week' | 'month' | 'year'
 const UNITS: Unit[] = ['day', 'week', 'month', 'year']

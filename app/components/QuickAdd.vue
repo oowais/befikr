@@ -1,31 +1,33 @@
 <script setup lang="ts">
 // One text field. Parsed parts appear as chips: tap the date to change it,
 // ✕ keeps the words as plain text. Full controls hide behind "More".
+// The draft survives closing the sheet (useQuickAddDraft); Add or Clear resets it.
 // Inputs update on every keystroke (no v-model): v-model waits for the
 // keyboard to commit a word, so swipe/predictive typing lagged a word behind.
 import { firstDue } from '@befikr/parser'
-import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, X } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, Trash2, X } from 'lucide-vue-next'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
-const text = ref('')
-const ignored = ref<string[]>([])
+const { text, ignored, adaptive, expanded, manualDue, manualRule, description, chosenTime } = toRefs(useQuickAddDraft())
 const DEFAULT_TIME = '09:00'
-/** Time picked in the "no time given" prompt; DEFAULT_TIME until then. */
-const chosenTime = ref<string | null>(null)
 const fallbackTime = computed(() => chosenTime.value ?? DEFAULT_TIME)
-const adaptive = ref(false)
-const expanded = ref(false)
-const manualDue = ref<number | null>(null)
 const picking = ref(false)
-/** Rule from the repeat builder; undefined = use what was typed. */
-const manualRule = ref<string | null | undefined>(undefined)
 const pickingRepeat = ref(false)
-const description = ref('')
 const saving = ref(false)
 const error = ref('')
 const input = ref<HTMLTextAreaElement>()
 
-onMounted(() => input.value?.focus())
+useBackClose(() => emit('close'))
+onMounted(() => {
+  input.value?.focus()
+  nextTick(grow)
+})
+
+const hasDraft = computed(() => !!(text.value || description.value || manualDue.value != null || manualRule.value !== undefined))
+function clearDraft() {
+  clearQuickAddDraft()
+  input.value?.focus()
+}
 
 // Auto-grow; Enter saves (dictation and long tasks wrap instead of scrolling).
 function grow() {
@@ -119,6 +121,7 @@ async function save() {
       adaptive: !!repeat.value.rrule && adaptive.value,
     })
     haptic()
+    clearQuickAddDraft()
     emit('saved')
     emit('close')
   } catch (e) {
@@ -206,6 +209,8 @@ async function save() {
         <button type="button" class="btn" @click="expanded = !expanded">
           <component :is="expanded ? ChevronUp : ChevronDown" :size="18" /> {{ expanded ? 'Less' : 'More' }}
         </button>
+        <button v-if="hasDraft" type="button" class="btn danger" @click="clearDraft"><Trash2 :size="18" /> Clear</button>
+        <span class="flex" />
         <button type="submit" class="btn primary" :disabled="!title || saving">Add</button>
       </div>
     </form>
@@ -253,6 +258,7 @@ async function save() {
 .pick-date { display: flex; align-items: center; gap: 10px; text-align: left; }
 .cap::first-letter { text-transform: uppercase; }
 .small { margin: 0; }
-.actions { display: flex; justify-content: space-between; }
+.actions { display: flex; gap: 8px; }
+.flex { flex: 1; }
 .error { margin: 0; font-size: 0.9rem; }
 </style>

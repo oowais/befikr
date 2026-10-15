@@ -7,6 +7,7 @@ const { current: toast, dismiss } = useToast()
 
 onMounted(async () => {
   loadTimeWords()
+  handleBackButton().catch(() => {})
   // Each step on its own: one failing (desktop/browser has no reminders
   // plugin) must not skip the others.
   // Notification "Snooze" opens the app on a route (cold or warm start).

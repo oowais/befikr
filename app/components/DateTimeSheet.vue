@@ -18,6 +18,7 @@ const props = withDefaults(
   { title: 'Date & time', allowClear: false, min: null, doneLabel: 'Done', mode: 'datetime' },
 )
 const emit = defineEmits<{ 'update:modelValue': [ms: number | null]; close: [] }>()
+useBackClose(() => emit('close'))
 
 const DAY = 86_400_000
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
