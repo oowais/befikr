@@ -85,7 +85,7 @@ onUnmounted(() => {
 .empty { text-align: center; margin-top: 30vh; }
 .fab {
   position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 30;
-  width: 64px; height: 64px; border-radius: 22px; background: var(--accent); color: #fff;
+  width: 64px; height: 64px; border-radius: 22px; background: var(--accent); color: var(--on-accent);
   font-size: 2rem; line-height: 1; box-shadow: var(--shadow);
 }
 .fab:active { transform: scale(0.94); }

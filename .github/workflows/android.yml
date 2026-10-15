@@ -53,6 +53,11 @@ jobs:
 
       - run: pnpm tauri android init --ci
 
+      # App icon (adaptive + night + monochrome) and notification icon.
+      # Source: src-tauri/android/icon/gen.py
+      - name: Apply Android resources
+        run: cp -r src-tauri/android/res/. src-tauri/gen/android/app/src/main/res/
+
       - run: pnpm tauri android build --apk --target aarch64 --ci
 
       # Same key every build so updates install over the previous version.
