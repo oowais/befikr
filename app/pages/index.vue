@@ -58,6 +58,19 @@ const sections = computed(() => {
 })
 
 watch(listVersion, refresh)
+// "Share → Befikr" (Android) opens the list with the shared text in the query.
+const route = useRoute()
+watch(
+  () => route.query.shareText,
+  (text) => {
+    if (typeof text !== 'string') return
+    draftFromShare(text, String(route.query.shareSubject ?? ''))
+    adding.value = true
+    router.replace('/')
+  },
+  { immediate: true },
+)
+
 // Also when the list mounts after the request (opened from another page).
 watch(
   quickAddPending,

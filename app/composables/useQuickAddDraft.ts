@@ -21,3 +21,16 @@ export const clearQuickAddDraft = () => Object.assign(draft, fresh())
 
 /** Set to open quick add on the list (desktop tray: "Quick add"); the list clears it. */
 export const quickAddPending = ref(false)
+
+/**
+ * Fill the draft from "Share → Befikr": the page title (or the text around a
+ * link) becomes the task, the link goes into notes. Replaces any draft.
+ */
+export function draftFromShare(text: string, subject: string) {
+  const url = text.match(/https?:\/\/\S+/)?.[0] ?? ''
+  const rest = text.replace(url, '').trim()
+  const title = subject.trim() || rest || url || text.trim()
+  const notes = title === text.trim() ? '' : url || text.trim()
+  clearQuickAddDraft()
+  Object.assign(draft, { text: title, description: notes, expanded: !!notes })
+}

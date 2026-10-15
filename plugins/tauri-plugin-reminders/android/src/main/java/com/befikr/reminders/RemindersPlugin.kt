@@ -44,11 +44,11 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
 
     override fun load(webView: WebView) {
         Notifier.ensureChannel(activity)
-        launchRoute = activity.intent?.getStringExtra(EXTRA_ROUTE)
+        launchRoute = routeFor(activity.intent)
     }
 
     override fun onNewIntent(intent: Intent) {
-        val route = intent.getStringExtra(EXTRA_ROUTE) ?: return
+        val route = routeFor(intent) ?: return
         launchRoute = route
         trigger("launchRoute", JSObject().apply { put("route", route) })
     }
@@ -214,7 +214,20 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
-    /** Route the app was opened with from a notification (e.g. snooze), once. */
+    /**
+     * Route for an intent that opened the app: a notification's (e.g. snooze),
+     * or "Share → Befikr" from another app, which opens quick add prefilled.
+     */
+    private fun routeFor(intent: Intent?): String? {
+        if (intent == null) return null
+        intent.getStringExtra(EXTRA_ROUTE)?.let { return it }
+        if (intent.action != Intent.ACTION_SEND || intent.type?.startsWith("text/") != true) return null
+        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return null
+        val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT) ?: ""
+        return "/?shareText=${Uri.encode(text)}&shareSubject=${Uri.encode(subject)}"
+    }
+
+    /** Route the app was opened with (notification or share), once. */
     @Command
     fun takeLaunchRoute(invoke: Invoke) {
         val route = launchRoute
