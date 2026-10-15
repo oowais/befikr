@@ -97,6 +97,35 @@ pub fn migrations() -> Migrations<'static> {
         );
         ",
         ),
+        M::up(
+            "
+        -- P2P sync (device-local bookkeeping; none of these tables sync).
+        -- One row: this device's id, its hybrid logical clock, and whether
+        -- remote changes are being applied (then triggers don't log).
+        CREATE TABLE sync_state (
+          id         INTEGER PRIMARY KEY CHECK (id = 1),
+          device     TEXT NOT NULL,
+          hlc        INTEGER NOT NULL DEFAULT 0,
+          applying   INTEGER NOT NULL DEFAULT 0,
+          backfilled INTEGER NOT NULL DEFAULT 0
+        );
+        INSERT INTO sync_state (id, device) VALUES (1, lower(hex(randomblob(16))));
+
+        -- Latest value per synced field, filled by triggers (sync.rs).
+        -- `seq` grows on every change: peers ask for everything after the
+        -- last seq they got from us.
+        CREATE TABLE changes (
+          seq    INTEGER PRIMARY KEY AUTOINCREMENT,
+          tbl    TEXT NOT NULL,
+          row_id TEXT NOT NULL,
+          field  TEXT NOT NULL,
+          value,                          -- any type, as stored in the row
+          hlc    INTEGER NOT NULL,
+          origin TEXT NOT NULL,           -- device that made the change
+          UNIQUE (tbl, row_id, field)
+        );
+        ",
+        ),
     ])
 }
 

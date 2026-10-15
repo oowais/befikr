@@ -302,9 +302,9 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 **When:** only while both are running. Desktop runs in the tray, so it's usually there. Phone: sync on app open/resume and while open; background sync (WorkManager) later if needed. Both devices may ring for the same task until they've synced.
 
 **Build steps**
-1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network.
+1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network. ✅ Oct 16 (conflicts log moved to step 3): migration 3 (`sync_state`, `changes`), `crates/core/src/sync.rs` — triggers generated from one table/field list (re-created on every open; rows that predate them are backfilled once), `Store::changes_since(seq)`, `Store::merge(changes)` → alarm changes. Restoring a backup keeps this device's sync id; restored data is older, so peers' newer edits win on the next sync.
 2. iroh endpoint in the app (Rust, `src-tauri`): device key, same-network discovery, sync protocol over one QUIC stream, pairing by code/QR, Settings → Sync UI (devices, last synced, mode switch).
-3. Relay mode switch; then the Conflicts page.
+3. Relay mode switch; then the Conflicts page (needs a rule for "concurrent": a local edit made after the last sync with that peer, overwritten by theirs).
 
 **Check per step:** iroh builds for Android (arm64) and Windows in CI before relying on it.
 
@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (sync core)** — Sync step 1: change log via generated triggers + HLC, `changes_since` / `merge` (per-field LWW, forwarding, device-local settings skipped, alarms re-run). 4 two-device tests. **Next:** sync step 2 — iroh endpoint, same-network discovery, pairing, Settings → Sync.
 - **Oct 16, 2026 (sync plan)** — P2P sync planned (see **P2P sync — plan**): iroh, same-network by default + optional relay fallback, pairing by code/QR, change log + HLC + per-field LWW in core. **Next:** sync step 1 (core change log + merge).
 - **Oct 16, 2026 (shopping)** — Shopping list (Post-MVP 9): `/shopping` behind a cart button; items + staple chips in their own tables (migration 2), core-tested. Checked in mocked Chromium. **Next:** P2P sync (Post-MVP 2).
 - **Oct 16, 2026 (skip)** — Issue #6: Skip for repeating tasks — moves to the next occurrence on the schedule, no completion recorded (`Store::skip_task`, event `skipped`). In the notification (Android + desktop, repeating tasks only), the task view header and the snooze page ("Skip this one"); toast Undo puts the old due date back. Kotlin first compiles in CI. **Next:** completion history suggestions (Post-MVP 5) or shopping list (9).

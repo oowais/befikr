@@ -9,9 +9,11 @@ pub mod recurrence;
 mod schema;
 mod shopping;
 mod store;
+mod sync;
 
 pub use model::*;
 pub use store::Store;
+pub use sync::{MergeOutcome, SyncChange};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

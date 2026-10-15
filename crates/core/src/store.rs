@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::model::*;
 use crate::recurrence::{self, parse_tz};
-use crate::{schema, Error, Result};
+use crate::{schema, sync, Error, Result};
 
 /// A completion up to this long after its due time still counts as on time.
 const LATE_GRACE_MS: i64 = 60_000;
@@ -20,7 +20,7 @@ pub struct Store {
     clock: Box<dyn Fn() -> i64 + Send>,
 }
 
-fn system_now() -> i64 {
+pub(crate) fn system_now() -> i64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
@@ -45,6 +45,7 @@ impl Store {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         schema::migrations().to_latest(&mut conn).map_err(|e| Error::Migration(e.to_string()))?;
+        sync::install(&conn)?;
         Ok(Self { conn, clock: Box::new(system_now) })
     }
 
@@ -61,6 +62,7 @@ impl Store {
     pub(crate) fn write<T>(&mut self, f: impl FnOnce(&Connection, i64) -> Result<T>) -> Result<T> {
         let now = self.now();
         let tx = self.conn.transaction()?;
+        sync::bump_clock(&tx, now)?;
         let out = f(&tx, now)?;
         tx.commit()?;
         Ok(out)
@@ -528,9 +530,13 @@ impl Store {
         if version > latest {
             return Err(Error::Invalid("backup is from a newer version of Befikr; update the app first".into()));
         }
+        // The snapshot may come from another device: keep this one's sync id.
+        let device = self.device_id()?;
         rusqlite::backup::Backup::new(&src, &mut self.conn)?
             .run_to_completion(256, std::time::Duration::from_millis(0), None)?;
         schema::migrations().to_latest(&mut self.conn).map_err(|e| Error::Migration(e.to_string()))?;
+        self.conn.execute("UPDATE sync_state SET device = ?1, applying = 0", [device])?;
+        sync::install(&self.conn)?;
         Ok(())
     }
 }
@@ -655,7 +661,7 @@ fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change
 /// Re-read the task and bring its alarm in line with it. `reset` restarts
 /// the reminder at the (effective) due time; otherwise an alarm already
 /// in flight (e.g. mid re-remind escalation) is kept.
-fn finish(c: &Connection, id: &str, reset: bool) -> Result<Change> {
+pub(crate) fn finish(c: &Connection, id: &str, reset: bool) -> Result<Change> {
     let task = get_any(c, id)?;
     let due = task.effective_due().filter(|_| task.parent_id.is_none() && task.is_open());
     let Some(due) = due else {
