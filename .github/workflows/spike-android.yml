@@ -11,28 +11,25 @@ jobs:
     defaults:
       run:
         working-directory: spike
-    env:
-      NDK_VERSION: 27.2.12479018
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install NDK
+      # Runner image ships Android SDK + NDK (ANDROID_HOME, ANDROID_NDK_LATEST_HOME).
+      - name: Use preinstalled NDK
         run: |
-          sdkmanager "ndk;${NDK_VERSION}"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          ls "$ANDROID_HOME/platforms" "$ANDROID_NDK_LATEST_HOME" | head
 
       - uses: pnpm/action-setup@v4
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
