@@ -15,7 +15,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal const val TAG = "BefikrReminders"
-internal const val CHANNEL_ID = "reminders"
+/** Channel settings are immutable once created; bump the id to change them. */
+internal const val CHANNEL_ID = "reminders-v2"
+private val OLD_CHANNEL_IDS = listOf("reminders")
+private val VIBRATION = longArrayOf(0, 400, 200, 400)
 internal const val EXTRA_ID = "befikr.id"
 internal const val EXTRA_TITLE = "befikr.title"
 internal const val EXTRA_MODE = "befikr.mode"
@@ -104,9 +107,13 @@ internal fun launchPendingIntent(ctx: Context, id: String, route: String): Pendi
 internal object Notifier {
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
+        OLD_CHANNEL_IDS.forEach { nm.deleteNotificationChannel(it) }
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Reminders", NotificationManager.IMPORTANCE_HIGH)
+                NotificationChannel(CHANNEL_ID, "Reminders", NotificationManager.IMPORTANCE_HIGH).apply {
+                    enableVibration(true)
+                    vibrationPattern = VIBRATION
+                }
             )
         }
     }
@@ -130,6 +137,7 @@ internal object Notifier {
             .setContentTitle(title)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVibrate(VIBRATION)
             // Unique group per task: try to stop Android auto-bundling.
             .setGroup("task-$id")
             .setContentIntent(launchPendingIntent(ctx, id, "/"))
