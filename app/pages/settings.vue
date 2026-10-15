@@ -29,6 +29,12 @@ async function load() {
   backup.value = await reminders.backupStatus().catch(() => null)
 }
 
+async function toggleBackup() {
+  if (backup.value?.folder) return backupAction(reminders.clearBackupFolder, 'Daily backup off')
+  await backupAction(reminders.pickBackupFolder)
+  if (backup.value?.folder) show({ message: 'Daily backup on' })
+}
+
 async function backupAction(f: () => Promise<BackupStatus | unknown>, done?: string) {
   backupBusy.value = true
   error.value = ''
@@ -127,25 +133,39 @@ function addWord() {
     <template v-if="backup">
       <h2 class="section-title">Backup</h2>
       <div class="pane rows">
-        <div class="item">
+        <button
+          class="item"
+          role="switch"
+          :aria-checked="!!backup.folder"
+          :disabled="backupBusy"
+          @click="toggleBackup"
+        >
           <FolderSync :size="20" class="muted" />
           <span class="flex stack">
             <span>Daily backup</span>
-            <span class="muted small">{{ backup.folder ?? 'Off — choose a folder, e.g. your Syncthing folder' }}</span>
+            <span v-if="backup.folder" class="muted small">On · every night, keeps the newest 7</span>
+            <span v-else class="muted small">Off · saves a copy each night to a folder you pick, e.g. Syncthing</span>
           </span>
-          <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.pickBackupFolder)">
-            {{ backup.folder ? 'Change' : 'Choose' }}
-          </button>
-        </div>
-        <div v-if="backup.folder" class="item">
-          <RefreshCw :size="20" class="muted" :class="{ spin: backupBusy }" />
-          <span class="flex stack">
-            <span>{{ backup.lastAt ? `Last: ${dayLabel(backup.lastAt)}` : 'No backup yet' }}</span>
-            <span v-if="backup.lastError" class="error small">{{ backup.lastError }}</span>
-            <span v-else class="muted small">Every day, keeps the newest 7</span>
-          </span>
-          <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.backupNow, 'Backed up')">Now</button>
-          <button class="icon-btn" aria-label="Turn off daily backup" @click="backupAction(reminders.clearBackupFolder)"><X :size="18" /></button>
+          <span class="switch" :class="{ on: backup.folder }"><span class="knob" /></span>
+        </button>
+        <div v-if="backup.folder" class="details">
+          <div class="detail">
+            <span class="muted">Folder</span>
+            <span class="flex value">{{ backup.folder }}</span>
+            <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.pickBackupFolder)">Change</button>
+          </div>
+          <div class="detail">
+            <span class="muted">Last</span>
+            <span class="flex stack value">
+              <span v-if="backup.lastError" class="error">Failed: {{ backup.lastError }}</span>
+              <span v-else-if="backup.lastAt" class="ok"><Check :size="15" :stroke-width="3" /> {{ dayLabel(backup.lastAt) }}</span>
+              <span v-else>Not yet</span>
+            </span>
+            <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.backupNow, 'Backed up')">
+              <RefreshCw :size="16" :class="{ spin: backupBusy }" /> Back up now
+            </button>
+          </div>
+          <p class="muted small note">Turning it off keeps the backups already in the folder.</p>
         </div>
         <button class="item" @click="exportCopy">
           <Upload :size="20" class="muted" /><span class="flex left">Export a copy…</span>
@@ -218,6 +238,12 @@ function addWord() {
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .confirm { margin-top: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .end { justify-content: flex-end; }
+.details { padding: 4px 0 12px 32px; display: flex; flex-direction: column; gap: 8px; }
+.detail { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.detail > .muted:first-child { width: 48px; flex: none; font-size: 0.9rem; }
+.value { min-width: 0; overflow-wrap: anywhere; }
+.ok { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.note { margin: 0; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

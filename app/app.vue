@@ -11,7 +11,7 @@ onMounted(async () => {
   // plugin) must not skip the others.
   // Notification "Snooze" opens the app on a route (cold or warm start).
   addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route)).catch(() => {})
-  const launch = await reminders.takeLaunchRoute().then((r) => r.route, () => undefined)
+  const launch = await reminders.takeLaunchRoute().then((r) => r?.route, () => undefined)
   if (launch && launch !== '/') return router.push(launch)
   // First launch, or a permission revoked: the setup tour.
   if (route.path === '/' && (await needsSetup().catch(() => false))) router.replace('/welcome')
