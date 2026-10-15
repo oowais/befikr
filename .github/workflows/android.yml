@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to 26 (Android SDK/NDK come from the image)
     steps:
       - uses: actions/checkout@v5
         with:
@@ -62,7 +62,7 @@ jobs:
       # Runner image ships Android SDK + NDK (ANDROID_HOME, ANDROID_NDK_LATEST_HOME).
       - run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 10
 
@@ -99,13 +99,13 @@ jobs:
           "$BT/apksigner" verify befikr.apk
           ls -la befikr.apk
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: befikr-${{ env.VERSION }}-apk
           path: befikr.apk
 
       # Only main publishes; a manual run on another branch just uploads the artifact.
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: github.ref == 'refs/heads/main' && env.RELEASE == 'true'
         with:
           tag_name: v${{ env.VERSION }}
