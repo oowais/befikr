@@ -32,7 +32,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Environment notes
 
-- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. Each build is published as release `v0.1.<run>` (latest); stable link: `releases/latest/download/befikr.apk`. Discoverium tracks these releases.
+- Cloud sessions have no Android SDK (dl.google.com blocked). Android builds run in CI (`.github/workflows/android.yml`); Kotlin compile errors only show there. Pushes to `main` publish release `v0.x.y` (latest); stable link: `releases/latest/download/befikr.apk`. Discoverium tracks these releases. Branch builds only upload an artifact.
 - APK is signed with the committed sideload key (`src-tauri/android/`). Never change it, or updates stop installing over the old app.
 - CI: `core.yml` (cargo clippy/test), `web.yml` (parser tests, Nuxt build + typecheck), `android.yml` (APK).
 - Quick UI check without a device: `pnpm generate`, then render `.output/public` in Playwright with a mocked `window.__TAURI_INTERNALS__.invoke` (Chromium at `/opt/pw-browsers/chromium`).
@@ -40,5 +40,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Git
 
-- Default branch: `main`. Feature work on branches, merged via PR.
+- Default branch: `main`. Feature work on branches, merged into `main` to release.
+- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `perf:`; `!` or `BREAKING CHANGE` for breaking). They drive the version.
+- **Versioning:** semver, always `0.x.y` (`.github/scripts/next-version.sh`): `feat` or breaking → minor, anything else → patch. Tags `v0.x.y` are created by the release step; don't tag by hand or edit `version` in `tauri.conf.json` (CI sets it).
 - Don't commit build outputs (`target/`, `.output/`, `node_modules/`, APKs).

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getVersion } from '@tauri-apps/api/app'
 import type { Settings, Status } from '~/composables/api'
 
 const router = useRouter()
@@ -8,6 +9,8 @@ const reremind = ref('')
 const newWord = ref('')
 const newTime = ref('')
 const error = ref('')
+const version = ref('')
+onMounted(async () => (version.value = await getVersion().catch(() => '')))
 
 async function load() {
   try {
@@ -92,6 +95,8 @@ function addWord() {
         <button class="btn" :disabled="!newWord || !newTime">Add</button>
       </form>
     </template>
+
+    <p v-if="version" class="muted small version">Befikr {{ version }}</p>
   </main>
 </template>
 
@@ -104,4 +109,5 @@ function addWord() {
 .time-field { width: 130px; flex: none; }
 .small { font-size: 0.85rem; }
 .error { color: var(--red); }
+.version { margin-top: 40px; text-align: center; }
 </style>

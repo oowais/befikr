@@ -25,13 +25,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tags + history for the version bump
 
-      # Every build is a new version (0.1.<run>): Discoverium/Obtainium detect
-      # it as an update and Android's versionCode increases with it.
-      - name: Version from run number
+      # Semver 0.x.y from Conventional Commits (.github/scripts/next-version.sh).
+      # Android versionCode derives from it, so every release is an update.
+      - name: Version
         run: |
-          V="0.1.${{ github.run_number }}"
+          V=$(.github/scripts/next-version.sh)
+          if [ "$V" = none ]; then
+            V=$(git describe --tags --abbrev=0 --match 'v0.*'); V=${V#v}
+            echo "RELEASE=false" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE=true" >> "$GITHUB_ENV"
+          fi
           echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "Version $V"
           jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
 
       - uses: actions/setup-java@v5
@@ -81,10 +90,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: befikr-apk
+          name: befikr-${{ env.VERSION }}-apk
           path: befikr.apk
 
+      # Only main publishes; branch builds are just the artifact above.
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main' && env.RELEASE == 'true'
         with:
           tag_name: v${{ env.VERSION }}
           name: Befikr ${{ env.VERSION }}
