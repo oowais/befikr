@@ -6,7 +6,8 @@
 use rusqlite_migration::{Migrations, M};
 
 pub fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(
+    Migrations::new(vec![
+        M::up(
         "
         CREATE TABLE tasks (
           id            TEXT PRIMARY KEY,
@@ -72,7 +73,31 @@ pub fn migrations() -> Migrations<'static> {
           fires        INTEGER NOT NULL DEFAULT 0
         );
         ",
-    )])
+        ),
+        M::up(
+        "
+        -- Shopping list: separate from tasks, no reminders.
+        CREATE TABLE shopping_items (
+          id         TEXT PRIMARY KEY,
+          name       TEXT NOT NULL,
+          bought_at  INTEGER,             -- ticked off; hidden from the list
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          deleted_at INTEGER
+        );
+        CREATE INDEX shopping_items_open ON shopping_items(bought_at, deleted_at);
+
+        -- Things usually bought: chips that add to the list.
+        CREATE TABLE staples (
+          id         TEXT PRIMARY KEY,
+          name       TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          deleted_at INTEGER
+        );
+        ",
+        ),
+    ])
 }
 
 #[cfg(test)]

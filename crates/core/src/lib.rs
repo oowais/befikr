@@ -7,6 +7,7 @@
 mod model;
 pub mod recurrence;
 mod schema;
+mod shopping;
 mod store;
 
 pub use model::*;

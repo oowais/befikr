@@ -32,6 +32,9 @@ export type Stats = {
   missed: number
   weeks: WeekStats[]
 }
+export type ShoppingItem = { id: string; name: string; boughtAt: number | null }
+export type Staple = { id: string; name: string }
+export type ShoppingList = { items: ShoppingItem[]; staples: Staple[] }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
 
@@ -75,6 +78,11 @@ export const api = {
   snoozeTask: (id: string, until: number) => invoke<Task>('snooze_task', { id, until }),
   deleteTask: (id: string) => invoke<Task>('delete_task', { id }),
   restoreTask: (id: string) => invoke<Task>('restore_task', { id }),
+  shoppingList: () => invoke<ShoppingList>('shopping_list'),
+  addShoppingItem: (name: string) => invoke<ShoppingItem>('add_shopping_item', { name }),
+  setShoppingBought: (id: string, bought: boolean) => invoke<ShoppingItem>('set_shopping_bought', { id, bought }),
+  addStaple: (name: string) => invoke<Staple>('add_staple', { name }),
+  removeStaple: (id: string) => invoke<void>('remove_staple', { id }),
   settings: () => invoke<Settings>('get_settings'),
   setTimeWord: (word: string, time: string) => invoke<void>('set_time_word', { word, time }),
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),

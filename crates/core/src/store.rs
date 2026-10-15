@@ -16,7 +16,7 @@ const DEFAULT_REREMIND: &[i64] = &[5, 15, 30, 60];
 const CATCH_UP_MS: i64 = 5_000;
 
 pub struct Store {
-    conn: Connection,
+    pub(crate) conn: Connection,
     clock: Box<dyn Fn() -> i64 + Send>,
 }
 
@@ -27,7 +27,7 @@ fn system_now() -> i64 {
         .unwrap_or(0)
 }
 
-fn new_id() -> String {
+pub(crate) fn new_id() -> String {
     uuid::Uuid::now_v7().to_string()
 }
 
@@ -58,7 +58,7 @@ impl Store {
         (self.clock)()
     }
 
-    fn write<T>(&mut self, f: impl FnOnce(&Connection, i64) -> Result<T>) -> Result<T> {
+    pub(crate) fn write<T>(&mut self, f: impl FnOnce(&Connection, i64) -> Result<T>) -> Result<T> {
         let now = self.now();
         let tx = self.conn.transaction()?;
         let out = f(&tx, now)?;

@@ -5,7 +5,7 @@ mod jni;
 use std::sync::Mutex;
 
 use befikr_core::{
-    urgency, AlarmChange, Change, Completion, ListItem, NewTask, Settings, Source, Stats, Store, Task, TaskPatch, Urgency,
+    urgency, AlarmChange, Change, Completion, ListItem, NewTask, Settings, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -150,6 +150,31 @@ fn restore_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
 }
 
 #[tauri::command]
+fn shopping_list(db: State<Db>) -> Res<ShoppingList> {
+    db.store.lock().map_err(err)?.shopping_list().map_err(err)
+}
+
+#[tauri::command]
+fn add_shopping_item(db: State<Db>, name: String) -> Res<ShoppingItem> {
+    db.store.lock().map_err(err)?.add_shopping_item(&name).map_err(err)
+}
+
+#[tauri::command]
+fn set_shopping_bought(db: State<Db>, id: String, bought: bool) -> Res<ShoppingItem> {
+    db.store.lock().map_err(err)?.set_shopping_bought(&id, bought).map_err(err)
+}
+
+#[tauri::command]
+fn add_staple(db: State<Db>, name: String) -> Res<Staple> {
+    db.store.lock().map_err(err)?.add_staple(&name).map_err(err)
+}
+
+#[tauri::command]
+fn remove_staple(db: State<Db>, id: String) -> Res<()> {
+    db.store.lock().map_err(err)?.remove_staple(&id).map_err(err)
+}
+
+#[tauri::command]
 fn get_settings(db: State<Db>) -> Res<Settings> {
     db.store.lock().map_err(err)?.settings().map_err(err)
 }
@@ -276,6 +301,11 @@ pub fn run() {
             skip_task,
             delete_task,
             restore_task,
+            shopping_list,
+            add_shopping_item,
+            set_shopping_bought,
+            add_staple,
+            remove_staple,
             get_settings,
             set_time_word,
             remove_time_word,

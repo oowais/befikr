@@ -202,6 +202,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - Below: chips of things usually bought ("milk", "eggs", …). Tap a chip → added to the list (tap again or already on list → no duplicate).
    - Manage chips in place: add a new chip, long-press/✕ to remove.
    - Design notes (decide when building): separate from the main task list and its reminders; own tables (`staples`, `shopping_items`) following the sync-ready rules; later, suggest chips from what gets added most often.
+   - ✅ Oct 16: `/shopping` (cart button on the main screen). Migration 2 adds `shopping_items` (`bought_at` = ticked) + `staples`; core in `crates/core/src/shopping.rs`. Add field on top, tap to tick (Undo toast), chips already on the list show ✓ and don't duplicate; pencil → ✕ on chips + field for new ones. Not yet: suggesting chips from history.
 
 ## Risks and open items
 
@@ -332,6 +333,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (shopping)** — Shopping list (Post-MVP 9): `/shopping` behind a cart button; items + staple chips in their own tables (migration 2), core-tested. Checked in mocked Chromium. **Next:** P2P sync (Post-MVP 2).
 - **Oct 16, 2026 (skip)** — Issue #6: Skip for repeating tasks — moves to the next occurrence on the schedule, no completion recorded (`Store::skip_task`, event `skipped`). In the notification (Android + desktop, repeating tasks only), the task view header and the snooze page ("Skip this one"); toast Undo puts the old due date back. Kotlin first compiles in CI. **Next:** completion history suggestions (Post-MVP 5) or shopping list (9).
 - **Oct 16, 2026 (stats)** — Stats page replaces Completed: tiles + 8-week chart on top, completion history below; `Store::stats` (core, tested) → `stats` command. Checked in mocked Chromium. **Next:** completion history suggestions in quick add (Post-MVP 5) or shopping list (9).
 - **Oct 15, 2026 (share)** — Android "Share → Befikr" opens quick add prefilled (title = page title or text, link in notes). Kotlin first compiles in CI. **Next:** stats page.

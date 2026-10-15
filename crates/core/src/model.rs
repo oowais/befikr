@@ -229,3 +229,26 @@ mod tests {
         assert_eq!(p.rrule, None);
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShoppingItem {
+    pub id: String,
+    pub name: String,
+    pub bought_at: Option<i64>,
+}
+
+/// A chip of something usually bought.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Staple {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShoppingList {
+    pub items: Vec<ShoppingItem>,
+    pub staples: Vec<Staple>,
+}
