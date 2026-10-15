@@ -192,6 +192,11 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time.
 7. **Gamification** (way later) — Todoist Karma-style levels, streaks, goals, built on the same stats.
 8. **More views** — only if needed.
+9. **Shopping list** — own view behind a dedicated button on the main screen.
+   - Top: the current shopping list (tap to tick off; ticked items clear away).
+   - Below: chips of things usually bought ("milk", "eggs", …). Tap a chip → added to the list (tap again or already on list → no duplicate).
+   - Manage chips in place: add a new chip, long-press/✕ to remove.
+   - Design notes (decide when building): separate from the main task list and its reminders; own tables (`staples`, `shopping_items`) following the sync-ready rules; later, suggest chips from what gets added most often.
 
 ## Risks and open items
 
@@ -308,6 +313,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (night, later)** — Added post-MVP item 9: shopping list view with staple chips.
 - **Oct 15, 2026 (night)** — Step 3 built: Nuxt UI + Tauri commands + JNI on core; plugin promoted, spike removed; signed release APK in CI (`befikr-latest`); CI split into `core`, `web`, `android`. **Next:** user installs and dogfoods; fix what hurts; then step 4.
 - **Oct 15, 2026 (evening)** — Step 0 closed (custom plugin verdict). Step 2 done: `crates/core` with schema, recurrence, repository, reminders, settings, backup export; CI `core.yml`. **Next:** step 3 — real app (`app/` + `src-tauri/`), promote reminders plugin out of `spike/`, wire core via Tauri commands + JNI, parser in quick add.
 - **Oct 15, 2026 (device test 2)** — vibration, swipe-dismiss re-fire, 8 simultaneous reminders all ✅ (bundled by Android, accepted). **Left:** Doze (both modes), two-at-once under Doze, reboot, snooze from cold start.
