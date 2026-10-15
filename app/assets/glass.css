@@ -1,0 +1,347 @@
+/*
+ * Glass design — adapted from Solid Glass by DeepLethe:
+ * https://github.com/deeplethe/solid-glass
+ * Copyright (c) 2026 DeepLethe. Licensed under the MIT License; values and rules adapted.
+ *
+ * Active when <html data-design="glass">. Same markup as Classic; this file
+ * only re-dresses it. The four rules, as there:
+ *   1. The finish is at the edge: rim (light on top) + hairline + shadow,
+ *      never a gradient across the face.
+ *   2. Heavy, not airy: neutral smoky glass, little see-through.
+ *   3. Depth is thickness: panel < card < popover (thicker = more opaque).
+ *   4. One state: pressed / chosen / held open all wear the same clear pane.
+ * Primary is the ink (black on light, white on dark). Hue only where it means
+ * something: urgency, failure.
+ */
+
+html[data-design='glass'] {
+  --radius: 14px;
+  --radius-control: 11px;
+
+  --bg: oklch(0.925 0.007 265);
+  --text: oklch(0.16 0 0);
+  --muted: oklch(0.47 0 0);
+  --line: oklch(0.3 0.02 265 / 13%);
+
+  /* Thickness: panel < card (surface) < popover. */
+  --panel: oklch(0.975 0.004 265 / 44%);
+  --surface: oklch(0.98 0.004 265 / 60%);
+  --popover: oklch(0.985 0.003 265 / 96%);
+
+  /* Ink. */
+  --accent: oklch(0.2 0 0);
+  --on-accent: oklch(0.985 0 0);
+  --primary-solid: 88%;
+  --primary-rim: oklch(1 0 0 / 30%);
+  --primary-under: oklch(0 0 0 / 45%);
+  --primary-inner: oklch(1 0 0 / 7%);
+  --primary-edge: oklch(0.2 0 0 / 30%);
+
+  /* The finish. */
+  --glass-rim: oklch(1 0 0 / 90%);
+  --glass-inner: oklch(1 0 0 / 35%);
+  --glass-edge: oklch(0.38 0.03 265 / 10%);
+  --popover-edge: oklch(0.38 0.03 265 / 22%);
+  --popover-under: oklch(0.38 0.03 265 / 16%);
+  --glass-shade: oklch(0.3 0.06 265 / 28%);
+  --glass-contact: oklch(0.25 0.03 265 / 6%);
+  --glass-lift: oklch(0.25 0.03 265 / 14%);
+  --glass-control: oklch(1 0 0 / 55%);
+  --glass-control-rim: oklch(1 0 0 / 80%);
+  --glass-state: oklch(0.3 0.02 265 / 9%);
+  --glass-state-rim: oklch(1 0 0 / 85%);
+  --glass-state-edge: oklch(0.3 0.02 265 / 13%);
+  --field: oklch(1 0 0 / 60%);
+  --field-rim: oklch(1 0 0);
+  --field-edge: oklch(0.3 0.02 265 / 14%);
+  --well-shade: oklch(0.3 0.06 265 / 22%);
+  --well-rim: oklch(1 0 0 / 85%);
+  --focus-line: oklch(0.2 0 0 / 50%);
+  --glass-blur: blur(26px) saturate(180%);
+  --glass-blur-control: blur(14px);
+
+  /* Faint light under the page (light only). */
+  --light-1: oklch(0.68 0.13 165 / 7%);
+  --light-2: oklch(0.75 0.08 240 / 11%);
+  --light-3: oklch(0.68 0.13 165 / 4%);
+
+  /* Hue that means something. */
+  --red: oklch(0.6 0.2 27);
+  --yellow: oklch(0.66 0.16 58);
+  --green: oklch(0.6 0.13 165);
+  --gray: oklch(0.7 0 0);
+  --chip: var(--glass-control);
+  --shadow: 0 24px 60px -18px var(--glass-shade), 0 6px 16px -6px var(--glass-lift);
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-design='glass'] {
+    --bg: oklch(0.16 0 0);
+    --text: oklch(0.985 0 0);
+    --muted: oklch(0.72 0 0);
+    --line: oklch(1 0 0 / 9%);
+
+    --panel: oklch(1 0 0 / 4.5%);
+    --surface: oklch(0.31 0 0 / 46%);
+    --popover: oklch(0.22 0 0 / 96%);
+
+    --accent: oklch(0.94 0 0);
+    --on-accent: oklch(0.18 0 0);
+    --primary-solid: 86%;
+    --primary-rim: oklch(1 0 0);
+    --primary-under: oklch(0 0 0 / 22%);
+    --primary-inner: oklch(0 0 0 / 7%);
+    --primary-edge: oklch(1 0 0 / 26%);
+
+    --glass-rim: oklch(1 0 0 / 16%);
+    --glass-inner: oklch(1 0 0 / 4%);
+    --glass-edge: oklch(1 0 0 / 6%);
+    --popover-edge: oklch(1 0 0 / 6%);
+    --popover-under: oklch(0 0 0 / 0%);
+    --glass-shade: oklch(0 0 0 / 60%);
+    --glass-contact: oklch(0 0 0 / 10%);
+    --glass-lift: oklch(0 0 0 / 22%);
+    --glass-control: oklch(1 0 0 / 7%);
+    --glass-control-rim: oklch(1 0 0 / 11%);
+    --glass-state: oklch(1 0 0 / 7%);
+    --glass-state-rim: oklch(1 0 0 / 11%);
+    --glass-state-edge: oklch(1 0 0 / 6%);
+    --field: oklch(1 0 0 / 6%);
+    --field-rim: oklch(1 0 0 / 15%);
+    --field-edge: oklch(1 0 0 / 8%);
+    --well-shade: oklch(0 0 0 / 45%);
+    --well-rim: oklch(1 0 0 / 9%);
+    --focus-line: oklch(1 0 0 / 40%);
+    --glass-blur: blur(26px);
+
+    --light-1: transparent;
+    --light-2: transparent;
+    --light-3: transparent;
+
+    --red: oklch(0.7 0.19 22);
+    --yellow: oklch(0.77 0.15 62);
+    --green: oklch(0.78 0.13 166);
+    --gray: oklch(0.5 0 0);
+  }
+}
+
+/* ---- Page ---------------------------------------------------------------- */
+
+html[data-design='glass'] body {
+  font-family: 'Geist Variable', system-ui, -apple-system, Roboto, sans-serif;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(40rem 30rem at 10% -6rem, var(--light-1), transparent 62%),
+    radial-gradient(36rem 28rem at 95% 4rem, var(--light-2), transparent 60%),
+    radial-gradient(44rem 32rem at 55% 110%, var(--light-3), transparent 62%);
+  background-attachment: fixed;
+}
+html[data-design='glass'] .topbar h1 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+html[data-design='glass'] .section-title {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* ---- Panes --------------------------------------------------------------- */
+
+/* Card: the main list, snooze picks, grouped settings. */
+html[data-design='glass'] :is(.list, .pick, .group) {
+  background-color: var(--surface);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 0 0 1px var(--glass-inner),
+    0 0 0 1px var(--glass-edge),
+    0 1px 2px var(--glass-contact),
+    0 12px 32px -14px var(--glass-shade);
+}
+html[data-design='glass'] :is(.list, .group) {
+  padding: 4px 12px;
+}
+
+/* Rows inside a pane are divided by the hairline; no colour bar. */
+html[data-design='glass'] .list > .row {
+  border-left: 0;
+  padding-left: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+}
+html[data-design='glass'] .list > .row:last-child {
+  border-bottom: 0;
+}
+html[data-design='glass'] .list > .row .body:active {
+  background: var(--glass-state);
+  border-radius: var(--radius-control);
+}
+
+/* An open task's circle is a groove cut into the pane. Urgency is a dot
+   by the due label: hue only where it means something. */
+html[data-design='glass'] .list .ring {
+  border: 0;
+  background: color-mix(in oklch, var(--text) 4%, transparent);
+  box-shadow:
+    inset 0 1.5px 2px var(--well-shade),
+    inset 0 -1px 0 var(--well-rim),
+    inset 0 0 0 1.5px color-mix(in oklch, var(--text) 28%, transparent);
+}
+html[data-design='glass'] .list .check:active .ring {
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 -1px 0 color-mix(in oklch, var(--primary-under) 45%, transparent);
+}
+html[data-design='glass'] .list .due {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+html[data-design='glass'] .list .due::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gray);
+}
+html[data-design='glass'] .list .red .due::before { background: var(--red); }
+html[data-design='glass'] .list .yellow .due::before { background: var(--yellow); }
+html[data-design='glass'] .list .green .due::before { background: var(--green); }
+html[data-design='glass'] .list .yellow .due { color: var(--text); }
+
+/* Popover (thickest): the quick-add sheet and the toast. They rise into
+   place rather than slide in from an edge. */
+html[data-design='glass'] :is(.sheet, .toast) {
+  background-color: var(--popover);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 1px 0 var(--glass-rim),
+    inset 0 -1px 0 var(--popover-under),
+    0 0 0 1px var(--popover-edge),
+    0 24px 60px -18px var(--glass-shade),
+    0 6px 16px -6px var(--glass-lift);
+}
+html[data-design='glass'] .sheet {
+  margin: 0 8px 8px;
+  width: calc(100% - 16px);
+  border-radius: 22px;
+  animation: glass-float-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+html[data-design='glass'] .backdrop {
+  background: oklch(0 0 0 / 18%);
+}
+html[data-design='glass'] .toast-action {
+  color: var(--text);
+  font-weight: 600;
+}
+@keyframes glass-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+}
+
+/* ---- Controls ------------------------------------------------------------ */
+
+/* Clear glass: buttons, chips, the snooze picks under the finger. */
+html[data-design='glass'] :is(.btn, .chip) {
+  background-color: var(--glass-control);
+  -webkit-backdrop-filter: var(--glass-blur-control);
+  backdrop-filter: var(--glass-blur-control);
+  border: 0;
+  border-radius: var(--radius-control);
+  box-shadow:
+    inset 0 1px 0 var(--glass-control-rim),
+    inset 0 0 0 1px var(--glass-edge),
+    0 1px 2px var(--glass-contact);
+}
+html[data-design='glass'] .chip {
+  border-radius: 999px;
+}
+html[data-design='glass'] .chip.off {
+  background: transparent;
+  color: var(--muted);
+  box-shadow:
+    inset 0 1px 0 var(--glass-control-rim),
+    inset 0 0 0 1px var(--line);
+}
+html[data-design='glass'] :is(.btn, .chip, .pick, .icon-btn):active {
+  background-color: var(--glass-state);
+  box-shadow:
+    inset 0 1px 0 var(--glass-state-rim),
+    0 0 0 1px var(--glass-state-edge);
+}
+html[data-design='glass'] .btn.danger {
+  color: var(--red);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--red) 30%, transparent),
+    inset 0 0 0 1px color-mix(in oklch, var(--red) 16%, transparent);
+}
+
+/* The one thing that asks to be pressed: a solid pane of ink. */
+html[data-design='glass'] :is(.btn.primary, .fab) {
+  background-color: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  color: var(--on-accent);
+  -webkit-backdrop-filter: var(--glass-blur-control);
+  backdrop-filter: var(--glass-blur-control);
+  border: 1px solid color-mix(in oklab, var(--accent) 55%, var(--primary-edge));
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 -1px 0 var(--primary-under),
+    inset 0 0 0 1px var(--primary-inner),
+    0 1px 2px var(--glass-contact),
+    0 8px 18px -9px var(--glass-shade);
+}
+html[data-design='glass'] :is(.btn.primary, .fab):active {
+  background-color: color-mix(in oklch, var(--accent) calc(var(--primary-solid) - 10%), transparent);
+  box-shadow:
+    inset 0 1px 0 var(--primary-rim),
+    inset 0 -1px 0 var(--primary-under),
+    0 1px 1px var(--glass-contact);
+}
+html[data-design='glass'] .fab {
+  border-radius: 20px;
+  font-weight: 300;
+}
+
+/* Fields: clear glass to type on; typing brightens the hairline, no ring. */
+html[data-design='glass'] :is(.field, .time) {
+  background-color: var(--field);
+  border: 1px solid var(--field-edge);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 1px 0 var(--field-rim);
+}
+html[data-design='glass'] :is(.field, .time):focus {
+  border-color: var(--focus-line);
+}
+
+/* Settings: a group pane holds its rows. */
+html[data-design='glass'] .group > .perm:last-child {
+  border-bottom: 0;
+}
+
+/* Design picker (Settings): the chosen one wears the one state. */
+html[data-design='glass'] .design-option[aria-pressed='true'] {
+  background-color: var(--glass-state);
+  box-shadow:
+    inset 0 1px 0 var(--glass-state-rim),
+    0 0 0 1.5px var(--accent);
+}
+
+/* Less transparency when the system asks for it: opaque panes keep the edge. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-design='glass'] * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

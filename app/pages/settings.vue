@@ -3,6 +3,7 @@ import { getVersion } from '@tauri-apps/api/app'
 import type { Settings, Status } from '~/composables/api'
 
 const router = useRouter()
+const { design, set: setDesign } = useDesign()
 const settings = ref<Settings | null>(null)
 const status = ref<Status | null>(null)
 const reremind = ref('')
@@ -56,8 +57,23 @@ function addWord() {
     </header>
     <p v-if="error" class="error">{{ error }}</p>
 
+    <h2 class="section-title">Design</h2>
+    <div class="designs">
+      <button
+        v-for="d in DESIGNS"
+        :key="d.value"
+        class="btn design-option"
+        :aria-pressed="design === d.value"
+        @click="setDesign(d.value)"
+      >
+        <b>{{ d.label }}<span v-if="design === d.value"> ✓</span></b>
+        <span class="muted small">{{ d.hint }}</span>
+      </button>
+    </div>
+
     <template v-if="status">
       <h2 class="section-title">Reminders</h2>
+      <div class="group">
       <div class="perm">
         <span>Notifications</span>
         <span v-if="status.notifications">✅</span>
@@ -73,6 +89,7 @@ function addWord() {
         <span v-if="status.batteryUnrestricted">✅</span>
         <button v-else class="btn" @click="run(reminders.openBatterySettings)">Allow</button>
       </div>
+      </div>
     </template>
 
     <template v-if="settings">
@@ -84,10 +101,12 @@ function addWord() {
       <p class="muted small">Unacted reminders come back after each interval; the last one repeats.</p>
 
       <h2 class="section-title">Time words</h2>
+      <div class="group">
       <div v-for="(time, word) in settings.timeWords" :key="word" class="perm">
         <span class="word">{{ word }}</span>
         <input type="time" class="time" :value="time" @change="setWord(String(word), ($event.target as HTMLInputElement).value)" />
         <button class="icon-btn" :aria-label="`Remove ${word}`" @click="run(() => api.removeTimeWord(String(word)))">✕</button>
+      </div>
       </div>
       <form class="row add" @submit.prevent="addWord">
         <input v-model="newWord" class="field" placeholder="dawn" />
@@ -110,4 +129,7 @@ function addWord() {
 .small { font-size: 0.85rem; }
 .error { color: var(--red); }
 .version { margin-top: 40px; text-align: center; }
+.designs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.design-option { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; border: 2px solid transparent; }
+.design-option[aria-pressed='true'] { border-color: var(--accent); }
 </style>
