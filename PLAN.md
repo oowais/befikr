@@ -226,7 +226,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
 | 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
-| 1 | **Parser** (`packages/parser`), test table first | 🟡 | v1 done: 38 table tests green in 4 time zones; see notes below |
+| 1 | **Parser** (`packages/parser`), test table first | ✅ | 57 tests; day-of-month, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI releases `v0.x.y` (main only). Needs on-device check (see step 3 notes) |
 | 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | All built (backup in PR #1). Needs on-device check of backup (folder picker, daily run, restore) |
@@ -277,7 +277,7 @@ Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed,
 - Permission tour (`/welcome`): shown on launch while a permission is missing (unless "Later" in the last 7 days); steps tick off as Android reports them granted. Reopen from Settings.
 - Date & time picker (`DateTimeSheet.vue`): quick days, month calendar, time-word chips, hour/minute wheels; used in quick add, task view, snooze.
 - Swipe gestures on list rows: right = complete (ink reveal), left = snooze sheet (amber reveal; dated tasks only). Axis-locked so vertical scroll is untouched; haptic tick at the threshold; a swipe never counts as a tap.
-- Known MVP gaps: editing a title doesn't re-parse dates; highlight shown as chips (tap to un-parse), not inline in the text; desktop builds have no reminder scheduler.
+- Known MVP gaps: desktop builds have no reminder scheduler. (Fixed: editing a title offers its date/repeat; parsed words are highlighted inline in quick add.)
 
 Device checklist:
 - [ ] Quick add: "call mom tomorrow 6pm", "buy milk friday" (time prompt), "bins every monday evening" (repeat chip + schedule toggle)
@@ -314,9 +314,9 @@ API: `parse(text, now, settings?, { ignore? }) → { title, due: {date, time|nul
 
 How it works: recurrence first (`every …` → grow phrase token by token through `RRule.parseText`, since it ignores trailing words; custom rules for start/end of month, weekend, "every other"; "every <time word>" = daily) → mask it → chrono (custom time-word parser + refiner overriding chrono's defaults) → strip spans + connector words (on/at/by/due/before) for the title.
 
+Fixed Oct 15 (night): "on the 1st", "every year on march 3" / "every 3rd of march", "every last friday" / "first monday" / "second tuesday of the month" (monthly `BYDAY=±nXX`), "every 2nd tuesday" (= every other week), "every 15th", "every last day of the month", "every fortnight/quarter", "daily/weekly/biweekly/monthly/yearly"; "every 2 weeks on monday" starts next Monday. `firstDue(rrule, now, time)` exported for the repeat builder (`app/components/RepeatSheet.vue`), which covers anything typing can't.
+
 Known gaps (add test rows when fixing):
-- "pay rent on the 1st" (no "every") isn't a date for chrono.
-- "every year on march 3" loses the day (rrule `fromText` limitation).
 - "next fri" = Friday of next week (chrono semantics); plain "fri" = coming Friday.
 - Only the first date phrase is used; others stay in the title.
 - Tests to add from dogfooding; Vikunja's test suite is a good source of phrasings (read only, AGPL).
@@ -325,6 +325,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (night, 2)** — v0.4.0 merged (PR #3). Parser gaps closed (step 1 ✅), repeat builder sheet (presets, every N unit, weekdays, day-of-month / nth weekday, yearly date) in quick add + task page, inline highlight of parsed words, title edits offer their date. **Next:** user tests; UX polish (TODO #5); reliability tests (#6).
 - **Oct 15, 2026 (night)** — v0.3.1 released (should have been 0.4.0: version script missed squash bodies — fixed). PR #3: release notes from commits, quick add updates while the keyboard composes (swipe/predictive typing), one date chip that opens the picker (✕ keeps words as text), date-only text saves, completed list → open/undo/delete. Setup guide never opened: plugin lacked `register_listener` permission, the throw skipped the check — fixed (also fixes snooze-from-notification while the app is open). Splash screen (`app/spa-loading-template.html`). **Next:** user tests on device; then parser gaps (TODO #4).
 - **Oct 15, 2026 (swipe)** — Swipe right to complete, left to snooze (in PR #1).
 - **Oct 15, 2026 (backup)** — Backup: daily to a picked folder (keep 7), export a copy, restore from file (in PR #1).
