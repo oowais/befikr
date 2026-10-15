@@ -15,8 +15,9 @@ if [ -z "$(git rev-list "$last..HEAD")" ]; then
 fi
 
 IFS=. read -r _ minor patch <<<"${last#v}"
+# Squash merges list the branch commits in the body as "* feat: ...".
 log=$(git log --format='%s%n%b' "$last..HEAD")
-if grep -qE '^[a-z]+(\([^)]*\))?!:|BREAKING CHANGE' <<<"$log" || grep -qE '^feat(\([^)]*\))?:' <<<"$log"; then
+if grep -qE '^(\* )?[a-z]+(\([^)]*\))?!:|BREAKING CHANGE' <<<"$log" || grep -qE '^(\* )?feat(\([^)]*\))?:' <<<"$log"; then
   echo "0.$((minor + 1)).0"
 else
   echo "0.$minor.$((patch + 1))"
