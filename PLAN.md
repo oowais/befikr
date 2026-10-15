@@ -182,6 +182,11 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 ## Post-MVP
 
 1. **Desktop builds** — Windows and Linux from the same codebase.
+   - **Start hidden**: `befikr --hidden` starts straight to the tray (no window), for the user's own autostart (Linux: `~/.config/autostart` / systemd user unit / WM config).
+   - **Windows**: Settings toggles "Start with Windows" and "Start hidden" (e.g. `tauri-plugin-autostart`, which passes `--hidden`).
+   - **System tray** on both: open / quick add / quit; closing the window hides to tray so reminders keep running.
+   - **Notifications** on both: native toasts at due time with Complete / Snooze actions where the OS allows; scheduler runs in the Rust process (no AlarmManager on desktop), re-arms from the DB on start.
+   - Single instance: a second launch focuses the running one.
 2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online.
    - Candidates: iroh (P2P transport, NAT traversal); Loro or Automerge only if full CRDT is ever needed.
    - Conflict strategy: per-field last-write-wins.
