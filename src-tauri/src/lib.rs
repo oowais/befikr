@@ -1,3 +1,5 @@
+#[cfg(desktop)]
+mod desktop;
 mod jni;
 
 use std::sync::Mutex;
@@ -9,8 +11,10 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_reminders::RemindersExt;
 
-struct Db {
-    store: Mutex<Store>,
+pub(crate) struct Db {
+    pub(crate) store: Mutex<Store>,
+    /// For the Android alarms (receivers open the DB themselves).
+    #[cfg_attr(desktop, allow(dead_code))]
     path: String,
 }
 
@@ -20,9 +24,32 @@ fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
 
-/// Hand the core's alarm decision to the platform scheduler. Scheduling
-/// failures (desktop has no scheduler yet) must not fail the user's write.
-fn apply(app: &AppHandle, db: &Db, alarm: &AlarmChange) {
+/// Hand the core's alarm decision to the platform scheduler: the in-process
+/// one on desktop, AlarmManager on Android. Scheduling failures must not fail
+/// the user's write.
+pub(crate) fn apply(app: &AppHandle, db: &Db, alarm: &AlarmChange) {
+    #[cfg(desktop)]
+    {
+        let _ = db;
+        let scheduler = app.state::<desktop::Scheduler>();
+        // A shown reminder is stale once its task changes (done, snoozed, moved).
+        match alarm {
+            AlarmChange::Schedule(a) => {
+                desktop::close_notification(&a.task_id);
+                scheduler.schedule(a.clone());
+            }
+            AlarmChange::Cancel { task_id } => {
+                desktop::close_notification(task_id);
+                scheduler.cancel(task_id);
+            }
+        }
+    }
+    #[cfg(mobile)]
+    apply_mobile(app, db, alarm);
+}
+
+#[cfg(mobile)]
+fn apply_mobile(app: &AppHandle, db: &Db, alarm: &AlarmChange) {
     let r = match alarm {
         AlarmChange::Schedule(a) => app.reminders().schedule(
             &db.path,
@@ -164,13 +191,15 @@ pub fn run() {
             if let Err(e) = app.reminders().configure(&path) {
                 eprintln!("reminders configure failed: {e}");
             }
-            let db = Db { store: Mutex::new(store), path };
+            app.manage(Db { store: Mutex::new(store), path });
+            #[cfg(desktop)]
+            app.manage(desktop::Scheduler::start(app.handle().clone()));
             // Re-arm everything on start (same as the boot receiver).
+            let db = app.state::<Db>();
             let pending = db.store.lock().map_err(err)?.pending_alarms()?;
             for a in pending {
                 apply(app.handle(), &db, &AlarmChange::Schedule(a));
             }
-            app.manage(db);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
