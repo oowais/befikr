@@ -37,7 +37,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 - APK is signed with the committed sideload key (`src-tauri/android/`). Never change it, or updates stop installing over the old app.
 - CI: PRs run `core.yml` (cargo clippy + tests, whole workspace) and `web.yml` (parser tests, Nuxt build + typecheck); `android.yml` (APK + release) runs only on `main`. Kotlin is therefore first compiled after merge — or trigger `android` by hand on the branch to check it early.
 - Quick UI check without a device: `pnpm generate`, then render `.output/public` in Playwright with a mocked `window.__TAURI_INTERNALS__.invoke` (Chromium at `/opt/pw-browsers/chromium`).
-- Linux desktop build works after `apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev`.
+- Linux desktop build works after `apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev`. Local desktop binary with the bundled UI: `vp exec tauri build --debug --no-bundle` → `target/debug/befikr` (`--hidden` = tray only). Test with `XDG_DATA_HOME`/`XDG_CONFIG_HOME` pointed at a scratch folder to keep real data out. Desktop code lives in `src-tauri/src/desktop/` (`#[cfg(desktop)]`); Windows parts are only compiled in CI (`core.yml` → `windows`).
 
 ## Git
 

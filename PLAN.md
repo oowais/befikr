@@ -181,7 +181,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 
 ## Post-MVP
 
-1. **Desktop builds** — Windows and Linux from the same codebase.
+1. **Desktop builds** — Windows and Linux from the same codebase. 🟡 Built Oct 15 (scheduler + notifications, tray, single instance, `--hidden`, start at login / start hidden); not yet packaged or released (no desktop artifacts in CI).
    - **Start hidden**: `befikr --hidden` starts straight to the tray (no window), for the user's own autostart (Linux: `~/.config/autostart` / systemd user unit / WM config).
    - **Windows**: Settings toggles "Start with Windows" and "Start hidden" (e.g. `tauri-plugin-autostart`, which passes `--hidden`).
    - **System tray** on both: open / quick add / quit; closing the window hides to tray so reminders keep running.
@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (desktop)** — Desktop reminders: Rust scheduler thread (`src-tauri/src/desktop/`), re-armed from the DB on start; notify-rust notifications with Open / Complete / Snooze (D-Bus on Linux, toasts on Windows; tested on Linux: fire, Complete from the notification). Tray (Open, Quick add, Quit), close to tray, single instance, `--hidden`; Settings → Startup (start at login, start hidden). CI: Windows clippy job in `core.yml`. **Next:** desktop packages (AppImage/deb, Windows installer) in CI releases.
 - **Oct 15, 2026 (polish 3)** — Repeat mode is a two-option switch ("On schedule" | "From when done") in quick add and task view. Quick add notes grow with their text. Snoozing (and finishing the setup guide) unwinds history to the list, so back doesn't return to the task/snooze screens. **Next:** desktop builds (Post-MVP 1), planned Oct 16.
 - **Oct 15, 2026 (back + draft)** — Android back closes the top open sheet (quick add, date/time, repeat) via Tauri `onBackButtonPress`; no sheet → back a page, or exit from the first (`core:app:allow-exit`). Quick add keeps its draft (text, More, date, repeat, notes, time) when closed by tapping outside or back, until Add, the new red Clear button, or app exit. Drag-to-close not added (wheels use drag). **Next:** device check of back button; polish from dogfooding.
 - **Oct 15, 2026 (week + settings)** — "This week" now ends on Sunday (Monday–Sunday weeks), not 7 rolling days. Settings: with every permission granted, Reminders collapses to one "All set up" row (tap to see them and the setup guide). **Next:** device checks; polish from dogfooding.
