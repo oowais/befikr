@@ -58,6 +58,8 @@ const sections = computed(() => {
 })
 const headed = computed(() => sections.value.length > 1)
 
+watch(listVersion, refresh)
+
 let tick: ReturnType<typeof setInterval>
 const onVisible = () => document.visibilityState === 'visible' && refresh()
 onMounted(() => {

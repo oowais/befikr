@@ -260,6 +260,22 @@ impl Store {
         })
     }
 
+    /// Undo a delete: brings back the task and the subtasks deleted with it.
+    pub fn restore_task(&mut self, id: &str) -> Result<Change> {
+        self.write(|c, now| {
+            let t = get_any(c, id)?;
+            let Some(deleted_at) = t.deleted_at else {
+                return Err(Error::Invalid("task is not deleted".into()));
+            };
+            c.execute(
+                "UPDATE tasks SET deleted_at = NULL, updated_at = ?3 WHERE (id = ?1 OR parent_id = ?1) AND deleted_at = ?2",
+                params![id, deleted_at, now],
+            )?;
+            log(c, id, "restored", now, None, None, Source::App)?;
+            finish(c, id, true)
+        })
+    }
+
     // ------------------------------------------------------------ reminders
 
     /// An alarm went off. Decides whether to show it and when to re-remind.

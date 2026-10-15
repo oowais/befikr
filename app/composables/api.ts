@@ -1,5 +1,6 @@
 // Typed wrappers around the Tauri commands in src-tauri/src/lib.rs.
 import { invoke } from '@tauri-apps/api/core'
+import { ref } from 'vue'
 
 export type Task = {
   id: string
@@ -42,6 +43,10 @@ export type TaskPatch = {
   adaptive?: boolean
 }
 
+/** Bumped when a write happens off the main list (e.g. an Undo toast); the list reloads. */
+export const listVersion = ref(0)
+export const listChanged = () => listVersion.value++
+
 export const deviceTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const api = {
@@ -55,6 +60,7 @@ export const api = {
   reopenTask: (id: string) => invoke<Task>('reopen_task', { id }),
   snoozeTask: (id: string, until: number) => invoke<Task>('snooze_task', { id, until }),
   deleteTask: (id: string) => invoke<Task>('delete_task', { id }),
+  restoreTask: (id: string) => invoke<Task>('restore_task', { id }),
   settings: () => invoke<Settings>('get_settings'),
   setTimeWord: (word: string, time: string) => invoke<void>('set_time_word', { word, time }),
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),

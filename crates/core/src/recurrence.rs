@@ -50,7 +50,8 @@ fn first_after(rrule: &str, dtstart: DateTime<Tz>, after: DateTime<Tz>) -> Resul
 /// Next due after completing an occurrence.
 ///
 /// * fixed: next scheduled occurrence after both the current due and now
-///   (missed occurrences are skipped, like rent or bins).
+///   (missed occurrences are skipped, like rent or bins). Done late, today
+///   counts as done too: no second reminder later the same day.
 /// * adaptive: counted from completion, keeping the time of day
 ///   (plants, haircut).
 pub fn next_due(rrule: &str, tz: Tz, due_at: i64, adaptive: bool, now: i64) -> Result<Option<i64>> {
@@ -63,8 +64,12 @@ pub fn next_due(rrule: &str, tz: Tz, due_at: i64, adaptive: bool, now: i64) -> R
             .earliest()
             .unwrap_or(now_tz);
         first_after(rrule, start, start.max(now_tz))?
+    } else if now_tz > due {
+        let tomorrow = now_tz.date_naive().succ_opt().unwrap_or(now_tz.date_naive()).and_time(NaiveTime::MIN);
+        let start = tz.from_local_datetime(&tomorrow).earliest().unwrap_or(now_tz);
+        first_after(rrule, due, start - Duration::seconds(1))?
     } else {
-        first_after(rrule, due, due.max(now_tz))?
+        first_after(rrule, due, due)?
     };
     Ok(next.map(to_utc_ms))
 }
@@ -90,6 +95,17 @@ mod tests {
     fn fixed_skips_missed_occurrences() {
         let due = berlin(2026, 10, 1, 9, 0);
         let now = berlin(2026, 10, 15, 12, 0);
+        assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+    }
+
+    #[test]
+    fn fixed_late_skips_rest_of_today() {
+        // Overdue since Oct 10, done Oct 15 at 08:00: not again at 09:00 today.
+        let due = berlin(2026, 10, 10, 9, 0);
+        let now = berlin(2026, 10, 15, 8, 0);
+        assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
+        // Done early (before today's due): next is tomorrow's.
+        let due = berlin(2026, 10, 15, 9, 0);
         assert_eq!(next_due("FREQ=DAILY", B, due, false, now).unwrap(), Some(berlin(2026, 10, 16, 9, 0)));
     }
 

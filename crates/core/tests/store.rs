@@ -225,6 +225,25 @@ fn soft_delete() {
 }
 
 #[test]
+fn restore_undoes_delete() {
+    let (mut s, clock) = store();
+    let id = s.add_task(task("x", Some(at(15, 18, 0)))).unwrap().task.id;
+    let old = s.add_task(NewTask { title: "old sub".into(), parent_id: Some(id.clone()), ..Default::default() }).unwrap();
+    s.add_task(NewTask { title: "sub".into(), parent_id: Some(id.clone()), ..Default::default() }).unwrap();
+    s.delete_task(&old.task.id).unwrap();
+    clock.fetch_add(MIN, Ordering::SeqCst);
+    s.delete_task(&id).unwrap();
+    let c = s.restore_task(&id).unwrap();
+    assert!(c.task.deleted_at.is_none());
+    assert!(matches!(c.alarm, AlarmChange::Schedule(_)));
+    assert_eq!(titles(&s), ["x"]);
+    // Only the subtasks deleted with it come back.
+    let subs: Vec<_> = s.list_subtasks(&id).unwrap().into_iter().map(|t| t.title).collect();
+    assert_eq!(subs, ["sub"]);
+    assert!(s.restore_task(&id).is_err(), "not deleted any more");
+}
+
+#[test]
 fn settings_and_time_words() {
     let (mut s, _) = store();
     let st = s.settings().unwrap();

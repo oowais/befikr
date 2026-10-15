@@ -105,7 +105,10 @@ async function complete() {
   haptic()
   sound.complete()
   const t = await api.completeTask(id.value)
-  show({ message: 'Completed', action: { label: 'Undo', run: () => api.reopenTask(t.id) } })
+  show({
+    message: t.rrule && !t.completedAt ? 'Done · next one scheduled' : 'Completed',
+    action: { label: 'Undo', run: () => api.reopenTask(t.id).then(listChanged) },
+  })
   router.back()
 }
 async function reopen() {
@@ -118,8 +121,8 @@ async function reopen() {
   }
 }
 async function remove() {
-  await api.deleteTask(id.value)
-  show({ message: 'Deleted' })
+  const t = await api.deleteTask(id.value)
+  show({ message: 'Deleted', action: { label: 'Undo', run: () => api.restoreTask(t.id).then(listChanged) } })
   router.back()
 }
 </script>

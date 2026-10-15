@@ -306,7 +306,7 @@ Device checklist:
 Decisions:
 - `due_at` UTC ms + `tz` per task; RRULE body stored bare, DTSTART built from current `due_at` in `tz` (keeps wall-clock time across DST).
 - Snooze sets `snoozed_until`; `due_at` stays for stats. Effective due = snooze ?? due. Editing the date clears the snooze.
-- Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped. Adaptive: counted from completion day, keeping time of day.
+- Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped (not recorded anywhere). Done late → also skips the rest of today. Adaptive: counted from completion day, keeping time of day.
 - Recurring completion: `completions` row + due advances + subtasks unchecked. Undo restores previous due.
 - Parent completion auto-checks open subtasks with the same timestamp; undo reopens exactly those.
 - Re-remind state is device-local (`alarm_state`, not synced). Fires escalate per `reremind_minutes` (default 5/15/30/60). Title edits keep escalation; date/snooze changes restart it.
@@ -330,6 +330,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (undo)** — Undo on every complete and delete: delete gets an Undo toast (`restore_task` in core brings back the task and subtasks deleted with it); task-view Complete/Delete undo now refreshes the list. Fixed recurring task done late no longer comes back later the same day (overdue daily done at 08:00 → next is tomorrow 09:00, not today 09:00). **Next:** decide on recording missed occurrences; polish quick add + task view.
 - **Oct 15, 2026 (UX polish 1)** — First local setup on CachyOS; lockfile deps stepped back past pnpm's 24 h release age. UX pass 1: main list in Overdue / Today / Upcoming / No date sections (headers only when >1), Today rows show only the time, times without leading zero, compact "2h late"; snooze picks rounded to 5 min with time-only subtitles; completed shows "1h late". Commits stay local (not pushed). **Next:** more polish (quick add, task view), device checks.
 - **Oct 15, 2026 (night, 2)** — v0.4.0 merged (PR #3). Parser gaps closed (step 1 ✅), repeat builder sheet (presets, every N unit, weekdays, day-of-month / nth weekday, yearly date) in quick add + task page, inline highlight of parsed words, title edits offer their date. **Next:** user tests; UX polish (TODO #5); reliability tests (#6).
 - **Oct 15, 2026 (night)** — v0.3.1 released (should have been 0.4.0: version script missed squash bodies — fixed). PR #3: release notes from commits, quick add updates while the keyboard composes (swipe/predictive typing), one date chip that opens the picker (✕ keeps words as text), date-only text saves, completed list → open/undo/delete. Setup guide never opened: plugin lacked `register_listener` permission, the throw skipped the check — fixed (also fixes snooze-from-notification while the app is open). Splash screen (`app/spa-loading-template.html`). **Next:** user tests on device; then parser gaps (TODO #4).

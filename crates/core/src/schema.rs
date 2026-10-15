@@ -41,7 +41,7 @@ pub fn migrations() -> Migrations<'static> {
         CREATE TABLE task_events (
           id          TEXT PRIMARY KEY,
           task_id     TEXT NOT NULL,
-          kind        TEXT NOT NULL,      -- created|updated|snoozed|completed|reopened|deleted|fired|dismissed
+          kind        TEXT NOT NULL,      -- created|updated|snoozed|completed|reopened|deleted|restored|fired|dismissed
           at          INTEGER NOT NULL,
           due_at_then INTEGER,
           snoozed_to  INTEGER,
