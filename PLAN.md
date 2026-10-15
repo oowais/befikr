@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (time prompt)** — Quick add: a date typed without a time shows "No time given" with the time words as chips (09:00 picked; Add accepts it, "Other…" opens the picker). Disappears once a time is typed or picked. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (ordinals)** — Parser: bare numeric ordinals ("pay rent 21st", "21st 5pm") set the next such day; 66 tests. Workflow now: commit straight to local `main` after checks; user pushes. **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (UX polish 2)** — Missed occurrences of late fixed recurring tasks logged as `missed` events (stats only). Quick add: dropped the `→ title` preview line (highlights already show it); with More open, date/repeat show only as fields, not also as chips. Task view: notes grow with their text (no fixed box/resize handle); "+ Notes" focuses the field. **Next:** device checks; more polish from dogfooding.
 - **Oct 15, 2026 (undo)** — Undo on every complete and delete: delete gets an Undo toast (`restore_task` in core brings back the task and subtasks deleted with it); task-view Complete/Delete undo now refreshes the list. Fixed recurring task done late no longer comes back later the same day (overdue daily done at 08:00 → next is tomorrow 09:00, not today 09:00). **Next:** decide on recording missed occurrences; polish quick add + task view.

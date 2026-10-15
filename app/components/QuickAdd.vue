@@ -4,12 +4,15 @@
 // Inputs update on every keystroke (no v-model): v-model waits for the
 // keyboard to commit a word, so swipe/predictive typing lagged a word behind.
 import { firstDue } from '@befikr/parser'
-import { CalendarDays, ChevronDown, ChevronUp, Repeat, X } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, X } from 'lucide-vue-next'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
 const text = ref('')
 const ignored = ref<string[]>([])
 const DEFAULT_TIME = '09:00'
+/** Time picked in the "no time given" prompt; DEFAULT_TIME until then. */
+const chosenTime = ref<string | null>(null)
+const fallbackTime = computed(() => chosenTime.value ?? DEFAULT_TIME)
 const adaptive = ref(false)
 const expanded = ref(false)
 const manualDue = ref<number | null>(null)
@@ -64,10 +67,20 @@ const dueAt = computed<number | null>(() => {
   const d = parsed.value.due
   // A built repeat starts on its first matching day (at any typed time).
   if (manualRule.value) {
-    const f = firstDue(manualRule.value, new Date(), d?.time ?? DEFAULT_TIME)
+    const f = firstDue(manualRule.value, new Date(), d?.time ?? fallbackTime.value)
     return localMs(f.date, f.time!)
   }
-  return d ? localMs(d.date, d.time ?? DEFAULT_TIME) : null
+  return d ? localMs(d.date, d.time ?? fallbackTime.value) : null
+})
+
+// A date was typed without a time: ask, with 09:00 picked. Add accepts it.
+const promptTime = computed(() => manualDue.value == null && dueAt.value != null && !parsed.value.due?.time)
+const timeWords = useTimeWords()
+const timeChoices = computed(() => {
+  const list = Object.entries(timeWords.value)
+    .map(([word, t]) => ({ word, t }))
+    .sort((a, b) => a.t.localeCompare(b.t))
+  return list.some((c) => c.t === DEFAULT_TIME) ? list : [{ word: '', t: DEFAULT_TIME }, ...list]
 })
 
 // ✕ on the repeat chip: no repeat; typed words stay as text.
@@ -94,7 +107,7 @@ async function save() {
     // A repeat without a date starts on its first day at the default time.
     let due = dueAt.value
     if (repeat.value.rrule && due == null) {
-      const f = firstDue(repeat.value.rrule, new Date(), DEFAULT_TIME)
+      const f = firstDue(repeat.value.rrule, new Date(), fallbackTime.value)
       due = localMs(f.date, f.time!)
     }
     await api.addTask({
@@ -158,6 +171,23 @@ async function save() {
         </button>
       </div>
 
+      <div v-if="promptTime" class="time-prompt">
+        <span class="muted label"><Clock :size="16" /> No time given</span>
+        <div class="times">
+          <button
+            v-for="c in timeChoices"
+            :key="c.t + c.word"
+            type="button"
+            class="chip"
+            :class="{ chosen: c.t === fallbackTime }"
+            @click="chosenTime = c.t"
+          >
+            <span v-if="c.word" class="cap">{{ c.word }}</span> <span :class="{ muted: c.word }">{{ timeLabel(localMs('2000-01-01', c.t)) }}</span>
+          </button>
+          <button type="button" class="chip off" @click="picking = true">Other…</button>
+        </div>
+      </div>
+
       <div v-if="expanded" class="more">
         <button type="button" class="field pick-date" @click="picking = true">
           <CalendarDays :size="18" />
@@ -217,6 +247,9 @@ async function save() {
 .chip.split .part { display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px 6px 12px; }
 .chip.split .x { display: grid; place-items: center; width: 34px; height: 32px; color: var(--muted); }
 .more { display: flex; flex-direction: column; gap: 10px; }
+.time-prompt { display: flex; flex-direction: column; gap: 6px; }
+.time-prompt .label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.times { display: flex; flex-wrap: wrap; gap: 8px; }
 .pick-date { display: flex; align-items: center; gap: 10px; text-align: left; }
 .cap::first-letter { text-transform: uppercase; }
 .small { margin: 0; }
