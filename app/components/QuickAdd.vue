@@ -3,6 +3,7 @@
 // ✕ keeps the words as plain text. Full controls hide behind "More".
 // Inputs update on every keystroke (no v-model): v-model waits for the
 // keyboard to commit a word, so swipe/predictive typing lagged a word behind.
+import { firstDue } from '@befikr/parser'
 import { CalendarDays, ChevronDown, ChevronUp, Repeat, X } from 'lucide-vue-next'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
@@ -13,7 +14,9 @@ const adaptive = ref(false)
 const expanded = ref(false)
 const manualDue = ref<number | null>(null)
 const picking = ref(false)
-const repeatText = ref('')
+/** Rule from the repeat builder; undefined = use what was typed. */
+const manualRule = ref<string | null | undefined>(undefined)
+const pickingRepeat = ref(false)
 const description = ref('')
 const saving = ref(false)
 const error = ref('')
@@ -34,24 +37,44 @@ const typed = (e: Event) => (e.target as HTMLInputElement | HTMLTextAreaElement)
 const parsed = computed(() => parseWith(text.value, ignored.value))
 // A task that is only a date ("tomorrow") still saves, with the words as title.
 const title = computed(() => parsed.value.title.trim() || text.value.trim())
+// Text split at parsed spans, drawn behind the textarea to highlight them.
+const segments = computed(() => {
+  const out: { text: string; kind?: 'date' | 'recurrence' }[] = []
+  let pos = 0
+  for (const sp of parsed.value.spans) {
+    if (sp.start > pos) out.push({ text: text.value.slice(pos, sp.start) })
+    out.push({ text: text.value.slice(sp.start, sp.end), kind: sp.kind })
+    pos = sp.end
+  }
+  out.push({ text: text.value.slice(pos) + '\u200b' })
+  return out
+})
 const spanText = (kind: 'date' | 'recurrence') => {
   const s = parsed.value.spans.find((x) => x.kind === kind)
   return s ? text.value.slice(s.start, s.end) : null
 }
 
 const repeat = computed(() => {
-  if (repeatText.value.trim()) {
-    const r = parseWith(`x ${repeatText.value.trim()}`, [])
-    return { rrule: r.rrule, text: r.recurrenceText }
-  }
+  if (manualRule.value !== undefined) return { rrule: manualRule.value, text: manualRule.value && rruleText(manualRule.value) }
   return { rrule: parsed.value.rrule, text: parsed.value.recurrenceText }
 })
 
 const dueAt = computed<number | null>(() => {
   if (manualDue.value != null) return manualDue.value
   const d = parsed.value.due
+  // A built repeat starts on its first matching day (at any typed time).
+  if (manualRule.value) {
+    const f = firstDue(manualRule.value, new Date(), d?.time ?? DEFAULT_TIME)
+    return localMs(f.date, f.time!)
+  }
   return d ? localMs(d.date, d.time ?? DEFAULT_TIME) : null
 })
+
+// ✕ on the repeat chip: no repeat; typed words stay as text.
+function clearRepeat() {
+  unparse('recurrence')
+  manualRule.value = undefined
+}
 
 function unparse(kind: 'date' | 'recurrence') {
   const s = spanText(kind)
@@ -68,11 +91,11 @@ async function save() {
   saving.value = true
   error.value = ''
   try {
-    // A repeat without a date starts today at the prompt time.
+    // A repeat without a date starts on its first day at the default time.
     let due = dueAt.value
     if (repeat.value.rrule && due == null) {
-      const now = new Date()
-      due = localMs(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`, DEFAULT_TIME)
+      const f = firstDue(repeat.value.rrule, new Date(), DEFAULT_TIME)
+      due = localMs(f.date, f.time!)
     }
     await api.addTask({
       title: title.value,
@@ -96,6 +119,8 @@ async function save() {
 <template>
   <div class="backdrop" @click.self="emit('close')">
     <form class="sheet popover" @submit.prevent="save">
+      <div class="input-wrap">
+      <div class="mirror main-input" aria-hidden="true"><span v-for="(g, i) in segments" :key="i" :class="g.kind">{{ g.text }}</span></div>
       <textarea
         ref="input"
         :value="text"
@@ -107,6 +132,7 @@ async function save() {
         @input="text = typed($event)"
         @keydown.enter.prevent="save"
       />
+      </div>
 
       <p v-if="parsed.title && parsed.title !== text.trim()" class="preview muted">→ {{ parsed.title }}</p>
 
@@ -119,9 +145,11 @@ async function save() {
             <X :size="15" />
           </button>
         </span>
-        <span v-if="parsed.recurrenceText && !repeatText" class="chip split">
-          <span class="part"><Repeat :size="16" /> {{ parsed.recurrenceText }}</span>
-          <button type="button" class="x" aria-label="Keep as text" @click="unparse('recurrence')"><X :size="15" /></button>
+        <span v-if="repeat.rrule" class="chip split">
+          <button type="button" class="part" aria-label="Change repeat" @click="pickingRepeat = true">
+            <Repeat :size="16" /> {{ repeat.text }}
+          </button>
+          <button type="button" class="x" aria-label="Don't repeat" @click="clearRepeat"><X :size="15" /></button>
         </span>
         <button v-if="repeat.rrule" type="button" class="chip" :class="{ off: !adaptive }" @click="adaptive = !adaptive">
           {{ adaptive ? 'From completion' : 'On schedule' }}
@@ -136,11 +164,10 @@ async function save() {
           <CalendarDays :size="18" />
           <span :class="{ muted: dueAt == null }">{{ dueAt != null ? dayLabel(dueAt) : 'Pick date & time' }}</span>
         </button>
-        <label class="labeled">
-          <Repeat :size="18" class="muted" />
-          <input :value="repeatText" class="field" placeholder="every monday" autocorrect="on" @input="repeatText = typed($event)" />
-        </label>
-        <p v-if="repeatText && repeat.text" class="muted small">{{ repeat.text }}</p>
+        <button type="button" class="field pick-date" @click="pickingRepeat = true">
+          <Repeat :size="18" />
+          <span :class="{ muted: !repeat.rrule }" class="cap">{{ repeat.rrule ? repeat.text : 'Repeat…' }}</span>
+        </button>
         <textarea :value="description" class="field" rows="3" placeholder="Notes" @input="description = typed($event)" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
       </div>
 
@@ -153,6 +180,7 @@ async function save() {
         <button type="submit" class="btn primary" :disabled="!title || saving">Add</button>
       </div>
     </form>
+    <RepeatSheet v-if="pickingRepeat" :model-value="repeat.rrule" :start="manualDue ?? (parsed.due && !manualRule ? dueAt : null)" @update:model-value="manualRule = $event" @close="pickingRepeat = false" />
     <DateTimeSheet v-if="picking" :model-value="dueAt" title="When" allow-clear @update:model-value="manualDue = $event" @close="picking = false" />
   </div>
 </template>
@@ -168,7 +196,22 @@ async function save() {
   display: flex; flex-direction: column; gap: 10px;
   animation: float-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.main-input { border: 0; outline: none; background: none; font-size: 1.2rem; padding: 6px 2px; width: 100%; resize: none; overflow: hidden; }
+.main-input {
+  border: 0; outline: none; background: none; font: inherit; font-size: 1.2rem; line-height: 1.4;
+  padding: 6px 2px; width: 100%; resize: none; overflow: hidden; letter-spacing: normal;
+}
+/* Highlights sit behind the (transparent) textarea, in the same text layout. */
+.input-wrap { position: relative; }
+.input-wrap textarea { position: relative; display: block; }
+.mirror {
+  position: absolute; inset: 0; color: transparent; pointer-events: none;
+  white-space: pre-wrap; overflow-wrap: break-word; box-sizing: border-box;
+}
+.mirror .date, .mirror .recurrence {
+  border-radius: 6px; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+  background: color-mix(in oklch, var(--accent) 22%, transparent);
+}
+.mirror .recurrence { background: color-mix(in oklch, var(--yellow) 35%, transparent); }
 .preview { margin: 0; font-size: 0.9rem; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips:empty { display: none; }
@@ -177,7 +220,7 @@ async function save() {
 .chip.split .x { display: grid; place-items: center; width: 34px; height: 32px; color: var(--muted); }
 .more { display: flex; flex-direction: column; gap: 10px; }
 .pick-date { display: flex; align-items: center; gap: 10px; text-align: left; }
-.labeled { display: flex; align-items: center; gap: 10px; }
+.cap::first-letter { text-transform: uppercase; }
 .small { margin: 0; }
 .actions { display: flex; justify-content: space-between; }
 .error { margin: 0; font-size: 0.9rem; }

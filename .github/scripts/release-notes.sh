@@ -4,12 +4,24 @@
 # Skips merge commits, docs/chore/ci/test noise and co-author trailers.
 set -euo pipefail
 
-last=$(git describe --tags --abbrev=0 --match 'v0.*' 2>/dev/null || true)
+last=${LAST_TAG:-$(git describe --tags --abbrev=0 --match 'v0.*' 2>/dev/null || true)} # LAST_TAG: for trying it out
 range=${last:+$last..}HEAD
 
-lines=$(git log --no-merges --format='%s%n%b' "$range" \
-  | sed -E 's/^\* //' \
-  | grep -E '^[a-z]+(\([^)]*\))?!?: ' || true)
+# One commit's change lines: a squash merge's "* type: ..." bullets (its PR
+# title only summarises them), else its own subject.
+changes() {
+  git log --no-merges --format='%x00%s%n%b' "$@" | awk '
+    function flush() { if (n) { for (i = 1; i <= n; i++) print b[i] } else if (subj != "") print subj; n = 0 }
+    /^\x00/ { flush(); subj = substr($0, 2); next }
+    /^\* [a-z]+(\([^)]*\))?!?: / { b[++n] = substr($0, 3) }
+    END { flush() }' | grep -E '^[a-z]+(\([^)]*\))?!?: ' || true
+}
+
+lines=$(changes "$range")
+# A squash body also lists branch commits that an earlier release already had.
+if [ -n "$last" ]; then
+  lines=$(grep -vxF -f <(changes "$last") <<<"$lines" || true)
+fi
 
 section() { # title, type regex
   local items
