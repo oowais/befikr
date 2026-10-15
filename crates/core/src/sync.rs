@@ -148,12 +148,20 @@ impl Store {
         Ok(self.conn.query_row("SELECT device FROM sync_state", [], |r| r.get(0))?)
     }
 
+    /// Newest change seq here (what a peer has after taking everything).
+    pub fn last_seq(&self) -> Result<i64> {
+        Ok(self.conn.query_row("SELECT coalesce(max(seq), 0) FROM changes", [], |r| r.get(0))?)
+    }
+
     /// Changes after `seq` (exclusive), oldest first, at most `limit`.
-    pub fn changes_since(&self, seq: i64, limit: u32) -> Result<Vec<SyncChange>> {
+    /// `skip_origin`: leave out changes made by that device (the peer asking
+    /// has them already).
+    pub fn changes_since(&self, seq: i64, limit: u32, skip_origin: Option<&str>) -> Result<Vec<SyncChange>> {
         let mut st = self.conn.prepare(
-            "SELECT seq, tbl, row_id, field, value, hlc, origin FROM changes WHERE seq > ?1 ORDER BY seq LIMIT ?2",
+            "SELECT seq, tbl, row_id, field, value, hlc, origin FROM changes
+             WHERE seq > ?1 AND origin IS NOT ?3 ORDER BY seq LIMIT ?2",
         )?;
-        let rows = st.query_map(params![seq, limit], |r| {
+        let rows = st.query_map(params![seq, limit, skip_origin], |r| {
             Ok(SyncChange {
                 seq: r.get(0)?,
                 table: r.get(1)?,

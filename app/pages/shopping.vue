@@ -28,6 +28,8 @@ const load = async () => {
   }
 }
 onMounted(load)
+// Another device's changes arrived (sync).
+watch(listVersion, load)
 
 const key = (s: string) => s.trim().toLowerCase()
 const onList = computed(() => new Set(items.value.map((i) => key(i.name))))

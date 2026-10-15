@@ -14,7 +14,7 @@ fn device() -> (Store, Arc<AtomicI64>) {
 
 /// Send `from`'s changes after `*seen` to `to`.
 fn sync(from: &Store, to: &mut Store, seen: &mut i64) -> MergeOutcome {
-    let changes = from.changes_since(*seen, 10_000).unwrap();
+    let changes = from.changes_since(*seen, 10_000, None).unwrap();
     if let Some(last) = changes.last() {
         *seen = last.seq;
     }
@@ -95,7 +95,7 @@ fn rows_in_any_order_and_forwarded() {
     a.add_shopping_item("sunscreen").unwrap();
 
     // Subtask before its parent.
-    let mut changes = a.changes_since(0, 10_000).unwrap();
+    let mut changes = a.changes_since(0, 10_000, None).unwrap();
     changes.reverse();
     b.merge(&changes).unwrap();
     assert_eq!(b.list_subtasks(&parent).unwrap().len(), 1);
@@ -105,4 +105,24 @@ fn rows_in_any_order_and_forwarded() {
     assert_eq!(titles(&c), ["trip"]);
     assert_eq!(c.shopping_list().unwrap().items[0].name, "sunscreen");
     assert_ne!(a.device_id().unwrap(), b.device_id().unwrap());
+}
+
+#[test]
+fn peers_and_settings_are_local() {
+    let (mut a, _) = device();
+    assert_eq!(a.sync_settings().unwrap().mode, SyncMode::Off);
+    a.set_sync_mode(SyncMode::Lan).unwrap();
+    a.set_device_name("  Pixel   9 ").unwrap();
+    a.add_peer("ep1", "dev1", "Desktop").unwrap();
+    a.peer_synced("ep1", 42, "Desktop").unwrap();
+    a.remove_peer("ep1").unwrap();
+    a.add_peer("ep1", "dev1", "Desktop").unwrap();
+    assert_eq!(a.peer("ep1").unwrap().unwrap().their_seq, 42, "re-pairing keeps progress");
+
+    let (mut b, _) = device();
+    sync(&a, &mut b, &mut 0);
+    assert!(b.peers().unwrap().is_empty());
+    let s = a.sync_settings().unwrap();
+    assert_eq!((s.mode, s.name.as_str()), (SyncMode::Lan, "Pixel 9"));
+    assert_eq!(b.sync_settings().unwrap().mode, SyncMode::Off);
 }

@@ -7,6 +7,7 @@ const COMMANDS: &[&str] = &[
     "open_battery_settings",
     "take_launch_route",
     "configure",
+    "set_multicast",
     "backup_status",
     "pick_backup_folder",
     "clear_backup_folder",

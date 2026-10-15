@@ -66,6 +66,23 @@ impl<R: Runtime> Reminders<R> {
         }
     }
 
+    /// Receive multicast on Wi-Fi (mDNS discovery for sync) while `on`.
+    /// Android drops multicast without this lock. No-op elsewhere.
+    pub fn set_multicast(&self, on: bool) -> Result<(), String> {
+        #[cfg(target_os = "android")]
+        {
+            self.0
+                .run_mobile_plugin::<serde_json::Value>("setMulticast", serde_json::json!({ "on": on }))
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = on;
+            Ok(())
+        }
+    }
+
     /// Cancel the task's alarm and any notification shown for it.
     pub fn cancel(&self, id: &str) -> Result<(), String> {
         #[cfg(target_os = "android")]

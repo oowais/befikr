@@ -530,12 +530,23 @@ impl Store {
         if version > latest {
             return Err(Error::Invalid("backup is from a newer version of Befikr; update the app first".into()));
         }
-        // The snapshot may come from another device: keep this one's sync id.
-        let device = self.device_id()?;
+        // The snapshot may come from another device: keep this one's sync
+        // id, settings and paired devices.
+        let sync = self.sync_settings()?;
+        let peers = self.peers()?;
         rusqlite::backup::Backup::new(&src, &mut self.conn)?
             .run_to_completion(256, std::time::Duration::from_millis(0), None)?;
         schema::migrations().to_latest(&mut self.conn).map_err(|e| Error::Migration(e.to_string()))?;
-        self.conn.execute("UPDATE sync_state SET device = ?1, applying = 0", [device])?;
+        self.conn.execute("UPDATE sync_state SET device = ?1, applying = 0", [&sync.device])?;
+        self.set_sync_mode(sync.mode)?;
+        if !sync.name.is_empty() {
+            self.set_device_name(&sync.name)?;
+        }
+        self.conn.execute("DELETE FROM peers", [])?; // device-local table, replaced wholesale
+        for p in peers {
+            self.add_peer(&p.endpoint, &p.device, &p.name)?;
+            self.peer_synced(&p.endpoint, p.their_seq, &p.name)?;
+        }
         sync::install(&self.conn)?;
         Ok(())
     }

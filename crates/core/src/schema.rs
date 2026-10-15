@@ -126,6 +126,23 @@ pub fn migrations() -> Migrations<'static> {
         );
         ",
         ),
+        M::up(
+            "
+        -- Sync settings and paired devices (device-local, not synced).
+        ALTER TABLE sync_state ADD COLUMN mode TEXT NOT NULL DEFAULT 'off';   -- off|lan|relay
+        ALTER TABLE sync_state ADD COLUMN name TEXT NOT NULL DEFAULT '';      -- shown to other devices
+        CREATE TABLE peers (
+          endpoint     TEXT PRIMARY KEY,  -- iroh endpoint id (public key)
+          device       TEXT NOT NULL,     -- their sync_state.device
+          name         TEXT NOT NULL,
+          their_seq    INTEGER NOT NULL DEFAULT 0,  -- last of their changes merged here
+          paired_at    INTEGER NOT NULL,
+          last_sync_at INTEGER,
+          updated_at   INTEGER NOT NULL,
+          deleted_at   INTEGER
+        );
+        ",
+        ),
     ])
 }
 

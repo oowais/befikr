@@ -35,6 +35,18 @@ export type Stats = {
 export type ShoppingItem = { id: string; name: string; boughtAt: number | null }
 export type Staple = { id: string; name: string }
 export type ShoppingList = { items: ShoppingItem[]; staples: Staple[] }
+export type SyncMode = 'off' | 'lan' | 'relay'
+export type Peer = { endpoint: string; device: string; name: string; theirSeq: number; pairedAt: number; lastSyncAt: number | null }
+export type SyncStatus = {
+  mode: SyncMode
+  name: string
+  running: boolean
+  endpoint: string
+  peers: Peer[]
+  nearby: { endpoint: string; name: string }[]
+  pairing: { code: string; untilMs: number } | null
+  lastError: string | null
+}
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
 
@@ -88,6 +100,14 @@ export const api = {
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),
   setReremindMinutes: (minutes: number[]) => invoke<void>('set_reremind_minutes', { minutes }),
   importBackup: (path: string) => invoke<void>('import_backup', { path }),
+  syncStatus: () => invoke<SyncStatus>('sync_status'),
+  setSyncMode: (mode: SyncMode) => invoke<void>('set_sync_mode', { mode }),
+  setDeviceName: (name: string) => invoke<void>('set_device_name', { name }),
+  startPairing: () => invoke<string>('start_pairing'),
+  stopPairing: () => invoke<void>('stop_pairing'),
+  pairWith: (endpoint: string, code: string) => invoke<void>('pair_with', { endpoint, code }),
+  unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
+  syncNow: () => invoke<void>('sync_now'),
   /** Desktop only; rejects on Android. */
   desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
   setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),

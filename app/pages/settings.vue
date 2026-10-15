@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeft, BatteryFull, Bell, Check, ChevronDown, ChevronUp, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
-import type { BackupStatus, DesktopPrefs, Settings, Status } from '~/composables/api'
+import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
+import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
 const sound = useSound()
@@ -86,6 +86,14 @@ async function confirmImport() {
   }
 }
 onMounted(load)
+const sync = ref<SyncStatus | null>(null)
+onMounted(async () => (sync.value = await api.syncStatus().catch(() => null)))
+const syncLabel = computed(() => {
+  const s = sync.value
+  if (!s || s.mode === 'off') return 'Off'
+  const n = s.peers.length
+  return `${s.mode === 'lan' ? 'Same Wi-Fi' : 'Anywhere'} · ${n ? `${n} ${n === 1 ? 'device' : 'devices'}` : 'no devices yet'}`
+})
 const onVisible = () => document.visibilityState === 'visible' && load()
 onMounted(() => document.addEventListener('visibilitychange', onVisible))
 onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
@@ -134,6 +142,18 @@ function addWord() {
       <h1>Settings</h1>
     </header>
     <p v-if="error" class="error">{{ error }}</p>
+
+    <h2 class="section-title">Devices</h2>
+    <div class="pane rows">
+      <NuxtLink to="/sync" class="item">
+        <ArrowLeftRight :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Sync</span>
+          <span class="muted small">{{ syncLabel }}</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+    </div>
 
     <template v-if="status">
       <h2 class="section-title">Reminders</h2>
@@ -275,6 +295,7 @@ function addWord() {
 
 <style scoped>
 .item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
+a.item { color: inherit; text-decoration: none; }
 .flex { flex: 1; }
 .left { text-align: left; }
 .hint { display: block; margin-top: 2px; }

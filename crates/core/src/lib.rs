@@ -5,6 +5,7 @@
 //! from Tauri commands, Android calls it via JNI when no webview runs.
 
 mod model;
+mod peers;
 pub mod recurrence;
 mod schema;
 mod shopping;
@@ -12,6 +13,7 @@ mod store;
 mod sync;
 
 pub use model::*;
+pub use peers::{Peer, SyncMode, SyncSettings};
 pub use store::Store;
 pub use sync::{MergeOutcome, SyncChange};
 

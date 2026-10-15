@@ -1,6 +1,7 @@
 #[cfg(desktop)]
 mod desktop;
 mod jni;
+mod sync;
 
 use std::sync::Mutex;
 
@@ -285,6 +286,7 @@ pub fn run() {
             }
             #[cfg(desktop)]
             desktop::setup(app.handle());
+            sync::setup(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -314,6 +316,14 @@ pub fn run() {
             desktop_prefs,
             set_autostart,
             set_start_hidden,
+            sync::sync_status,
+            sync::set_sync_mode,
+            sync::set_device_name,
+            sync::start_pairing,
+            sync::stop_pairing,
+            sync::pair_with,
+            sync::unpair,
+            sync::sync_now,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

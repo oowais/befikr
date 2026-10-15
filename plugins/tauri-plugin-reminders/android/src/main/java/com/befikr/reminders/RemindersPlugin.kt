@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -38,9 +39,16 @@ class ConfigureArgs {
     lateinit var dbPath: String
 }
 
+@InvokeArg
+class MulticastArgs {
+    var on: Boolean = false
+}
+
 @TauriPlugin
 class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     private var launchRoute: String? = null
+    /** Held while sync runs: without it Android drops mDNS (multicast) packets. */
+    private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun load(webView: WebView) {
         Notifier.ensureChannel(activity)
@@ -111,6 +119,22 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     /** Where the database lives (for receivers and backups); runs a due backup. */
+    @Command
+    fun setMulticast(invoke: Invoke) {
+        val on = invoke.parseArgs(MulticastArgs::class.java).on
+        if (on && multicastLock == null) {
+            val wifi = activity.applicationContext.getSystemService(WifiManager::class.java)
+            multicastLock = wifi.createMulticastLock("befikr-sync").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } else if (!on) {
+            multicastLock?.release()
+            multicastLock = null
+        }
+        invoke.resolve()
+    }
+
     @Command
     fun configure(invoke: Invoke) {
         Prefs.setDbPath(activity, invoke.parseArgs(ConfigureArgs::class.java).dbPath)

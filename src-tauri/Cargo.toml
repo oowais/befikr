@@ -14,6 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 befikr-core = { path = "../crates/core" }
+befikr-sync = { path = "../crates/sync" }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-reminders = { path = "../plugins/tauri-plugin-reminders" }
 serde = { version = "1", features = ["derive"] }
