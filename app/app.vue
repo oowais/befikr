@@ -4,6 +4,7 @@ import { addPluginListener } from '@tauri-apps/api/core'
 const router = useRouter()
 const route = useRoute()
 const { current: toast, dismiss } = useToast()
+rememberHistoryStart()
 
 onMounted(async () => {
   loadTimeWords()

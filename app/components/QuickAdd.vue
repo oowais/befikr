@@ -37,6 +37,15 @@ function grow() {
   el.style.height = `${el.scrollHeight}px`
 }
 watch(text, () => nextTick(grow))
+// Notes grow with their text too.
+const notesEl = ref<HTMLTextAreaElement>()
+function growNotes() {
+  const el = notesEl.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight + 2}px`
+}
+watch([description, expanded], () => nextTick(growNotes))
 const typed = (e: Event) => (e.target as HTMLInputElement | HTMLTextAreaElement).value
 
 const parsed = computed(() => parseWith(text.value, ignored.value))
@@ -166,9 +175,7 @@ async function save() {
           </button>
           <button type="button" class="x" aria-label="Don't repeat" @click="clearRepeat"><X :size="15" /></button>
         </span>
-        <button v-if="repeat.rrule" type="button" class="chip" :class="{ off: !adaptive }" @click="adaptive = !adaptive">
-          {{ adaptive ? 'From completion' : 'On schedule' }}
-        </button>
+        <AdaptiveToggle v-if="repeat.rrule" v-model="adaptive" />
         <button v-for="(s, i) in ignored" :key="s + i" type="button" class="chip off" @click="ignored.splice(i, 1)">
           “{{ s }}” as text <X :size="14" />
         </button>
@@ -200,7 +207,7 @@ async function save() {
           <Repeat :size="18" />
           <span :class="{ muted: !repeat.rrule }" class="cap">{{ repeat.rrule ? repeat.text : 'Repeat…' }}</span>
         </button>
-        <textarea :value="description" class="field" rows="3" placeholder="Notes" @input="description = typed($event)" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
+        <textarea ref="notesEl" :value="description" class="field notes" rows="2" placeholder="Notes" @input="description = typed($event)" autocapitalize="sentences" autocorrect="on" spellcheck="true" />
       </div>
 
       <p v-if="error" class="error">{{ error }}</p>
@@ -252,6 +259,7 @@ async function save() {
 .chip.split .part { display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px 6px 12px; }
 .chip.split .x { display: grid; place-items: center; width: 34px; height: 32px; color: var(--muted); }
 .more { display: flex; flex-direction: column; gap: 10px; }
+.notes { resize: none; overflow: hidden; }
 .time-prompt { display: flex; flex-direction: column; gap: 6px; }
 .time-prompt .label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; }
 .times { display: flex; flex-wrap: wrap; gap: 8px; }

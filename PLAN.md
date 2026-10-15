@@ -332,6 +332,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 15, 2026 (polish 3)** — Repeat mode is a two-option switch ("On schedule" | "From when done") in quick add and task view. Quick add notes grow with their text. Snoozing (and finishing the setup guide) unwinds history to the list, so back doesn't return to the task/snooze screens. **Next:** desktop builds (Post-MVP 1), planned Oct 16.
 - **Oct 15, 2026 (back + draft)** — Android back closes the top open sheet (quick add, date/time, repeat) via Tauri `onBackButtonPress`; no sheet → back a page, or exit from the first (`core:app:allow-exit`). Quick add keeps its draft (text, More, date, repeat, notes, time) when closed by tapping outside or back, until Add, the new red Clear button, or app exit. Drag-to-close not added (wheels use drag). **Next:** device check of back button; polish from dogfooding.
 - **Oct 15, 2026 (week + settings)** — "This week" now ends on Sunday (Monday–Sunday weeks), not 7 rolling days. Settings: with every permission granted, Reminders collapses to one "All set up" row (tap to see them and the setup guide). **Next:** device checks; polish from dogfooding.
 - **Oct 15, 2026 (sections v2)** — v0.6.0 on device showed no headings (all tasks were "Upcoming", and headings hid with one group). List now: Overdue / Today / Tomorrow / This week (to Sunday) / This month (rest of it) / Later / No date, headings always shown; Today and Tomorrow rows show only the time. **Next:** device checks; polish from dogfooding.

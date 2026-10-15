@@ -6,6 +6,7 @@ import type { Task } from '~/composables/api'
 const route = useRoute()
 const router = useRouter()
 const { show } = useToast()
+const goHome = useGoHome()
 const id = computed(() => String(route.query.id ?? ''))
 const task = ref<Task | null>(null)
 const picking = ref(false)
@@ -61,7 +62,7 @@ async function snooze(until: number | null) {
     await api.snoozeTask(id.value, until)
     haptic()
     show({ message: `Snoozed to ${dayLabel(until)}` })
-    router.replace('/')
+    goHome()
   } catch (e) {
     error.value = String(e)
   }
@@ -71,7 +72,7 @@ async function snooze(until: number | null) {
 <template>
   <main class="page">
     <header class="topbar">
-      <button class="icon-btn" aria-label="Close" @click="router.replace('/')"><X :size="22" /></button>
+      <button class="icon-btn" aria-label="Close" @click="goHome()"><X :size="22" /></button>
       <h1>Snooze</h1>
     </header>
     <p class="task-title">{{ task?.title }}</p>

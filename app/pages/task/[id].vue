@@ -187,10 +187,10 @@ async function remove() {
         <div v-if="task.rrule" class="prop">
           <Repeat :size="20" class="muted" />
           <button class="flex left cap" title="Change" @click="pickingRepeat = true">{{ rruleText(task.rrule) }}</button>
-          <button class="chip" :class="{ off: !task.adaptive }" @click="patch({ adaptive: !task.adaptive })">
-            {{ task.adaptive ? 'From completion' : 'On schedule' }}
-          </button>
           <button class="icon-btn" aria-label="Stop repeating" @click="patch({ rrule: null })"><X :size="18" /></button>
+        </div>
+        <div v-if="task.rrule" class="prop adaptive">
+          <AdaptiveToggle :model-value="task.adaptive" @update:model-value="patch({ adaptive: $event })" />
         </div>
         <div v-if="showNotes" class="prop top">
           <StickyNote :size="20" class="muted" />
@@ -250,6 +250,8 @@ async function remove() {
 .topbar { gap: 8px; }
 .title-input { width: 100%; font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; border: 0; outline: none; background: none; padding: 12px 0; }
 .prop { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+/* Under the repeat row, aligned with its text; no divider between them. */
+.prop.adaptive { min-height: 0; padding: 0 0 12px 32px; margin-top: -6px; border-top: 0; box-shadow: none; }
 .prop.top { align-items: flex-start; padding-top: 14px; }
 .flex { flex: 1; }
 .left { text-align: left; min-height: 44px; }

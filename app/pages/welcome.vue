@@ -4,7 +4,7 @@
 import { AlarmClock, BatteryFull, Bell, Check } from 'lucide-vue-next'
 import type { Status } from '~/composables/api'
 
-const router = useRouter()
+const goHome = useGoHome()
 const status = ref<Status | null>(null)
 
 const steps = computed(() => {
@@ -57,7 +57,7 @@ watch(done, (d) => d && haptic())
 
 function later() {
   skipSetup()
-  router.replace('/')
+  goHome()
 }
 </script>
 
@@ -93,7 +93,7 @@ function later() {
     <p v-if="status === null" class="muted small center">Permissions can only be set on the phone.</p>
 
     <div class="actions">
-      <button v-if="done" class="btn primary wide" @click="router.replace('/')">All set — start</button>
+      <button v-if="done" class="btn primary wide" @click="goHome()">All set — start</button>
       <template v-else>
         <span class="muted small">{{ Math.max(0, current) }} of 3 done</span>
         <button class="btn" @click="later">Later</button>
