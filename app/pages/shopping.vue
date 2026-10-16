@@ -199,7 +199,7 @@ async function removeStaple(s: Staple) {
 .add { display: flex; gap: 8px; margin-top: 4px; }
 .add .btn { flex: none; padding: 8px 12px; }
 .list { list-style: none; margin: 12px 0 0; }
-.line { display: flex; align-items: center; }
+.line { display: flex; align-items: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .item { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 12px 0; text-align: left; transition: opacity 0.3s; }
 .save { flex: none; color: var(--muted); margin-right: -10px; }
 .item.done { opacity: 0.45; }
@@ -208,7 +208,7 @@ async function removeStaple(s: Staple) {
 .empty { margin: 16px 0 0; }
 .usual-head { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
 .usual-head .section-title { margin: 8px 0; display: inline-flex; align-items: center; gap: 5px; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .staple { margin-top: 12px; }
 .list-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .list-leave-to { opacity: 0; transform: translateX(16px); }

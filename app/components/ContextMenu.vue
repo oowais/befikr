@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// The one right-click menu (see useContextMenu). Opens at the pointer,
-// stays inside the window; Escape, a click elsewhere, scroll or resize close it.
+// The one context menu (see useContextMenu). Opens at the pointer (just
+// below the finger on touch), stays inside the window; Escape, a tap
+// elsewhere, scroll or resize close it.
 const menu = useContextMenu()
 const el = ref<HTMLElement>()
 const pos = ref({ left: 0, top: 0 })
@@ -9,22 +10,35 @@ watch(
   () => menu.open && [menu.x, menu.y],
   async (open) => {
     if (!open) return
-    pos.value = { left: menu.x, top: menu.y }
+    const y = menu.touch ? menu.y + 12 : menu.y
+    pos.value = { left: menu.x, top: y }
     await nextTick()
     const r = el.value?.getBoundingClientRect()
     if (!r) return
     const pad = 8
     pos.value = {
       left: Math.max(pad, Math.min(menu.x, window.innerWidth - r.width - pad)),
-      top: Math.max(pad, Math.min(menu.y, window.innerHeight - r.height - pad)),
+      top: Math.max(pad, Math.min(y, window.innerHeight - r.height - pad)),
     }
     el.value?.querySelector<HTMLElement>('button')?.focus()
   },
 )
 
+// The finger lifting after a long-press must not pick an entry or tap
+// the row underneath.
+const settling = () => menu.touch && Date.now() - menu.openedAt < 450
+
 function run(item: Exclude<MenuItem, 'separator'>) {
+  if (settling()) return
   closeMenu()
   item.run()
+}
+
+function swallow(e: Event) {
+  if (menu.openedAt && Date.now() - menu.openedAt < 450 && menu.touch && !el.value?.contains(e.target as Node)) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 }
 
 function key(e: KeyboardEvent) {
@@ -42,17 +56,19 @@ onMounted(() => {
   window.addEventListener('resize', closeMenu)
   window.addEventListener('scroll', closeMenu, true)
   window.addEventListener('blur', closeMenu)
+  window.addEventListener('click', swallow, true)
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', key)
   window.removeEventListener('resize', closeMenu)
   window.removeEventListener('scroll', closeMenu, true)
   window.removeEventListener('blur', closeMenu)
+  window.removeEventListener('click', swallow, true)
 })
 </script>
 
 <template>
-  <div v-if="menu.open" class="scrim" @pointerdown="closeMenu" @contextmenu.prevent="closeMenu" />
+  <div v-if="menu.open" class="scrim" @pointerdown="!settling() && closeMenu()" @contextmenu.prevent="!settling() && closeMenu()" />
   <div v-if="menu.open" ref="el" class="menu popover" role="menu" :style="{ left: `${pos.left}px`, top: `${pos.top}px` }">
     <template v-for="(item, i) in menu.items" :key="i">
       <hr v-if="item === 'separator'" />
@@ -76,6 +92,10 @@ onUnmounted(() => {
 }
 .entry :deep(svg) { color: var(--muted); flex: none; }
 .entry:hover, .entry:focus-visible { background-color: var(--glass-state); outline: none; }
+@media (pointer: coarse) {
+  .menu { min-width: 220px; }
+  .entry { min-height: 44px; font-size: 1rem; }
+}
 .entry.danger, .entry.danger :deep(svg) { color: var(--red); }
 hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
 </style>

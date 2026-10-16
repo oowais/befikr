@@ -189,7 +189,7 @@ async function undo(c: Completion) {
 .undated { background: var(--gray); }
 
 .list { list-style: none; margin: 8px 0 0; }
-.list li { display: flex; align-items: flex-start; gap: 2px; padding: 6px 0; }
+.list li { display: flex; align-items: flex-start; gap: 2px; padding: 6px 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .check { width: 44px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -10px; }
 .check:disabled { opacity: 0.45; }
 .text { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 6px 0; color: inherit; text-decoration: none; min-width: 0; }

@@ -75,6 +75,15 @@ function up() {
   armed = false
 }
 
+// Long-press / right-click: the menu takes over; a finger moving on from
+// here must not turn into a swipe.
+function menu(e: MouseEvent) {
+  dragging.value = false
+  armed = false
+  dx.value = 0
+  emit('menu', e)
+}
+
 // A swipe ends with a click on the row; don't treat it as a tap.
 function open() {
   if (swiped) return (swiped = false)
@@ -83,7 +92,7 @@ function open() {
 </script>
 
 <template>
-  <li ref="el" class="row" :class="[row.urgency, { big }]" @contextmenu="emit('menu', $event)">
+  <li ref="el" class="row" :class="[row.urgency, { big }]" @contextmenu="menu">
     <div v-if="dx > 0" class="reveal left" :class="{ past }"><Check :size="22" :stroke-width="2.5" /></div>
     <div v-if="dx < 0" class="reveal right" :class="{ past: past && canSnooze }"><Moon :size="22" /></div>
 
@@ -117,7 +126,7 @@ function open() {
 .row { position: relative; list-style: none; margin: 0 -14px; overflow: hidden; }
 .swipe {
   position: relative; display: flex; align-items: flex-start; gap: 2px; padding: 8px 14px;
-  touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  touch-action: pan-y; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .swipe.dragging { transition: none; }
