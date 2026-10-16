@@ -128,3 +128,50 @@ fn peers_and_settings_are_local() {
     assert_eq!((s.mode, s.name.as_str()), (SyncMode::Relay, "Pixel 9"));
     assert_eq!(b.sync_settings().unwrap().mode, SyncMode::Off);
 }
+
+#[test]
+fn restoring_a_backup_resyncs_with_peers() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let (mut a_seen, mut b_seen) = (0, 0);
+    a.add_peer("ep-b", &b.device_id().unwrap(), "B").unwrap();
+    let id = a.add_task(NewTask { title: "milk".into(), ..Default::default() }).unwrap().task.id;
+    a.add_task(NewTask { title: "eggs".into(), ..Default::default() }).unwrap();
+    sync(&a, &mut b, &mut a_seen);
+
+    let dir = std::env::temp_dir().join(format!("befikr-test-{}", uuid::Uuid::now_v7()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let backup = dir.join("a.db");
+    a.export_to(backup.to_str().unwrap()).unwrap();
+
+    // After the backup: B renames, A gets it and makes more changes of its own.
+    cb.store(T0 + 60_000, Ordering::SeqCst);
+    b.update_task(&id, TaskPatch { title: Some("oat milk".into()), ..Default::default() }).unwrap();
+    sync(&b, &mut a, &mut b_seen);
+    a.peer_synced("ep-b", b_seen, "B").unwrap();
+    ca.store(T0 + 120_000, Ordering::SeqCst);
+    for t in ["bread", "jam"] {
+        a.add_task(NewTask { title: t.into(), ..Default::default() }).unwrap();
+    }
+    sync(&a, &mut b, &mut a_seen);
+    let seq_before = a.last_seq().unwrap();
+
+    a.import_from(backup.to_str().unwrap()).unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+    assert!(titles(&a).contains(&"milk".to_string()), "back to the old data");
+
+    // A asks B for everything again (from 0, A's own changes included), so
+    // B's rename and A's lost edits come back...
+    assert_eq!(a.peer("ep-b").unwrap().unwrap().their_seq, 0);
+    sync(&b, &mut a, &mut 0);
+    let now = titles(&a);
+    for t in ["oat milk", "bread", "jam"] {
+        assert!(now.contains(&t.to_string()), "{t} missing: {now:?}");
+    }
+    // ...and A's own edits after the restore get seqs B hasn't seen yet.
+    ca.store(T0 + 180_000, Ordering::SeqCst);
+    a.add_task(NewTask { title: "after restore".into(), ..Default::default() }).unwrap();
+    assert!(a.last_seq().unwrap() > seq_before);
+    sync(&a, &mut b, &mut a_seen);
+    assert!(titles(&b).contains(&"after restore".to_string()));
+}

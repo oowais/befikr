@@ -612,6 +612,11 @@ impl Store {
         // id, settings and paired devices.
         let sync = self.sync_settings()?;
         let peers = self.peers()?;
+        let seq_before = self.last_seq()?.max(self.conn.query_row(
+            "SELECT coalesce(max(seq), 0) FROM sqlite_sequence WHERE name = 'changes'",
+            [],
+            |r| r.get::<_, i64>(0),
+        )?);
         rusqlite::backup::Backup::new(&src, &mut self.conn)?
             .run_to_completion(256, std::time::Duration::from_millis(0), None)?;
         schema::migrations().to_latest(&mut self.conn).map_err(|e| Error::Migration(e.to_string()))?;
@@ -620,10 +625,20 @@ impl Store {
         if !sync.name.is_empty() {
             self.set_device_name(&sync.name)?;
         }
+        // Peers already have our changes up to seq_before: new ones must come
+        // after it, or they'd never be sent (the snapshot's counter is lower).
+        let bumped = self
+            .conn
+            .execute("UPDATE sqlite_sequence SET seq = max(seq, ?1) WHERE name = 'changes'", [seq_before])?;
+        if bumped == 0 {
+            self.conn.execute("INSERT INTO sqlite_sequence (name, seq) VALUES ('changes', ?1)", [seq_before])?;
+        }
+        // Paired devices stay paired, but we ask each for everything again
+        // (their_seq 0): what they sent after the snapshot was rolled back
+        // here. Merging is per-field newest-wins, so repeats are harmless.
         self.conn.execute("DELETE FROM peers", [])?; // device-local table, replaced wholesale
         for p in peers {
             self.add_peer(&p.endpoint, &p.device, &p.name)?;
-            self.peer_synced(&p.endpoint, p.their_seq, &p.name)?;
             self.set_peer_addrs(&p.endpoint, &p.addrs)?;
         }
         sync::install(&self.conn)?;

@@ -107,9 +107,13 @@ async fn exchange<H: Host>(
     their_want: i64,
     their_name: &str,
 ) -> Result<()> {
+    // Normally skip what they made themselves. Asking from 0 means starting
+    // over (new pairing, restored backup): then their own changes count too,
+    // since a restore may have lost them.
+    let skip = (their_want > 0).then_some(peer.device.as_str());
     let (last, changes) = host.store(|s| {
         let last = s.last_seq()?;
-        Ok((last, s.changes_since(their_want, u32::MAX, Some(&peer.device))?))
+        Ok((last, s.changes_since(their_want, u32::MAX, skip)?))
     })?;
     let ours = Msg::Changes { changes, last };
     let (sent, received) = tokio::join!(send(send_s, &ours), recv(recv_s));
