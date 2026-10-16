@@ -4,7 +4,7 @@
 // code (a pairing link: id, one-time code, addresses, relay), the other
 // scans it, or on a computer pastes the link.
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, ClipboardPaste, Copy, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
+import { ArrowLeft, ChevronRight, ClipboardPaste, Copy, GitMerge, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
 import { renderSVG } from 'uqr'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
@@ -156,6 +156,15 @@ function pairPasted() {
         <template v-else>Nothing leaves this device.</template>
       </p>
 
+      <NuxtLink v-if="st.conflicts" to="/conflicts" class="pane item conflicts">
+        <GitMerge :size="20" class="muted" />
+        <span class="flex stack">
+          <span>{{ st.conflicts }} {{ st.conflicts === 1 ? 'change' : 'changes' }} overwritten</span>
+          <span class="muted small">Edited on two devices before syncing. Review them</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+
       <template v-if="on">
         <h2 class="section-title">This device</h2>
         <input
@@ -222,6 +231,8 @@ function pairPasted() {
 .opt.chosen { color: var(--text); }
 .hint { margin: 8px 0 0; }
 .item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
+a.item { color: inherit; text-decoration: none; }
+.conflicts { padding: 10px 14px; margin-top: 16px; }
 .flex { flex: 1; }
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
 .wide { width: 100%; }

@@ -55,6 +55,18 @@ export type SyncStatus = {
   peers: Peer[]
   pairing: { untilMs: number; link: string } | null
   lastError: string | null
+  conflicts: number
+}
+export type Conflict = {
+  id: string
+  table: string
+  rowId: string
+  field: string
+  label: string
+  lostValue: unknown
+  wonValue: unknown
+  wonBy: string | null
+  at: number
 }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
@@ -122,6 +134,8 @@ export const api = {
   pairWithLink: (link: string) => invoke<void>('pair_with_link', { link }),
   unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
   syncNow: () => invoke<void>('sync_now'),
+  conflicts: () => invoke<Conflict[]>('conflicts'),
+  resolveConflict: (id: string, useMine: boolean) => invoke<void>('resolve_conflict', { id, useMine }),
   /** Desktop only; rejects on Android. */
   desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
   setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),

@@ -71,6 +71,8 @@ pub struct Status {
     /// Our open pairing window: link and when it closes (UTC ms).
     pub pairing: Option<PairingInfo>,
     pub last_error: Option<String>,
+    /// Open conflicts: our edits that lost to concurrent ones.
+    pub conflicts: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -260,6 +262,7 @@ impl<H: Host> SyncService<H> {
     pub fn status(&self) -> Status {
         let settings = self.inner.host.store(|s| s.sync_settings()).ok();
         let peers = self.inner.host.store(|s| s.peers()).unwrap_or_default();
+        let conflicts = self.inner.host.store(|s| s.conflicts()).map(|c| c.len()).unwrap_or(0);
         let my_name = self.my_name();
         let st = self.state();
         Status {
@@ -274,6 +277,7 @@ impl<H: Host> SyncService<H> {
                 link: st.running.as_ref().map(|r| link::encode(&r.ep.addr(), &p.code, &my_name)).unwrap_or_default(),
             }),
             last_error: st.last_error.clone(),
+            conflicts,
         }
     }
 

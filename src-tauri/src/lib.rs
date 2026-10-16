@@ -359,6 +359,8 @@ pub fn run() {
             sync::pair_with_link,
             sync::unpair,
             sync::sync_now,
+            sync::conflicts,
+            sync::resolve_conflict,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

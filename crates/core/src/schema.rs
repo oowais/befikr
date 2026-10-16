@@ -150,6 +150,33 @@ pub fn migrations() -> Migrations<'static> {
         ALTER TABLE peers ADD COLUMN addrs TEXT NOT NULL DEFAULT '[]';
         ",
         ),
+        M::up(
+            "
+        -- The hlc of the version a change replaced (NULL = unknown/new).
+        -- Tells \"they overwrote my edit after seeing it\" from \"we both
+        -- edited at once\" (a conflict).
+        ALTER TABLE changes ADD COLUMN prev_hlc INTEGER;
+        -- Scratch for the change-log triggers (always emptied first).
+        CREATE TABLE change_prev (field TEXT PRIMARY KEY, hlc INTEGER);
+
+        -- Device-local: this device's edits that lost to a concurrent edit
+        -- from another device. Not synced. Values as in `changes` (JSON-ish).
+        CREATE TABLE conflicts (
+          id          TEXT PRIMARY KEY,   -- UUIDv7
+          tbl         TEXT NOT NULL,
+          row_id      TEXT NOT NULL,
+          field       TEXT NOT NULL,
+          lost_value,
+          won_value,
+          won_origin  TEXT NOT NULL,      -- device whose edit won
+          at          INTEGER NOT NULL,   -- when it was noticed
+          resolution  TEXT,               -- 'mine' | 'theirs' once reviewed
+          updated_at  INTEGER NOT NULL,
+          deleted_at  INTEGER
+        );
+        CREATE INDEX conflicts_open ON conflicts(resolution, at);
+        ",
+        ),
     ])
 }
 

@@ -636,6 +636,11 @@ impl Store {
         // Paired devices stay paired, but we ask each for everything again
         // (their_seq 0): what they sent after the snapshot was rolled back
         // here. Merging is per-field newest-wins, so repeats are harmless.
+        // Open conflicts in the snapshot are stale (maybe settled since).
+        self.conn.execute(
+            "UPDATE conflicts SET deleted_at = ?1, updated_at = ?1 WHERE deleted_at IS NULL AND resolution IS NULL",
+            [self.now()],
+        )?;
         self.conn.execute("DELETE FROM peers", [])?; // device-local table, replaced wholesale
         for p in peers {
             self.add_peer(&p.endpoint, &p.device, &p.name)?;

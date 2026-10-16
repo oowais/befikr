@@ -175,3 +175,124 @@ fn restoring_a_backup_resyncs_with_peers() {
     sync(&a, &mut b, &mut a_seen);
     assert!(titles(&b).contains(&"after restore".to_string()));
 }
+
+/// A and B both have "milk"; returns its id.
+fn shared_task(a: &mut Store, b: &mut Store) -> String {
+    let id = a.add_task(NewTask { title: "milk".into(), ..Default::default() }).unwrap().task.id;
+    sync(a, b, &mut 0);
+    id
+}
+
+fn rename(s: &mut Store, id: &str, title: &str) {
+    s.update_task(id, TaskPatch { title: Some(title.into()), ..Default::default() }).unwrap();
+}
+
+#[test]
+fn concurrent_edit_is_a_conflict_on_the_losing_side() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    a.add_peer("ep-b", &b.device_id().unwrap(), "Pixel 7").unwrap();
+    let id = shared_task(&mut a, &mut b);
+
+    // Both rename before syncing; B's is later, so B wins.
+    ca.store(T0 + 1_000, Ordering::SeqCst);
+    rename(&mut a, &id, "oat milk");
+    cb.store(T0 + 2_000, Ordering::SeqCst);
+    rename(&mut b, &id, "soy milk");
+    sync(&b, &mut a, &mut 0);
+    sync(&a, &mut b, &mut 0);
+    assert_eq!(a.get_task(&id).unwrap().title, "soy milk");
+    assert_eq!(b.get_task(&id).unwrap().title, "soy milk");
+
+    let c = a.conflicts().unwrap();
+    assert_eq!(c.len(), 1);
+    assert_eq!((c[0].field.as_str(), c[0].label.as_str()), ("title", "soy milk"));
+    assert_eq!((c[0].lost_value.as_str(), c[0].won_value.as_str()), (Some("oat milk"), Some("soy milk")));
+    assert_eq!(c[0].won_by.as_deref(), Some("Pixel 7"));
+    assert!(b.conflicts().unwrap().is_empty(), "B's edit won: nothing lost there");
+
+    // Use mine: A's title comes back and wins on B too, without a new conflict.
+    ca.store(T0 + 3_000, Ordering::SeqCst);
+    a.resolve_conflict(&c[0].id, true).unwrap();
+    assert!(a.conflicts().unwrap().is_empty());
+    sync(&a, &mut b, &mut 0);
+    assert_eq!(b.get_task(&id).unwrap().title, "oat milk");
+    assert!(b.conflicts().unwrap().is_empty(), "B had seen its own version being replaced");
+}
+
+#[test]
+fn overwriting_an_edit_you_have_seen_is_no_conflict() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let id = shared_task(&mut a, &mut b);
+    ca.store(T0 + 1_000, Ordering::SeqCst);
+    rename(&mut a, &id, "oat milk");
+    sync(&a, &mut b, &mut 0);
+    cb.store(T0 + 2_000, Ordering::SeqCst);
+    rename(&mut b, &id, "soy milk");
+    sync(&b, &mut a, &mut 0);
+    assert_eq!(a.get_task(&id).unwrap().title, "soy milk");
+    assert!(a.conflicts().unwrap().is_empty());
+}
+
+#[test]
+fn harmless_concurrent_edits_are_not_conflicts() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let id = shared_task(&mut a, &mut b);
+    // Different fields.
+    ca.store(T0 + 1_000, Ordering::SeqCst);
+    rename(&mut a, &id, "oat milk");
+    cb.store(T0 + 2_000, Ordering::SeqCst);
+    b.update_task(&id, TaskPatch { description: Some("2 l".into()), ..Default::default() }).unwrap();
+    // Both complete it, at different times.
+    a.complete_task(&id, Source::App).unwrap();
+    b.complete_task(&id, Source::App).unwrap();
+    sync(&b, &mut a, &mut 0);
+    sync(&a, &mut b, &mut 0);
+    assert!(a.conflicts().unwrap().is_empty(), "{:?}", a.conflicts().unwrap());
+    assert!(b.conflicts().unwrap().is_empty());
+    assert_eq!(a.get_task(&id).unwrap().title, "oat milk");
+    assert_eq!(a.get_task(&id).unwrap().description, "2 l");
+}
+
+#[test]
+fn keep_theirs_just_closes_the_conflict() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let id = shared_task(&mut a, &mut b);
+    ca.store(T0 + 1_000, Ordering::SeqCst);
+    rename(&mut a, &id, "oat milk");
+    cb.store(T0 + 2_000, Ordering::SeqCst);
+    rename(&mut b, &id, "soy milk");
+    sync(&b, &mut a, &mut 0);
+    let c = a.conflicts().unwrap();
+    assert_eq!(c[0].won_by, None, "B isn't in A's peers here");
+    assert_eq!(a.resolve_conflict(&c[0].id, false).unwrap(), None);
+    assert!(a.conflicts().unwrap().is_empty());
+    assert_eq!(a.get_task(&id).unwrap().title, "soy milk");
+    assert!(a.resolve_conflict(&c[0].id, true).is_err(), "already settled");
+}
+
+#[test]
+fn no_conflicts_from_values_a_restore_rolled_back() {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let id = shared_task(&mut a, &mut b);
+    let dir = std::env::temp_dir().join(format!("befikr-test-{}", uuid::Uuid::now_v7()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let backup = dir.join("a.db");
+    a.export_to(backup.to_str().unwrap()).unwrap();
+    // After the backup A renames (B sees it), then B renames on top.
+    ca.store(T0 + 1_000, Ordering::SeqCst);
+    rename(&mut a, &id, "oat milk");
+    sync(&a, &mut b, &mut 0);
+    cb.store(T0 + 2_000, Ordering::SeqCst);
+    rename(&mut b, &id, "soy milk");
+
+    a.import_from(backup.to_str().unwrap()).unwrap();
+    std::fs::remove_dir_all(dir).unwrap();
+    sync(&b, &mut a, &mut 0);
+    assert_eq!(a.get_task(&id).unwrap().title, "soy milk");
+    assert!(a.conflicts().unwrap().is_empty());
+}

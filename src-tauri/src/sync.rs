@@ -1,7 +1,7 @@
 //! P2P sync glue: the app side of `befikr-sync` (store access, alarms,
 //! events) and the commands behind Settings → Sync.
 
-use befikr_core::{MergeOutcome, Store, SyncMode};
+use befikr_core::{Conflict, MergeOutcome, Store, SyncMode};
 use befikr_sync::{Host, Status, SyncService};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -98,6 +98,24 @@ pub(crate) async fn pair_with_link(sync: State<'_, Sync>, link: String) -> Res<(
 #[tauri::command]
 pub(crate) async fn unpair(sync: State<'_, Sync>, endpoint: String) -> Res<()> {
     sync.unpair(&endpoint).await
+}
+
+#[tauri::command]
+pub(crate) fn conflicts(db: State<'_, Db>) -> Res<Vec<Conflict>> {
+    db.store.lock().map_err(err)?.conflicts().map_err(err)
+}
+
+/// `use_mine`: write this device's lost value back (it then syncs out).
+#[tauri::command]
+pub(crate) fn resolve_conflict(app: AppHandle, sync: State<'_, Sync>, db: State<'_, Db>, id: String, use_mine: bool) -> Res<()> {
+    let change = db.store.lock().map_err(err)?.resolve_conflict(&id, use_mine).map_err(err)?;
+    if let Some(c) = change {
+        apply(&app, &db, &c.alarm);
+    }
+    let _ = app.emit("tasks-changed", ());
+    let _ = app.emit("sync-changed", ());
+    sync.nudge();
+    Ok(())
 }
 
 #[tauri::command]

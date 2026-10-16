@@ -20,17 +20,17 @@ use crate::{Error, Result};
 /// HLC = wall clock ms << 16 | counter.
 const HLC_SHIFT: i64 = 1 << 16;
 
-struct Synced {
-    table: &'static str,
-    key: &'static str,
-    fields: &'static [&'static str],
+pub(crate) struct Synced {
+    pub(crate) table: &'static str,
+    pub(crate) key: &'static str,
+    pub(crate) fields: &'static [&'static str],
     /// Rows outside this condition stay device-local (`ROW` = the row).
     only: Option<&'static str>,
 }
 
 /// What syncs. Not here: `alarm_state`, `sync_state`, `changes`, and
 /// device-local settings. `updated_at` is local bookkeeping, not a field.
-const SYNCED: &[Synced] = &[
+pub(crate) const SYNCED: &[Synced] = &[
     Synced {
         table: "tasks",
         key: "id",
@@ -54,7 +54,7 @@ const SYNCED: &[Synced] = &[
 ];
 
 /// Task fields whose change restarts the reminder (like a local edit would).
-const SCHEDULE_FIELDS: &[&str] = &["due_at", "tz", "rrule", "snoozed_until", "completed_at", "deleted_at"];
+pub(crate) const SCHEDULE_FIELDS: &[&str] = &["due_at", "tz", "rrule", "snoozed_until", "completed_at", "deleted_at"];
 
 /// One field's latest value, as exchanged between peers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -67,6 +67,10 @@ pub struct SyncChange {
     pub value: Value,
     pub hlc: i64,
     pub origin: String,
+    /// hlc of the version this change replaced, where it was made (None =
+    /// a new row, or unknown: from before this was tracked).
+    #[serde(default)]
+    pub prev_hlc: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
@@ -96,9 +100,18 @@ pub(crate) fn install(c: &Connection) -> Result<()> {
         let only = t.only.map(|o| format!(" AND {}", o.replace("ROW", "NEW"))).unwrap_or_default();
         let body = |arms: String| {
             format!(
-                "DELETE FROM changes WHERE tbl = '{table}' AND row_id = NEW.{key} AND field IN (SELECT f FROM ({arms}));
-                 INSERT INTO changes (tbl, row_id, field, value, hlc, origin)
-                   SELECT '{table}', NEW.{key}, f, v, s.hlc, s.device FROM sync_state s, ({arms});"
+                // Delete + insert gives the row a new seq (so it's sent
+                // again); the replaced versions' hlcs wait in `change_prev`.
+                // (Not INSERT OR REPLACE: an upsert firing the trigger would
+                // override its conflict handling.)
+                "DELETE FROM change_prev;
+                 INSERT INTO change_prev (field, hlc)
+                   SELECT field, hlc FROM changes
+                   WHERE tbl = '{table}' AND row_id = NEW.{key} AND field IN (SELECT f FROM ({arms}));
+                 DELETE FROM changes WHERE tbl = '{table}' AND row_id = NEW.{key} AND field IN (SELECT f FROM ({arms}));
+                 INSERT INTO changes (tbl, row_id, field, value, hlc, origin, prev_hlc)
+                   SELECT '{table}', NEW.{key}, f, v, s.hlc, s.device, (SELECT p.hlc FROM change_prev p WHERE p.field = f)
+                   FROM sync_state s, ({arms});"
             )
         };
         c.execute_batch(&format!(
@@ -158,7 +171,7 @@ impl Store {
     /// has them already).
     pub fn changes_since(&self, seq: i64, limit: u32, skip_origin: Option<&str>) -> Result<Vec<SyncChange>> {
         let mut st = self.conn.prepare(
-            "SELECT seq, tbl, row_id, field, value, hlc, origin FROM changes
+            "SELECT seq, tbl, row_id, field, value, hlc, origin, prev_hlc FROM changes
              WHERE seq > ?1 AND origin IS NOT ?3 ORDER BY seq LIMIT ?2",
         )?;
         let rows = st.query_map(params![seq, limit, skip_origin], |r| {
@@ -170,6 +183,7 @@ impl Store {
                 value: to_json(r.get(4)?),
                 hlc: r.get(5)?,
                 origin: r.get(6)?,
+                prev_hlc: r.get(7)?,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -178,6 +192,7 @@ impl Store {
     /// Apply a peer's changes: per field, the newest (hlc, origin) wins.
     /// Unknown tables/fields and device-local rows are ignored.
     pub fn merge(&mut self, incoming: &[SyncChange]) -> Result<MergeOutcome> {
+        let me = self.device_id()?;
         self.write(|c, now| {
             c.execute("UPDATE sync_state SET applying = 1", [])?;
             // Rows may arrive before the rows they point to (subtask before parent).
@@ -193,23 +208,30 @@ impl Store {
                 if t.table == "settings" && ch.row_id == "backup_dir" {
                     continue;
                 }
-                let local: Option<(i64, String)> = c
+                let local: Option<(i64, String, SqlValue)> = c
                     .query_row(
-                        "SELECT hlc, origin FROM changes WHERE tbl = ?1 AND row_id = ?2 AND field = ?3",
+                        "SELECT hlc, origin, value FROM changes WHERE tbl = ?1 AND row_id = ?2 AND field = ?3",
                         params![ch.table, ch.row_id, ch.field],
-                        |r| Ok((r.get(0)?, r.get(1)?)),
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
                     )
                     .optional()?;
-                if local.is_some_and(|(hlc, origin)| (hlc, origin.as_str()) >= (ch.hlc, ch.origin.as_str())) {
+                if local.as_ref().is_some_and(|(hlc, origin, _)| (*hlc, origin.as_str()) >= (ch.hlc, ch.origin.as_str())) {
                     continue;
                 }
+                // Our own edit loses to one made without seeing it (it
+                // replaced an older version than ours): keep it for the
+                // Conflicts page. A newer base means ours was already
+                // superseded (e.g. we restored a backup), so no conflict.
+                if let Some((hlc, origin, value)) = local {
+                    let concurrent = ch.prev_hlc.is_some_and(|p| p < hlc);
+                    if origin == me && concurrent && crate::conflicts::worth_logging(t.table, field, &value, &ch.value) {
+                        crate::conflicts::log(c, ch, value, now)?;
+                    }
+                }
                 c.execute(
-                    "DELETE FROM changes WHERE tbl = ?1 AND row_id = ?2 AND field = ?3",
-                    params![ch.table, ch.row_id, ch.field],
-                )?;
-                c.execute(
-                    "INSERT INTO changes (tbl, row_id, field, value, hlc, origin) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                    params![ch.table, ch.row_id, ch.field, to_sql(&ch.value), ch.hlc, ch.origin],
+                    "INSERT OR REPLACE INTO changes (tbl, row_id, field, value, hlc, origin, prev_hlc)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    params![ch.table, ch.row_id, ch.field, to_sql(&ch.value), ch.hlc, ch.origin, ch.prev_hlc],
                 )?;
                 match rows.iter_mut().find(|(rt, id, _)| rt.table == t.table && *id == ch.row_id) {
                     Some((_, _, fields)) => fields.push((field, &ch.value)),
@@ -237,7 +259,7 @@ impl Store {
 /// One row's winning fields: (table, row id, [(field, value)]).
 type RowWrite<'a> = (&'static Synced, &'a str, Vec<(&'static str, &'a Value)>);
 
-fn write_row(c: &Connection, t: &Synced, id: &str, fields: &[(&str, &Value)], now: i64) -> Result<()> {
+pub(crate) fn write_row(c: &Connection, t: &Synced, id: &str, fields: &[(&str, &Value)], now: i64) -> Result<()> {
     let has_updated_at = t.table != "task_events";
     let exists: bool =
         c.query_row(&format!("SELECT count(*) > 0 FROM {} WHERE {} = ?1", t.table, t.key), [id], |r| r.get(0))?;
@@ -265,7 +287,7 @@ fn write_row(c: &Connection, t: &Synced, id: &str, fields: &[(&str, &Value)], no
     Ok(())
 }
 
-fn to_json(v: SqlValue) -> Value {
+pub(crate) fn to_json(v: SqlValue) -> Value {
     match v {
         SqlValue::Null => Value::Null,
         SqlValue::Integer(i) => i.into(),
@@ -275,7 +297,7 @@ fn to_json(v: SqlValue) -> Value {
     }
 }
 
-fn to_sql(v: &Value) -> SqlValue {
+pub(crate) fn to_sql(v: &Value) -> SqlValue {
     match v {
         Value::Null => SqlValue::Null,
         Value::Bool(b) => SqlValue::Integer(*b as i64),
