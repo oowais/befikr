@@ -304,9 +304,27 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 **Build steps**
 1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network. ✅ Oct 16 (conflicts log moved to step 3): migration 3 (`sync_state`, `changes`), `crates/core/src/sync.rs` — triggers generated from one table/field list (re-created on every open; rows that predate them are backfilled once), `Store::changes_since(seq)`, `Store::merge(changes)` → alarm changes. Restoring a backup keeps this device's sync id; restored data is older, so peers' newer edits win on the next sync.
 2. iroh endpoint in the app (Rust, `src-tauri`): device key, same-network discovery, sync protocol over one QUIC stream, pairing by code/QR, Settings → Sync UI (devices, last synced, mode switch). ✅ Oct 16 (built; relay mode switch included): new crate `crates/sync` (`befikr-sync`, iroh 1.3 + `iroh-mdns-address-lookup`, service name `befikr`) with `SyncService` + wire protocol (`proto.rs`: Hello/Want/Changes/Done, Pair/Paired/Denied, length-prefixed JSON on one bi stream). Migration 4: `sync_state.mode/name`, `peers`. Device key in `sync.key` next to the DB (not in backups). Sync runs on start, when a paired device appears via mDNS, ~2 s after any local write (polls the change log, so notification actions count) and every minute. Pairing: 6-digit code, 5-minute window, 5 tries; the code shows on one device, the other picks it under "Nearby" and types it (QR / link: ✅ Oct 16 — `befikr://pair?id&code&name&ip&relay`, QR under the code, Android scans in the webview (`QrScanner.vue`: getUserMedia + `jsqr`; `tauri-plugin-barcode-scanner` dropped: it needs Google Play Services ML Kit and crashed without it), desktop pastes the link under “Enter an address or link”). UI: Settings → Devices → Sync (`/sync`). Android: multicast lock while sync runs (`setMulticast`, `CHANGE_WIFI_MULTICAST_STATE`). Tested: two endpoints in-process (pair, wrong code, both directions, unpaired refused) and two processes over real mDNS on Linux (`cargo run -p befikr-sync --example peer`). Not yet: Android/Windows build of iroh in CI, on-device test.
-3. Relay mode switch; then the Conflicts page (needs a rule for "concurrent": a local edit made after the last sync with that peer, overwritten by theirs).
+3. ⏸ Paused: see **Sync transport — rethink** below before more network work. Relay mode switch; then the Conflicts page (needs a rule for "concurrent": a local edit made after the last sync with that peer, overwritten by theirs).
 
 **Check per step:** iroh builds for Android (arm64) and Windows in CI before relying on it.
+
+### Sync transport — rethink (OPEN DECISION, Oct 16, 2026)
+
+**Status:** paused here. Resume with "continue": first get the 0.13.1 test result from the user, then decide A or B below.
+
+**Problems so far (all in connecting, none in merging):**
+- 0.12.0, two Androids: nobody under "Nearby" in either mode. Nearby is mDNS only (also in Anywhere: the relay doesn't help discovery), and only lists devices that are showing a code. Suspects: Proton VPN on the phones, router client isolation, Wi-Fi drivers dropping multicast. Not confirmed (asked: VPN on? any warning on the Sync page? address under the code starting `10.2.` = VPN address).
+- Desktop firewall blocks incoming → had to make the computer do all the dialling (0.12.0).
+- 0.13.0: scanning the QR crashed (Pixel 9 "tokay", Android 17, likely without/sandboxed Play Services): `tauri-plugin-barcode-scanner` uses Play Services ML Kit → NPE. Fixed in 0.13.1 (in-webview scanner, getUserMedia + jsQR). Not yet tested on a device.
+- Every fix is networking code that only fails on real devices, and Kotlin/Android only compiles in CI. The core merge (change log + HLC + per-field LWW, `Store::changes_since` / `Store::merge`) is transport-agnostic and tested.
+
+**Next test (user):** 0.13.1 between two Androids: both on **Anywhere**, A "Show a pairing code", B "Scan a pairing code". Then phone ↔ desktop. Report exact error text.
+
+**Option A — keep iroh, one path only.** Anywhere (relay) as the only mode, pair by QR/link only, drop mDNS, the fixed port and the TCP who-is responder. Relay gets through VPN/NAT/firewalls; same Wi-Fi still goes direct when possible. Cost: n0's relay sees that two devices connect (never data); we still own networking code. Good if 0.13.1 works.
+
+**Option B — Syncthing folder as transport (recommended if 0.13.1 still fails).** Each device appends its changes to its own file in a folder the user picks (like the backup folder), e.g. `Befikr/<device-id>.jsonl`; reads the other devices' files and merges with the existing core (`changes_since` / `merge`, per-peer seq). Syncthing (user already runs it; Syncthing-Fork on Android) does discovery, NAT, VPN, relays, pairing, encryption. Befikr drops all networking: iroh, ports, QR, camera, multicast lock; smaller APK. Cost: changes arrive when Syncthing has synced (seconds); Befikr reads the folder on open/resume, on a timer while running (desktop tray), and in the background on Android (WorkManager, ~15 min) so alarms changed elsewhere get re-armed. Needs Syncthing on every device. Open details: file format + compaction (rewrite own file when large; peers track last seq per file), SAF folder access on Android (reuse backup's tree-URI picker), conflicts page unchanged.
+
+**Option C — both** (folder main, iroh extra): most code to maintain; not recommended.
 
 ### Step 3 — app notes
 
@@ -370,6 +388,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (sync rethink)** — Sync keeps failing at connecting (mDNS on Android, desktop firewall, Play Services crash). Wrote **Sync transport — rethink**: A = iroh relay + QR only, B = Syncthing folder transport (recommended if 0.13.1 fails), C = both. **Next:** user's 0.13.1 test result (two Androids, Anywhere + QR), then decide A/B.
 - **Oct 16, 2026 (QR crash)** — 0.13.0 crashed on scan (Pixel, no Play Services): the barcode plugin uses Play Services ML Kit. Replaced with an in-webview scanner (getUserMedia + jsQR, Apache-2.0); CAMERA permission in our plugin manifest. **Next:** device test of scan + pair between two Androids.
 - **Oct 16, 2026 (retire, grouped history)** — Repeating tasks can be **retired** (`Store::retire_task`: `completed_at` set, no completion row, event `retired`; `reopen_task` brings it back without touching completions). Unlike delete, history + stats stay. Stats → Completed is grouped per task (`completed_groups`: count, last, retired); task page shows its history (`task_history`, “Done N×”). **Next:** device test; Conflicts page.
 - **Oct 16, 2026 (QR pairing, settings split)** — Pairing link + QR (`crates/sync/src/link.rs`, `pair_with_link`; carries id, code, name, LAN/IPv6 addresses, relay). Phones: “Scan a pairing code” (camera, barcode-scanner plugin); everyone: “Copy link” / paste link. Settings: re-remind + time words moved to `/timing` (“Times”), backup to `/backup`. **Next:** device test of QR scan (Kotlin/plugin compiles only in CI); Conflicts page.
