@@ -236,7 +236,7 @@ onUnmounted(() => {
 .scroll { mask-image: linear-gradient(to top, transparent 0, #000 28px); }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 10px; scrollbar-width: none; }
-.below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 45%); }
+.below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
 .dock { flex: none; padding: 10px 0 14px; }
 .scene { flex: 1; min-height: 0; }
 .composer {
