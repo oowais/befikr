@@ -210,13 +210,18 @@ onUnmounted(() => {
 /* One screen tall: the list scrolls inside, the doodle takes whatever room
    is left above the "New task" bar (none once the list needs it), and with
    nothing to do the doodle is the whole screen. */
-.page.home { height: 100dvh; display: flex; flex-direction: column; padding-bottom: 0; }
+/* body already pads for the status and gesture bars: subtract them, or the
+   page is taller than the screen and the whole thing can be dragged. */
+.page.home {
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; padding-bottom: 0;
+}
 /* Fade at the bottom of the list says "more below". */
 .scroll { mask-image: linear-gradient(to top, transparent 0, #000 28px); }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 10px; scrollbar-width: none; }
 .below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 45%); }
-.dock { flex: none; padding: 10px 0 calc(14px + env(safe-area-inset-bottom)); }
+.dock { flex: none; padding: 10px 0 14px; }
 .scene { flex: 1; min-height: 0; }
 .composer {
   flex: none; display: flex; align-items: center; gap: 12px; min-height: 60px; text-align: left;
