@@ -94,7 +94,7 @@ pub struct Completion {
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub completed: u32,
-    /// Done by the due time (+1 min grace). `on_time + late` = completions with a due date.
+    /// Done on or before the due day. `on_time + late` = completions with a due date.
     pub on_time: u32,
     pub late: u32,
     /// Median of how long late completions sat overdue.

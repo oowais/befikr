@@ -193,7 +193,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 3. **Share-to-app** — share a link from browser → new task. ✅ Oct 15: own intent filter (reminders plugin manifest, merged into MainActivity) → route `/?shareText=…&shareSubject=…` → quick add with title from the page title / text, link in notes.
 4. **Native snooze overlay** — true Android bottom sheet without opening the full app (custom Kotlin). Low priority; MVP opens the app on the snooze route.
 5. **Completion history analysis** — suggest/reuse past tasks while adding.
-6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time. ✅ Oct 16: Completed page became **Stats** (`/stats`, chart icon): range switch (7 days / 30 days / all time), tiles (done, % on time, median lateness, snoozes, missed repeats), last-8-weeks stacked bars (on time / late / no date), completion list below. Numbers from `Store::stats` in core.
+6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time. Late = done on a later day than due (task's zone); same day counts as on time (changed Oct 16 from a 1-minute grace). ✅ Oct 16: Completed page became **Stats** (`/stats`, chart icon): range switch (7 days / 30 days / all time), tiles (done, % on time, median lateness, snoozes, missed repeats), last-8-weeks stacked bars (on time / late / no date), completion list below. Numbers from `Store::stats` in core.
 7. **Gamification** (way later) — Todoist Karma-style levels, streaks, goals, built on the same stats.
 8. **More views** — only if needed.
 9. **Shopping list** — own view behind a dedicated button on the main screen.
@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (late rule)** — Stats: a task is late only if done after its due day ended (was: >1 min after due). Completed-list "late" label follows. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (notif icon)** — Device: reminder survived the app update (re-armed). Notification showed the system bell: release resource shrinking dropped `ic_stat_befikr` (looked up by name, so unreferenced). Kept via `res/raw/keep.xml`. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (size)** — v0.9.0 APK 38 MB (was 17): the Rust `.so` ships unstripped (36.6 MB in the APK). Release profile now `strip`, `lto`, `codegen-units = 1`, `opt-level = "s"`; iroh without default features (no metrics/portmapper). Linux lib 10.4 → 6.3 MB stripped+optimised. `panic = "abort"` not used: JNI relies on `catch_unwind`. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (apk fix)** — First CI run after the share + sync pushes: Rust (incl. iroh) builds for Android, but the manifest merge failed (share intent filter on `MainActivity` without `android:exported`). Fixed. **Next:** push, then phone↔Linux sync test.

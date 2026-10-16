@@ -381,3 +381,15 @@ fn skip_moves_repeat_on_without_completing() {
     let plain = s.add_task(task("once", Some(at(15, 18, 0)))).unwrap().task.id;
     assert!(s.skip_task(&plain, Source::App).is_err());
 }
+
+#[test]
+fn late_means_a_later_day() {
+    let (mut s, clock) = store(); // Thu Oct 15 10:00 Berlin
+    let same_day = s.add_task(task("rent", Some(at(15, 9, 0)))).unwrap().task.id;
+    let next_day = s.add_task(task("call", Some(at(14, 23, 30)))).unwrap().task.id;
+    clock.store(at(15, 23, 59), Ordering::SeqCst);
+    s.complete_task(&same_day, Source::App).unwrap(); // 15 h after 09:00, same day
+    s.complete_task(&next_day, Source::App).unwrap(); // 30 min past midnight
+    let st = s.stats(None, &[]).unwrap();
+    assert_eq!((st.on_time, st.late), (1, 1));
+}

@@ -8,8 +8,6 @@ use crate::model::*;
 use crate::recurrence::{self, parse_tz};
 use crate::{schema, sync, Error, Result};
 
-/// A completion up to this long after its due time still counts as on time.
-const LATE_GRACE_MS: i64 = 60_000;
 
 const DEFAULT_REREMIND: &[i64] = &[5, 15, 30, 60];
 /// Alarms that should have fired already are re-armed this far in the future.
@@ -119,7 +117,8 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
-    /// Stats for completions, snoozes and missed repeats since `since`
+    /// Stats for completions, snoozes and missed repeats since `since`.
+    /// A completion is late when it falls on a later day than its due time.
     /// (`None` = all time), up to now. `week_starts` (ascending, the
     /// caller's local week starts) bucket completions for a chart; the last
     /// bucket runs to now. Undone completions and deleted tasks don't count.
@@ -127,18 +126,20 @@ impl Store {
         let since = since.unwrap_or(i64::MIN);
         let from = since.min(week_starts.first().copied().unwrap_or(since));
         let mut st = self.conn.prepare(
-            "SELECT c.completed_at, c.due_at_then FROM completions c JOIN tasks t ON t.id = c.task_id
+            "SELECT c.completed_at, c.due_at_then, t.tz FROM completions c JOIN tasks t ON t.id = c.task_id
              WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.completed_at >= ?1",
         )?;
-        let rows = st.query_map([from], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?)))?;
+        let rows = st.query_map([from], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?, r.get::<_, Option<String>>(2)?))
+        })?;
         let mut s = Stats {
             weeks: week_starts.iter().map(|&start| WeekStats { start, ..Default::default() }).collect(),
             ..Default::default()
         };
         let mut lateness = Vec::new();
         for row in rows {
-            let (done, due) = row?;
-            let late = due.map(|d| done > d + LATE_GRACE_MS);
+            let (done, due, tz) = row?;
+            let late = due.map(|d| is_late(d, done, tz.as_deref()));
             if done >= since {
                 s.completed += 1;
                 match (late, due) {
@@ -553,6 +554,13 @@ impl Store {
 }
 
 // ---------------------------------------------------------------- helpers
+
+/// Late = done after the due day ended (in the task's zone); any time on
+/// the due day counts as on time.
+fn is_late(due: i64, done: i64, tz: Option<&str>) -> bool {
+    let tz = tz.and_then(|z| parse_tz(z).ok()).unwrap_or(chrono_tz::UTC);
+    recurrence::from_ms(done, tz).date_naive() > recurrence::from_ms(due, tz).date_naive()
+}
 
 const COLS: &str = "id, parent_id, title, description, due_at, tz, rrule, adaptive, completed_at, \
                     snoozed_until, created_at, updated_at, deleted_at";

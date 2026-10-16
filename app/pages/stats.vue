@@ -41,7 +41,9 @@ const total = (w: WeekStats) => w.onTime + w.late + w.undated
 const weekMax = computed(() => Math.max(1, ...(stats.value?.weeks ?? []).map(total)))
 const weekLabel = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
-const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen + 60_000
+// Late = done on a later day than it was due (same rule as the stats).
+const dayOf = (ms: number) => new Date(ms).toDateString()
+const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen && dayOf(c.completedAt) !== dayOf(c.dueAtThen)
 // Newest first, so a task's first row is its latest completion.
 const undoable = computed(() => {
   const seen = new Set<string>()
