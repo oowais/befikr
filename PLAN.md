@@ -394,6 +394,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 17, 2026 (update confirmed)** — In-app update works on Android: 0.19.0 → 0.20.0 from Settings on the phone. Windows not yet tried. **Next:** habit streaks or weekly recap; encrypted backups.
+
 - **Oct 17, 2026 (garden art)** — Landscape garden redrawn: 12 distinct tree kinds and 5 flower kinds with soft colour (`app/utils/garden.ts`), 1.25× size, grand oak in the middle; the home doodle's top fade is now a fixed 56 px so the garden isn't washed out. Checked light/dark, day/night in mocked Chromium. **Next:** habit streaks or weekly recap; encrypted backups.
 
 - **Oct 17, 2026 (carefree days)** — Gamification (Post-MVP 7): carefree-days streak (nothing overdue at noon the next day, one forgiven miss per week) beside the title and on Stats; the home landscape grows trees (on-time ever), flowers (on-time this week) and birds/stars (streak). Off switch in Settings. Checked in mocked Chromium. **Next:** habit streaks for repeating tasks or the weekly recap; encrypted backups.
