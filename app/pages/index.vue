@@ -4,6 +4,7 @@ import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
 const router = useRouter()
+const { id: snoozeId, open: openSnooze, close: closeSnooze } = useSnoozeSheet()
 const { show } = useToast()
 const sound = useSound()
 const rows = ref<Row[]>([])
@@ -53,7 +54,7 @@ function menu(e: MouseEvent, row: Row) {
   openMenu(e, [
     { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${row.id}`) },
     { label: 'Complete', icon: Check, run: () => complete(row) },
-    ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => router.push(`/snooze?id=${row.id}`) }] : []),
+    ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => openSnooze(row.id) }] : []),
     ...(row.rrule ? [{ label: 'Skip this one', icon: SkipForward, run: () => skip(row) }] : []),
     ...(row.rrule ? [{ label: 'Retire', icon: Sunset, run: () => retire(row) }] : []),
     'separator',
@@ -171,7 +172,7 @@ onUnmounted(() => {
           :done="completing.has(r.id)"
           @complete="complete(r)"
           @open="router.push(`/task/${r.id}`)"
-          @snooze="router.push(`/snooze?id=${r.id}`)"
+          @snooze="openSnooze(r.id)"
           @menu="menu($event, r)"
         />
       </TransitionGroup>
@@ -183,6 +184,7 @@ onUnmounted(() => {
 
     <button v-if="!adding" class="fab ink" aria-label="Add task" @click="adding = true"><Plus :size="28" /></button>
     <QuickAdd v-if="adding" @close="adding = false" @saved="refresh" />
+    <SnoozeSheet v-if="snoozeId" :key="snoozeId" :task-id="snoozeId" @close="closeSnooze" @done="closeSnooze(); refresh()" />
   </main>
 </template>
 

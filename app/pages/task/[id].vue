@@ -5,6 +5,7 @@ import type { Completion, Task } from '~/composables/api'
 
 const route = useRoute()
 const router = useRouter()
+const { id: snoozeId, open: openSnooze, close: closeSnooze } = useSnoozeSheet()
 const { show } = useToast()
 const sound = useSound()
 const id = computed(() => String(route.params.id))
@@ -182,7 +183,7 @@ async function remove() {
       <span style="flex: 1" />
       <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> {{ retired ? 'Bring back' : 'Undo' }}</button>
       <template v-else-if="task">
-        <NuxtLink v-if="task.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
+        <button v-if="task.dueAt" class="btn" @click="openSnooze(id)"><AlarmClock :size="18" /> Snooze</button>
         <button v-if="task.rrule && !task.parentId" class="btn" @click="skip"><SkipForward :size="18" /> Skip</button>
         <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
       </template>
@@ -298,6 +299,7 @@ async function remove() {
       @update:model-value="setDue"
       @close="picking = false"
     />
+    <SnoozeSheet v-if="snoozeId" :key="snoozeId" :task-id="snoozeId" @close="closeSnooze" @done="closeSnooze(); load()" />
   </main>
 </template>
 

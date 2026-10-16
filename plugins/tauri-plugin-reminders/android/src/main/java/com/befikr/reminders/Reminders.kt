@@ -146,7 +146,7 @@ internal object Notifier {
             .setGroup("task-$id")
             .setContentIntent(launchPendingIntent(ctx, id, "/"))
             .addAction(0, "Complete", action(ACTION_COMPLETE, "complete"))
-            .addAction(0, "Snooze", launchPendingIntent(ctx, id, "/snooze?id=$id"))
+            .addAction(0, "Snooze", launchPendingIntent(ctx, id, "/?snooze=$id"))
             .setDeleteIntent(action(ACTION_DISMISS, "dismiss"))
         if (repeats) b.addAction(0, "Skip", action(ACTION_SKIP, "skip"))
         val n = b.build()

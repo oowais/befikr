@@ -70,7 +70,7 @@ pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool) {
             match r {
                 NotificationResponse::Action(a) if a == "complete" => act(&app, &id, false),
                 NotificationResponse::Action(a) if a == "skip" => act(&app, &id, true),
-                NotificationResponse::Action(a) if a == "snooze" => super::open_route(&app, &format!("/snooze?id={id}")),
+                NotificationResponse::Action(a) if a == "snooze" => super::open_route(&app, &format!("/?snooze={id}")),
                 NotificationResponse::Closed(_) => dismissed(&app, &id),
                 _ => super::open_route(&app, "/"),
             }

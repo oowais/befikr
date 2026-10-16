@@ -1,0 +1,191 @@
+<script setup lang="ts">
+// Snooze a task: a bottom sheet over the list or task view (opened with
+// `?snooze=<id>`, see useSnoozeSheet). Quick picks, a date & time picker,
+// typing ("fri 3pm"), and Skip for repeating tasks. Closes by dragging it
+// down, tapping outside, Back, or once a choice is made.
+import { CalendarDays, Keyboard, SkipForward } from 'lucide-vue-next'
+import type { Task } from '~/composables/api'
+
+const props = defineProps<{ taskId: string }>()
+const emit = defineEmits<{ close: []; done: [] }>()
+useBackClose(() => emit('close'))
+
+const { show } = useToast()
+const task = ref<Task | null>(null)
+const picking = ref(false)
+const typing = ref(false)
+const typed = ref('')
+const error = ref('')
+
+onMounted(async () => {
+  task.value = await api.getTask(props.taskId).catch(() => null)
+})
+
+const HOUR = 3_600_000
+function at(daysAhead: number, h: number, m = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + daysAhead)
+  d.setHours(h, m, 0, 0)
+  return d.getTime()
+}
+
+// Relative picks land on the next 5 minutes: 15:10, not 15:07.
+const FIVE = 5 * 60_000
+const roundUp = (ms: number) => Math.ceil(ms / FIVE) * FIVE
+
+const picks = computed(() => {
+  const now = Date.now()
+  const today = new Date()
+  const list: { label: string; at: number }[] = [
+    { label: 'In 1 hour', at: roundUp(now + HOUR) },
+    { label: 'In 3 hours', at: roundUp(now + 3 * HOUR) },
+  ]
+  if (today.getHours() < 18) list.push({ label: 'This evening', at: at(0, 18) })
+  if (today.getHours() < 21) list.push({ label: 'Tonight', at: at(0, 21) })
+  list.push({ label: 'Tomorrow morning', at: at(1, 9) })
+  list.push({ label: 'Tomorrow evening', at: at(1, 18) })
+  const toMonday = ((8 - today.getDay()) % 7) || 7
+  list.push({ label: 'Next week', at: at(toMonday, 9) })
+  return list.slice(0, 6)
+})
+
+const typedParse = computed(() => (typed.value.trim() ? parseWith(`x ${typed.value}`, []) : null))
+const typedAt = computed(() => {
+  const d = typedParse.value?.due
+  return d ? localMs(d.date, d.time ?? '09:00') : null
+})
+
+// The label already names the day ("Tomorrow morning"): show only the time.
+const pickSub = (p: { label: string; at: number }) =>
+  isToday(p.at) || p.label.startsWith('Tomorrow') ? timeLabel(p.at) : dayLabel(p.at)
+
+async function snooze(until: number | null) {
+  if (until == null) return
+  if (until <= Date.now()) return (error.value = 'Pick a time in the future')
+  try {
+    await api.snoozeTask(props.taskId, until)
+    haptic()
+    show({ message: `Snoozed to ${dayLabel(until)}` })
+    listChanged()
+    emit('done')
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+async function skip() {
+  const due = task.value?.dueAt ?? null
+  try {
+    const t = await api.skipTask(props.taskId)
+    haptic()
+    show({
+      message: `Skipped · next ${dayLabel(t.dueAt!)}`,
+      action: { label: 'Undo', run: () => api.updateTask(t.id, { dueAt: due }).then(listChanged) },
+    })
+    listChanged()
+    emit('done')
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+
+// Drag the top of the sheet down to close it; short drags snap back.
+const dragY = ref(0)
+const dragging = ref(false)
+let startY = 0
+function dragStart(e: PointerEvent) {
+  dragging.value = true
+  startY = e.clientY
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+}
+function dragMove(e: PointerEvent) {
+  if (dragging.value) dragY.value = Math.max(0, e.clientY - startY)
+}
+function dragEnd() {
+  if (!dragging.value) return
+  dragging.value = false
+  if (dragY.value > 90) emit('close')
+  else dragY.value = 0
+}
+</script>
+
+<template>
+  <div class="backdrop" @click.self="emit('close')">
+    <div
+      class="sheet popover"
+      role="dialog"
+      aria-label="Snooze"
+      :class="{ dragging }"
+      :style="dragY ? { transform: `translateY(${dragY}px)` } : undefined"
+    >
+      <div class="grab" @pointerdown="dragStart" @pointermove="dragMove" @pointerup="dragEnd" @pointercancel="dragEnd">
+        <span class="handle" />
+        <span class="title">{{ task?.title ?? '' }}</span>
+        <span class="muted small">Snooze until…</span>
+      </div>
+
+      <div class="grid">
+        <button v-for="p in picks" :key="p.label" class="pick pane tap" @click="snooze(p.at)">
+          <span>{{ p.label }}</span>
+          <span class="muted small">{{ pickSub(p) }}</span>
+        </button>
+      </div>
+
+      <div class="actions">
+        <button class="btn" @click="picking = true"><CalendarDays :size="18" /> Pick</button>
+        <button class="btn" :class="{ chosen: typing }" @click="typing = !typing"><Keyboard :size="18" /> Type</button>
+        <button v-if="task?.rrule" class="btn" @click="skip"><SkipForward :size="18" /> Skip</button>
+      </div>
+
+      <form v-if="typing" class="typed" @submit.prevent="snooze(typedAt)">
+        <input
+          v-model="typed"
+          class="field"
+          placeholder="fri 3pm"
+          enterkeyhint="done"
+          autocorrect="on"
+          autofocus
+        />
+        <button class="btn primary" :disabled="!typedAt">Snooze</button>
+      </form>
+      <p v-if="typing && typedAt" class="muted small">{{ dayLabel(typedAt) }}</p>
+      <p v-if="error" class="error">{{ error }}</p>
+    </div>
+
+    <DateTimeSheet
+      v-if="picking"
+      :model-value="null"
+      title="Snooze until"
+      :min="Date.now()"
+      done-label="Snooze"
+      @update:model-value="snooze"
+      @close="picking = false"
+    />
+  </div>
+</template>
+
+<style scoped>
+.backdrop {
+  position: fixed; inset: 0; z-index: 55; background: oklch(0 0 0 / 22%);
+  display: flex; align-items: flex-end; animation: fade-in 0.15s;
+}
+.sheet {
+  width: calc(100% - 16px); max-width: 520px; margin: 0 auto 8px; border-radius: 22px;
+  padding: 0 14px calc(14px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 12px; max-height: 92vh; overflow-y: auto;
+  animation: float-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sheet.dragging { transition: none; }
+.grab {
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 4px 2px;
+  touch-action: none; cursor: grab; user-select: none;
+}
+.handle { width: 36px; height: 4px; border-radius: 2px; background: color-mix(in oklch, var(--muted) 45%, transparent); align-self: center; margin-bottom: 8px; }
+.title { font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; }
+.actions { display: flex; gap: 8px; }
+.actions .btn { flex: 1; }
+.typed { display: flex; gap: 8px; }
+</style>
