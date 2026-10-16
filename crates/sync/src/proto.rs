@@ -24,7 +24,7 @@ const MAX_FRAME: usize = 64 * 1024 * 1024;
 #[serde(tag = "t", rename_all = "camelCase")]
 enum Msg {
     /// `addrs`: where the sender can be reached ("ip:port"), remembered by
-    /// the other side so later syncs don't need mDNS.
+    /// the other side and tried before the relay next time.
     Hello {
         version: u32,
         device: String,

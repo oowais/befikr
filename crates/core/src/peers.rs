@@ -10,9 +10,7 @@ use crate::{Error, Result};
 #[serde(rename_all = "lowercase")]
 pub enum SyncMode {
     Off,
-    /// Same network only: local discovery, no relays.
-    Lan,
-    /// Same network first, relays when away.
+    /// On: direct when the network allows, n0's relays otherwise.
     Relay,
 }
 
@@ -20,14 +18,14 @@ impl SyncMode {
     fn as_str(self) -> &'static str {
         match self {
             SyncMode::Off => "off",
-            SyncMode::Lan => "lan",
             SyncMode::Relay => "relay",
         }
     }
     fn parse(s: &str) -> Self {
         match s {
-            "lan" => SyncMode::Lan,
             "relay" => SyncMode::Relay,
+            // "lan" (same network only) was dropped; it never involved a
+            // relay, so it doesn't silently become one: off.
             _ => SyncMode::Off,
         }
     }

@@ -150,6 +150,7 @@ onUnmounted(() => {
   <main class="page">
     <header class="topbar">
       <h1>Befikr</h1>
+      <SyncDot />
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
       <NuxtLink to="/settings" class="icon-btn" aria-label="Settings"><Settings :size="22" /></NuxtLink>

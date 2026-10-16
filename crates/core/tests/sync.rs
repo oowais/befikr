@@ -111,7 +111,7 @@ fn rows_in_any_order_and_forwarded() {
 fn peers_and_settings_are_local() {
     let (mut a, _) = device();
     assert_eq!(a.sync_settings().unwrap().mode, SyncMode::Off);
-    a.set_sync_mode(SyncMode::Lan).unwrap();
+    a.set_sync_mode(SyncMode::Relay).unwrap();
     a.set_device_name("  Pixel   9 ").unwrap();
     a.add_peer("ep1", "dev1", "Desktop").unwrap();
     a.peer_synced("ep1", 42, "Desktop").unwrap();
@@ -125,6 +125,6 @@ fn peers_and_settings_are_local() {
     sync(&a, &mut b, &mut 0);
     assert!(b.peers().unwrap().is_empty());
     let s = a.sync_settings().unwrap();
-    assert_eq!((s.mode, s.name.as_str()), (SyncMode::Lan, "Pixel 9"));
+    assert_eq!((s.mode, s.name.as_str()), (SyncMode::Relay, "Pixel 9"));
     assert_eq!(b.sync_settings().unwrap().mode, SyncMode::Off);
 }

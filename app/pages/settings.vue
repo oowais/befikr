@@ -44,7 +44,7 @@ const syncLabel = computed(() => {
   const s = sync.value
   if (!s || s.mode === 'off') return 'Off'
   const n = s.peers.length
-  return `${s.mode === 'lan' ? 'Same Wi-Fi' : 'Anywhere'} · ${n ? `${n} ${n === 1 ? 'device' : 'devices'}` : 'no devices yet'}`
+  return `On · ${n ? `${n} ${n === 1 ? 'device' : 'devices'}` : 'no devices yet'}`
 })
 const timesLabel = computed(() => {
   const s = settings.value

@@ -356,12 +356,9 @@ pub fn run() {
             sync::set_device_name,
             sync::start_pairing,
             sync::stop_pairing,
-            sync::pair_with,
-            sync::pair_with_address,
             sync::pair_with_link,
             sync::unpair,
             sync::sync_now,
-            sync::rescan_sync,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

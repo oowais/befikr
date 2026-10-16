@@ -8,9 +8,8 @@
     <!-- Sync: scan the other device's pairing QR code (in the webview, getUserMedia). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
-    <!-- Sync: connections to paired devices; same-network discovery (mDNS) needs multicast. -->
+    <!-- Sync: connections to paired devices (direct or via relay). -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <application>
         <!-- "Share → Befikr" from other apps: merged into the app's main activity;

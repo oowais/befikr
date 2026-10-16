@@ -276,7 +276,7 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 
 **Transport: iroh** (Rust library by n0, MIT/Apache; not a service). Each device has a key pair; its public key is its address. QUIC + TLS 1.3, end-to-end encrypted, peers authenticated by key. iroh always tries the direct path first (local discovery on the same network) and only falls back to a relay when direct fails.
 
-**Two modes, one setting** (Settings → Sync):
+**Two modes, one setting** (Settings → Sync) — *superseded Oct 16, 2026: one mode (On = option A below); Same Wi-Fi, mDNS, the fixed port and typed addresses are gone.*
 - **Same network only** (default): relays off, local discovery only. No third party at all.
 - **Also away from home (via relay)**: same as above, plus n0's public relays as fallback. On the same Wi-Fi traffic still goes direct.
 - Public relays: free, on by default in iroh, rate-limited per connection (limits not published, tuned by n0; throttling slows, never drops). n0 calls them "development and hobby use" — fine here: a sync is a few KB. A relay sees IPs, device keys, timing and volume, never content. Options if that ever matters: paid shared relays ($19/month) or self-host `iroh-relay` (no limits by default).
@@ -304,13 +304,15 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 **Build steps**
 1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network. ✅ Oct 16 (conflicts log moved to step 3): migration 3 (`sync_state`, `changes`), `crates/core/src/sync.rs` — triggers generated from one table/field list (re-created on every open; rows that predate them are backfilled once), `Store::changes_since(seq)`, `Store::merge(changes)` → alarm changes. Restoring a backup keeps this device's sync id; restored data is older, so peers' newer edits win on the next sync.
 2. iroh endpoint in the app (Rust, `src-tauri`): device key, same-network discovery, sync protocol over one QUIC stream, pairing by code/QR, Settings → Sync UI (devices, last synced, mode switch). ✅ Oct 16 (built; relay mode switch included): new crate `crates/sync` (`befikr-sync`, iroh 1.3 + `iroh-mdns-address-lookup`, service name `befikr`) with `SyncService` + wire protocol (`proto.rs`: Hello/Want/Changes/Done, Pair/Paired/Denied, length-prefixed JSON on one bi stream). Migration 4: `sync_state.mode/name`, `peers`. Device key in `sync.key` next to the DB (not in backups). Sync runs on start, when a paired device appears via mDNS, ~2 s after any local write (polls the change log, so notification actions count) and every minute. Pairing: 6-digit code, 5-minute window, 5 tries; the code shows on one device, the other picks it under "Nearby" and types it (QR / link: ✅ Oct 16 — `befikr://pair?id&code&name&ip&relay`, QR under the code, Android scans in the webview (`QrScanner.vue`: getUserMedia + `jsqr`; `tauri-plugin-barcode-scanner` dropped: it needs Google Play Services ML Kit and crashed without it), desktop pastes the link under “Enter an address or link”). UI: Settings → Devices → Sync (`/sync`). Android: multicast lock while sync runs (`setMulticast`, `CHANGE_WIFI_MULTICAST_STATE`). Tested: two endpoints in-process (pair, wrong code, both directions, unpaired refused) and two processes over real mDNS on Linux (`cargo run -p befikr-sync --example peer`). Not yet: Android/Windows build of iroh in CI, on-device test.
-3. ⏸ Paused: see **Sync transport — rethink** below before more network work. Relay mode switch; then the Conflicts page (needs a rule for "concurrent": a local edit made after the last sync with that peer, overwritten by theirs).
+3. Option A built (see **Sync transport — rethink**). Next: the Conflicts page (needs a rule for "concurrent": a local edit made after the last sync with that peer, overwritten by theirs).
 
 **Check per step:** iroh builds for Android (arm64) and Windows in CI before relying on it.
 
-### Sync transport — rethink (OPEN DECISION, Oct 16, 2026)
+### Sync transport — rethink (decided Oct 16, 2026: option A)
 
-**Status:** paused here. Resume with "continue": first get the 0.13.1 test result from the user, then decide A or B below.
+**0.13.1 result (user, Pixel 9 ↔ Pixel 7, both GrapheneOS, same Wi-Fi, no VPN):** QR pairing in **Anywhere works** (pair + sync). **Same Wi-Fi fails** ("device not reachable", both directions, even with the IPs from the QR) → the direct path between the phones is blocked (router client isolation, or Android 17's local-network restriction; not investigated). Anywhere still goes direct when the network allows.
+
+**Done (option A):** one mode, Off / On (`SyncMode::Relay`; a stored `"lan"` now reads as Off, so nobody is silently moved onto a relay). Pairing by QR (phones scan) or pasted link (computers); the 6-digit code only lives inside the link. Removed: mDNS (`iroh-mdns-address-lookup`, Nearby list, Search again), fixed port 47474 + TCP who-is responder, pairing by address, Android multicast lock + `CHANGE_WIFI_MULTICAST_STATE`, the `discover`/`peer` examples. Kept: peers' last direct addresses (tried before the relay). Tests run without relays (`SyncService::without_relays`), so CI needs no internet. Main list top bar: sync dot (green = working, red = error / not running, grey = no devices; hidden when off) → Sync page. An unreachable device (app closed there) is not an error. **Next:** device test phone ↔ phone and phone ↔ Windows/Linux on 0.14; then the Conflicts page.
 
 **Problems so far (all in connecting, none in merging):**
 - 0.12.0, two Androids: nobody under "Nearby" in either mode. Nearby is mDNS only (also in Anywhere: the relay doesn't help discovery), and only lists devices that are showing a code. Suspects: Proton VPN on the phones, router client isolation, Wi-Fi drivers dropping multicast. Not confirmed (asked: VPN on? any warning on the Sync page? address under the code starting `10.2.` = VPN address).
@@ -387,6 +389,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (sync option A)** — 0.13.1 test: Anywhere + QR works between two GrapheneOS Pixels, Same Wi-Fi doesn't. Went with option A: sync is Off / On (relay fallback), pairing by QR or pasted link only; mDNS, fixed port, who-is responder, address pairing and the multicast lock removed. Sync dot in the main top bar. **Next:** device test (phone ↔ phone, phone ↔ desktop); Conflicts page.
 
 - **Oct 16, 2026 (Windows dev setup)** — User set up the repo on Windows 11 (VS Build Tools C++ + Win11 SDK, rustup MSVC, Node 24, pnpm 12); `pnpm tauri dev` runs. Fixed two Unix-only test bits: parser defaults `TZ` to UTC in `vitest.config.ts` (an explicit `TZ` still wins, for CI's zone checks), and the export test closes the snapshot before deleting it (Windows locks open files). **Next:** unchanged — user's 0.13.1 test result, then decide sync option A/B.
 

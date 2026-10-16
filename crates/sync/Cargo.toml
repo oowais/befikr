@@ -3,14 +3,12 @@ name = "befikr-sync"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "P2P sync between paired devices over iroh: discovery, pairing, change exchange. No Tauri dependency."
+description = "P2P sync between paired devices over iroh: pairing by link, change exchange. No Tauri dependency."
 
 [dependencies]
 befikr-core = { path = "../core" }
 iroh = { version = "1.3", default-features = false, features = ["tls-ring"] }
-iroh-mdns-address-lookup = "0.6"
-tokio = { version = "1", features = ["rt", "sync", "time", "macros", "net", "io-util"] }
-n0-future = "0.3"
+tokio = { version = "1", features = ["rt", "sync", "time", "macros"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.10"

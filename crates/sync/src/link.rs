@@ -1,8 +1,8 @@
-//! Pairing link, shown as a QR code next to the pairing code:
+//! Pairing link, shown as a QR code:
 //! `befikr://pair?id=<device id>&code=<6 digits>&name=<device name>&ip=<ip:port>,…&relay=<url>`.
-//! Everything the other device needs to reach this one without mDNS or
-//! typing: its id (public key), where it listens, its relay (Anywhere mode),
-//! and the code that proves the user is holding both devices.
+//! Everything the other device needs to reach this one: its id (public key),
+//! where it listens, its relay, and the one-time code that proves the user
+//! is holding both devices.
 
 use iroh::{EndpointAddr, EndpointId, RelayUrl, TransportAddr};
 

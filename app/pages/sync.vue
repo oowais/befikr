@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// Sync between this device and paired ones (P2P, no server). Mode, this
-// device's name, paired devices, and pairing: one device shows a code, the
-// other picks it from "Nearby" and types the code, or scans its QR code
-// (a pairing link: id, code, addresses, relay).
+// Sync between this device and paired ones (P2P, no server of ours): on/off,
+// this device's name, paired devices, and pairing: one device shows a QR
+// code (a pairing link: id, one-time code, addresses, relay), the other
+// scans it, or on a computer pastes the link.
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, Copy, Laptop, Link2, Radar, RefreshCw, ScanLine, X } from 'lucide-vue-next'
+import { ArrowLeft, ClipboardPaste, Copy, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
 import { renderSVG } from 'uqr'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
@@ -14,19 +14,12 @@ const st = ref<SyncStatus | null>(null)
 const error = ref('')
 const name = ref('')
 const busy = ref(false)
-const joining = ref<{ endpoint: string; name: string } | null>(null)
-const code = ref('')
 const confirmRemove = ref<string | null>(null)
 const now = ref(Date.now())
 
-const modes: { id: SyncMode; label: string; hint: string }[] = [
-  { id: 'off', label: 'Off', hint: 'Nothing leaves this device.' },
-  { id: 'lan', label: 'Same Wi-Fi', hint: 'Syncs when both devices are on the same network. No third party involved.' },
-  {
-    id: 'relay',
-    label: 'Anywhere',
-    hint: 'Same Wi-Fi first; otherwise through n0’s free public relays. They see that two devices connect, never your data (end-to-end encrypted).',
-  },
+const modes: { id: SyncMode; label: string }[] = [
+  { id: 'off', label: 'Off' },
+  { id: 'relay', label: 'On' },
 ]
 
 async function load() {
@@ -76,16 +69,6 @@ async function saveName() {
   await api.setDeviceName(n).catch((e) => (error.value = String(e)))
 }
 
-function pair() {
-  const target = joining.value
-  if (!target || code.value.trim().length !== 6) return
-  run(async () => {
-    await api.pairWith(target.endpoint, code.value.trim())
-    joining.value = null
-    code.value = ''
-  }, `Paired with ${target.name}`)
-}
-
 const ago = (ms: number | null) => {
   if (ms == null) return 'Not synced yet'
   const s = Math.max(0, Math.round((now.value - ms) / 1000))
@@ -99,21 +82,6 @@ const left = computed(() => {
 const on = computed(() => st.value && st.value.mode !== 'off')
 const isDesktop = typeof navigator !== 'undefined' && !/Android/i.test(navigator.userAgent)
 
-// Fallback when the other device isn't found automatically (mDNS blocked):
-// its address and code, or its whole pairing link (carries the code).
-const byAddress = ref(false)
-const address = ref('')
-const isLink = computed(() => address.value.trim().startsWith('befikr://pair?'))
-function pairByAddress() {
-  const a = address.value.trim()
-  if (!a || (!isLink.value && code.value.trim().length !== 6)) return
-  run(async () => {
-    await (isLink.value ? api.pairWithLink(a) : api.pairWithAddress(a, code.value.trim()))
-    byAddress.value = false
-    address.value = code.value = ''
-  }, 'Paired')
-}
-
 // QR code of the pairing link (dark on white in both themes, so cameras read it).
 const qr = computed(() => (st.value?.pairing?.link ? renderSVG(st.value.pairing.link, { border: 2 }) : ''))
 async function copyLink() {
@@ -122,28 +90,32 @@ async function copyLink() {
   await navigator.clipboard.writeText(link).then(() => show({ message: 'Link copied' }), (e) => (error.value = String(e)))
 }
 
-// Restart discovery; keep the spinner for a moment so the press registers.
-const scanning = ref(false)
-async function rescan() {
-  scanning.value = true
-  await run(api.rescanSync)
-  setTimeout(() => (scanning.value = false), 1200)
+function pairWithLink(text: string) {
+  if (!text.trim().startsWith('befikr://pair?')) {
+    error.value = 'That isn’t a Befikr pairing code.'
+    return
+  }
+  run(() => api.pairWithLink(text.trim()), 'Paired')
 }
 
 // Phones scan the other device's QR code with the camera (QrScanner).
-const canScan = !isDesktop
 const camera = ref(false)
 function scanned(text: string) {
   camera.value = false
-  if (!text.trim().startsWith('befikr://pair?')) {
-    error.value = 'That QR code isn’t a Befikr pairing code.'
-    return
-  }
-  run(() => api.pairWithLink(text), 'Paired')
+  pairWithLink(text)
 }
 function scanFailed(message: string) {
   camera.value = false
   error.value = message
+}
+
+// Computers have no camera to scan with: paste the link ("Copy link" there).
+const pasting = ref(false)
+const pasted = ref('')
+function pairPasted() {
+  pairWithLink(pasted.value)
+  pasting.value = false
+  pasted.value = ''
 }
 </script>
 
@@ -176,7 +148,13 @@ function scanFailed(message: string) {
           {{ m.label }}
         </button>
       </div>
-      <p class="muted small hint">{{ modes.find((m) => m.id === st!.mode)?.hint }}</p>
+      <p class="muted small hint">
+        <template v-if="on">
+          Devices connect directly when they can, otherwise through n0’s free public relays. Relays see that two devices
+          connect, never your data (end-to-end encrypted).
+        </template>
+        <template v-else>Nothing leaves this device.</template>
+      </p>
 
       <template v-if="on">
         <h2 class="section-title">This device</h2>
@@ -206,11 +184,8 @@ function scanFailed(message: string) {
 
         <h2 class="section-title">Add a device</h2>
         <div v-if="st.pairing" class="pane pairing">
-          <span class="muted small">On the other device, open Sync and scan this, or pick <b>{{ st.name || name }}</b> and type the code:</span>
+          <span class="muted small">On the other device, open Sync and tap <b>Scan a pairing code</b>.</span>
           <div v-if="qr" class="qr" role="img" aria-label="Pairing QR code" v-html="qr" />
-          <span class="code">{{ st.pairing.code.slice(0, 3) }} {{ st.pairing.code.slice(3) }}</span>
-          <span v-if="st.addresses.length" class="muted small">Not listed there? Use “Enter an address” with <b>{{ st.addresses.join(' or ') }}</b></span>
-          <span v-if="isDesktop" class="muted small">Pairing a phone? It's easier the other way round: show the code on the phone and type its address here (a computer's firewall usually blocks incoming connections).</span>
           <span class="muted small">Closes in {{ left }}</span>
           <div class="row-end">
             <button v-if="st.pairing.link" class="btn" @click="copyLink"><Copy :size="16" /> Copy link</button>
@@ -219,64 +194,19 @@ function scanFailed(message: string) {
         </div>
         <template v-else>
           <button class="btn wide" :disabled="busy" @click="run(api.startPairing)"><Link2 :size="18" /> Show a pairing code</button>
-          <button v-if="canScan" class="btn wide scan" :disabled="busy" @click="error = ''; camera = true"><ScanLine :size="18" /> Scan a pairing code</button>
+          <button v-if="!isDesktop" class="btn wide gap" :disabled="busy" @click="error = ''; camera = true"><ScanLine :size="18" /> Scan a pairing code</button>
+          <template v-else>
+            <button v-if="!pasting" class="btn wide gap" :disabled="busy" @click="pasting = true"><ClipboardPaste :size="18" /> Paste a pairing link</button>
+            <form v-else class="pane paste" @submit.prevent="pairPasted">
+              <span class="muted small">On the other device: Show a pairing code → Copy link.</span>
+              <input v-model="pasted" class="field" placeholder="befikr://pair?…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+              <div class="row-end">
+                <button type="button" class="btn" @click="pasting = false; pasted = ''">Cancel</button>
+                <button class="btn primary" :disabled="busy || !pasted.trim()">Pair</button>
+              </div>
+            </form>
+          </template>
         </template>
-
-        <template v-if="!st.pairing">
-          <div class="nearby-head">
-            <h2 class="section-title">Nearby, waiting to pair</h2>
-            <button class="btn small-btn" :disabled="busy || scanning" @click="rescan"><RefreshCw :size="15" :class="{ spin: scanning }" /> Search again</button>
-          </div>
-          <p v-if="st.running" class="muted small looking">
-            <Radar :size="15" class="pulse" /> Looking for devices {{ st.mode === 'relay' ? 'nearby' : 'on this Wi-Fi' }}…
-          </p>
-          <div v-if="st.nearby.length" class="pane rows">
-            <template v-for="n in st.nearby" :key="n.endpoint">
-              <button class="item" @click="joining = joining?.endpoint === n.endpoint ? null : n; code = ''">
-                <Laptop :size="20" class="muted" />
-                <span class="flex left">{{ n.name }}</span>
-              </button>
-              <form v-if="joining?.endpoint === n.endpoint" class="join" @submit.prevent="pair">
-                <input
-                  v-model="code"
-                  class="field"
-                  inputmode="numeric"
-                  autocomplete="one-time-code"
-                  maxlength="7"
-                  placeholder="6-digit code"
-                  enterkeyhint="go"
-                  @input="code = code.replace(/\D/g, '')"
-                />
-                <button class="btn primary" :disabled="busy || code.length !== 6">Pair</button>
-              </form>
-            </template>
-          </div>
-          <p v-else class="muted small">
-            None yet. Tap “Show a pairing code” on the other device; it shows up here. Both need sync on and the same Wi-Fi.
-          </p>
-
-          <button v-if="!byAddress" class="btn link-btn" @click="byAddress = true">Not listed? Enter an address or link</button>
-          <form v-else class="pane by-address" @submit.prevent="pairByAddress">
-            <span class="muted small">The other device shows its address under its pairing code. Or paste its link (“Copy link” there).</span>
-            <input v-model="address" class="field" placeholder="192.168.1.20 or befikr://pair?…" autocapitalize="off" autocorrect="off" spellcheck="false" />
-            <input
-              v-if="!isLink"
-              v-model="code"
-              class="field"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              maxlength="7"
-              placeholder="6-digit code"
-              @input="code = code.replace(/\D/g, '')"
-            />
-            <div class="row-end">
-              <button type="button" class="btn" @click="byAddress = false">Cancel</button>
-              <button class="btn primary" :disabled="busy || !address.trim() || (!isLink && code.length !== 6)">Pair</button>
-            </div>
-          </form>
-        </template>
-
-        <p class="muted small tip">Using a VPN? Allow LAN connections in its settings (Proton VPN: Settings → Connection → Advanced).</p>
       </template>
     </template>
     <QrScanner v-if="camera" @found="scanned" @error="scanFailed" @close="camera = false" />
@@ -293,25 +223,15 @@ function scanFailed(message: string) {
 .hint { margin: 8px 0 0; }
 .item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
 .flex { flex: 1; }
-.left { text-align: left; }
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
 .wide { width: 100%; }
+.gap { margin-top: 8px; }
 .pairing { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 16px; text-align: center; }
 .qr { width: 200px; height: 200px; padding: 8px; border-radius: 12px; background: #fff; }
 .qr :deep(svg) { display: block; width: 100%; height: 100%; }
-.scan { margin-top: 8px; }
-.code { font-size: 2.2rem; font-weight: 600; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
-.join { display: flex; gap: 8px; padding: 0 0 12px 32px; }
-.tip { margin-top: 24px; }
-.link-btn { width: 100%; margin-top: 10px; }
-.by-address { display: flex; flex-direction: column; gap: 8px; padding: 14px; margin-top: 10px; }
+.paste { display: flex; flex-direction: column; gap: 8px; padding: 14px; margin-top: 8px; }
 .row-end { display: flex; justify-content: flex-end; gap: 8px; }
-.nearby-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.small-btn { min-height: 32px; padding: 4px 10px; font-size: 0.85rem; margin-top: 16px; }
-.looking { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
 .syncing { font-weight: 400; }
-.pulse { animation: pulse 1.6s ease-in-out infinite; }
-@keyframes pulse { 50% { opacity: 0.35; } }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

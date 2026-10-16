@@ -4,7 +4,6 @@
 use befikr_core::{MergeOutcome, Store, SyncMode};
 use befikr_sync::{Host, Status, SyncService};
 use tauri::{AppHandle, Emitter, Manager, State};
-use tauri_plugin_reminders::RemindersExt;
 
 use crate::{apply, err, Db, Res};
 
@@ -57,13 +56,7 @@ pub(crate) fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
 /// Bring the endpoint in line with the stored mode.
 async fn restart(app: &AppHandle) {
-    let sync = app.state::<Sync>();
-    let r = sync.apply_mode().await;
-    let on = sync.status().running;
-    if let Err(e) = app.reminders().set_multicast(on) {
-        eprintln!("multicast lock: {e}");
-    }
-    if let Err(e) = r {
+    if let Err(e) = app.state::<Sync>().apply_mode().await {
         eprintln!("sync: {e}");
     }
 }
@@ -83,28 +76,18 @@ pub(crate) async fn set_sync_mode(app: AppHandle, db: State<'_, Db>, mode: SyncM
 #[tauri::command]
 pub(crate) fn set_device_name(sync: State<'_, Sync>, db: State<'_, Db>, name: String) -> Res<()> {
     db.store.lock().map_err(err)?.set_device_name(&name).map_err(err)?;
-    sync.stop_pairing(); // re-advertises the new name
+    sync.stop_pairing(); // an open link carries the old name
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn start_pairing(sync: State<'_, Sync>) -> Res<String> {
+pub(crate) fn start_pairing(sync: State<'_, Sync>) -> Res<()> {
     sync.start_pairing()
 }
 
 #[tauri::command]
 pub(crate) fn stop_pairing(sync: State<'_, Sync>) {
     sync.stop_pairing()
-}
-
-#[tauri::command]
-pub(crate) async fn pair_with(sync: State<'_, Sync>, endpoint: String, code: String) -> Res<()> {
-    sync.pair_with(&endpoint, &code).await.map(|_| ())
-}
-
-#[tauri::command]
-pub(crate) async fn pair_with_address(sync: State<'_, Sync>, address: String, code: String) -> Res<()> {
-    sync.pair_with_address(&address, &code).await.map(|_| ())
 }
 
 #[tauri::command]
@@ -115,11 +98,6 @@ pub(crate) async fn pair_with_link(sync: State<'_, Sync>, link: String) -> Res<(
 #[tauri::command]
 pub(crate) async fn unpair(sync: State<'_, Sync>, endpoint: String) -> Res<()> {
     sync.unpair(&endpoint).await
-}
-
-#[tauri::command]
-pub(crate) async fn rescan_sync(sync: State<'_, Sync>) -> Res<()> {
-    sync.rescan().await
 }
 
 #[tauri::command]

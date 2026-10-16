@@ -397,32 +397,6 @@ Denies the schedule command without any pre-configured scope.
 <tr>
 <td>
 
-`reminders:allow-set-multicast`
-
-</td>
-<td>
-
-Enables the set_multicast command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`reminders:deny-set-multicast`
-
-</td>
-<td>
-
-Denies the set_multicast command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
 `reminders:allow-status`
 
 </td>
