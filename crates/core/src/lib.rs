@@ -6,6 +6,7 @@
 
 mod conflicts;
 mod model;
+mod past;
 mod peers;
 pub mod recurrence;
 mod schema;

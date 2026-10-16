@@ -4,13 +4,15 @@
 // The draft survives closing the sheet (useQuickAddDraft); Add or Clear resets it.
 // Inputs update on every keystroke (no v-model): v-model waits for the
 // keyboard to commit a word, so swipe/predictive typing lagged a word behind.
+// Past tasks: at most one suggestion while typing; a known title brings its usual time.
 import { firstDue } from '@befikr/parser'
-import { CalendarDays, ChevronDown, ChevronUp, Clock, Repeat, Trash2, X } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, ChevronUp, Clock, History, ListChecks, Repeat, Trash2, X } from 'lucide-vue-next'
+import type { PastTask } from '~/composables/api'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
 const { text, ignored, adaptive, expanded, manualDue, manualRule, description, chosenTime } = toRefs(useQuickAddDraft())
 const DEFAULT_TIME = '09:00'
-const fallbackTime = computed(() => chosenTime.value ?? DEFAULT_TIME)
+const fallbackTime = computed(() => chosenTime.value ?? known.value?.usualTime ?? DEFAULT_TIME)
 const picking = ref(false)
 const pickingRepeat = ref(false)
 const saving = ref(false)
@@ -21,6 +23,7 @@ useBackClose(() => emit('close'))
 onMounted(() => {
   input.value?.focus()
   nextTick(grow)
+  api.pastTasks().then((p) => (past.value = p)).catch(() => {})
 })
 
 const hasDraft = computed(() => !!(text.value || description.value || manualDue.value != null || manualRule.value !== undefined))
@@ -63,6 +66,40 @@ const segments = computed(() => {
   out.push({ text: text.value.slice(pos) + '\u200b' })
   return out
 })
+// Past tasks, best first (often and lately added; see core `past_tasks`).
+const past = ref<PastTask[]>([])
+const norm = (s: string) => s.toLowerCase().split(/\s+/).filter(Boolean).join(' ')
+const typedTitle = computed(() => norm(parsed.value.title))
+// The typed title is one used before: its usual time becomes the default.
+const known = computed(() => (typedTitle.value ? past.value.find((p) => norm(p.title) === typedTitle.value) : undefined))
+// One suggestion from the 2nd letter: start of the title first, then start of a later word.
+// A known title only shows one when it's already on the list.
+const suggestion = computed(() => {
+  const q = typedTitle.value
+  if (known.value) return known.value.openId ? known.value : null
+  if (q.length < 2) return null
+  return (
+    past.value.find((p) => norm(p.title).startsWith(q)) ??
+    past.value.find((p) => ` ${norm(p.title)}`.includes(` ${q}`)) ??
+    null
+  )
+})
+const taskSheet = useTaskSheet()
+// Fill the title, keep the typed date/repeat words; notes only into empty notes.
+function pickPast(p: PastTask) {
+  if (p.openId) {
+    clearQuickAddDraft()
+    emit('close')
+    taskSheet.open(p.openId)
+    return
+  }
+  const kept = parsed.value.spans.map((sp) => text.value.slice(sp.start, sp.end))
+  text.value = [p.title, ...kept].join(' ')
+  ignored.value = []
+  if (!description.value && p.notes) description.value = p.notes
+  input.value?.focus()
+}
+
 const spanText = (kind: 'date' | 'recurrence') => {
   const s = parsed.value.spans.find((x) => x.kind === kind)
   return s ? text.value.slice(s.start, s.end) : null
@@ -91,7 +128,9 @@ const timeChoices = computed(() => {
   const list = Object.entries(timeWords.value)
     .map(([word, t]) => ({ word, t }))
     .sort((a, b) => a.t.localeCompare(b.t))
-  return list.some((c) => c.t === DEFAULT_TIME) ? list : [{ word: '', t: DEFAULT_TIME }, ...list]
+  return list.some((c) => c.t === fallbackTime.value)
+    ? list
+    : [...list, { word: '', t: fallbackTime.value }].sort((a, b) => a.t.localeCompare(b.t))
 })
 
 // ✕ on the repeat chip: no repeat; typed words stay as text.
@@ -160,6 +199,13 @@ async function save() {
       </div>
 
       <div class="chips">
+        <button v-if="suggestion" type="button" class="chip suggest" @click="pickPast(suggestion)">
+          <template v-if="suggestion.openId"><ListChecks :size="16" /> On your list: {{ suggestion.title }}</template>
+          <template v-else>
+            <History :size="16" /> {{ suggestion.title }}
+            <span v-if="suggestion.usualTime" class="muted">{{ timeLabel(localMs('2000-01-01', suggestion.usualTime)) }}</span>
+          </template>
+        </button>
         <!-- Expanded, the fields below show date and repeat. -->
         <span v-if="dueAt != null && !expanded" class="chip split">
           <button type="button" class="part" aria-label="Change date and time" @click="picking = true">
@@ -256,6 +302,7 @@ async function save() {
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips:empty { display: none; }
 .chip.split { padding: 0; gap: 0; }
+.chip.suggest { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip.split .part { display: inline-flex; align-items: center; gap: 6px; padding: 6px 4px 6px 12px; }
 .chip.split .x { display: grid; place-items: center; width: 34px; height: 32px; color: var(--muted); }
 .more { display: flex; flex-direction: column; gap: 10px; }

@@ -6,7 +6,7 @@ mod sync;
 use std::sync::Mutex;
 
 use befikr_core::{
-    urgency, AlarmChange, Change, CompletedGroup, Completion, ListItem, NewTask, Settings, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
+    urgency, AlarmChange, Change, CompletedGroup, Completion, ListItem, NewTask, Settings, PastTask, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -188,6 +188,11 @@ fn set_shopping_deleted(db: State<Db>, id: String, deleted: bool) -> Res<()> {
 #[tauri::command]
 fn shopping_suggestions(db: State<Db>) -> Res<Vec<String>> {
     db.store.lock().map_err(err)?.shopping_suggestions(12).map_err(err)
+}
+
+#[tauri::command]
+fn past_tasks(db: State<Db>) -> Res<Vec<PastTask>> {
+    db.store.lock().map_err(err)?.past_tasks(300).map_err(err)
 }
 
 #[tauri::command]
@@ -417,6 +422,7 @@ pub fn run() {
             set_shopping_bought,
             set_shopping_deleted,
             shopping_suggestions,
+            past_tasks,
             add_staple,
             remove_staple,
             get_settings,

@@ -193,7 +193,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - **Conflicts page**: every overwritten value is logged; review and restore from there. ✅ Oct 16 (side-by-side cards, tap the version to keep).
 3. **Share-to-app** — share a link from browser → new task. ✅ Oct 15: own intent filter (reminders plugin manifest, merged into MainActivity) → route `/?shareText=…&shareSubject=…` → quick add with title from the page title / text, link in notes.
 4. **Native snooze overlay** — true Android bottom sheet without opening the full app (custom Kotlin). Low priority; Snooze in a notification opens the app with the snooze sheet over the list (`/?snooze=<id>`).
-5. **Completion history analysis** — suggest/reuse past tasks while adding.
+5. **Completion history analysis** — suggest/reuse past tasks while adding. ✅ Oct 16: quick add shows at most one past-task chip from the 2nd typed letter (title start first, then a later word), only for titles added ≥2 times, within 30 days, or still open (then "On your list" opens that task instead). Tap fills the title, keeps typed date/repeat words, notes into empty notes. A known title pre-selects its usual time in "No time given". `Store::past_tasks` (core, tested; derived from `tasks`, nothing stored).
 6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time. Late = done on a later day than due (task's zone); same day counts as on time (changed Oct 16 from a 1-minute grace). ✅ Oct 16: Completed page became **Stats** (`/stats`, chart icon): range switch (7 days / 30 days / all time), tiles (done, % on time, median lateness, snoozes, missed repeats), last-8-weeks stacked bars (on time / late / no date), completion list below. Numbers from `Store::stats` in core.
 7. **Gamification** (way later) — Todoist Karma-style levels, streaks, goals, built on the same stats.
 8. **More views** — only if needed.
@@ -232,14 +232,14 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | --- | --- | --- | --- |
 | 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
 | 1 | **Parser** (`packages/parser`), test table first | ✅ | 66 tests (run in any time zone); day-of-month, ordinals, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
-| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 48 tests; migrations 1–6 (6: `changes.prev_hlc`, `conflicts`) |
+| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 50 tests; migrations 1–6 (6: `changes.prev_hlc`, `conflicts`) |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release. Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
 
-**Next:** device tests of 7 (background sync: task added on the PC rings on the closed phone) and the home screen fix; then encrypted backups (passphrase) or example phrases in the "New task" bar.
+**Next:** encrypted backups (passphrase) or example phrases in the "New task" bar.
 
 ### Step 0 — spike checklist
 
@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (past tasks)** — Quick add suggests past tasks (Post-MVP 5): one chip at most, from the 2nd letter, only titles added ≥2 times / in the last 30 days / still open ("On your list" opens it, no duplicate). Tap fills title, keeps date words, copies notes; a known title pre-selects its usual time. `Store::past_tasks` groups `tasks` by title with recency-weighted ranking (2 core tests). Checked in mocked Chromium. **Next:** encrypted backups or "New task" example phrases.
 
 - **Oct 16, 2026 (desktop backup)** — 0.17.2 crash fix released (Android CI green). Backup now on Windows/Linux: export, restore (copies the picked file to the cache first, so `import_backup` never deletes the user's file), daily to a folder keeping 7 (`desktop/backup.rs`, hourly check in a thread). Frontend routes backup commands to the plugin on Android, plain commands on desktop. UI checked with mocked commands; native dialogs not yet tried on a real PC. **Next:** try export/restore/daily on Windows; then suggestions from past tasks.
 

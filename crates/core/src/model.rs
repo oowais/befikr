@@ -277,3 +277,22 @@ pub struct ShoppingList {
     pub items: Vec<ShoppingItem>,
     pub staples: Vec<Staple>,
 }
+
+/// A title added before, for suggestions while typing a new task. Rows with
+/// the same title (any case, inner spaces collapsed) count as one.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PastTask {
+    /// Latest spelling.
+    pub title: String,
+    /// Times added.
+    pub count: u32,
+    /// When last added (UTC ms).
+    pub last_added: i64,
+    /// Most common local due time ("HH:MM"), latest wins a tie.
+    pub usual_time: Option<String>,
+    /// Notes of the latest one that had any.
+    pub notes: String,
+    /// An open task with this title, if any (to open instead of adding again).
+    pub open_id: Option<String>,
+}
