@@ -43,7 +43,7 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 
 ## Git
 
-- Default branch: `main`. **Work goes into one open PR** from the working branch to `main`; keep adding commits to it. **Never merge or push to `main` unless the user says so** — merging releases (Discoverium picks it up).
+- Default branch: `main`. **Commit straight to local `main`** after checks pass; no branches or PRs. **Never push** — the user pushes `main` themselves (a push releases; Discoverium picks it up).
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `perf:`; `!` or `BREAKING CHANGE` for breaking). They drive the version.
 - **Versioning:** semver, always `0.x.y` (`.github/scripts/next-version.sh`): `feat` or breaking → minor, anything else → patch. Tags `v0.x.y` are created by the release step; don't tag by hand or edit `version` in `tauri.conf.json` (CI sets it).
 - Don't commit build outputs (`target/`, `.output/`, `node_modules/`, APKs).
