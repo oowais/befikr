@@ -27,10 +27,6 @@ jni = "0.21"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 
-# Scan a pairing QR code (camera; phones only).
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
-tauri-plugin-barcode-scanner = "2"
-
 # Window app id (`com.befikr.app`, see `run`).
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

@@ -295,8 +295,6 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
         .on_window_event(desktop::on_window_event);
-    #[cfg(mobile)]
-    let builder = builder.plugin(tauri_plugin_barcode_scanner::init());
     builder
         .plugin(tauri_plugin_reminders::init())
         .setup(|app| {

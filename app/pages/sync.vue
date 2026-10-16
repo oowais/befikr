@@ -122,35 +122,28 @@ async function copyLink() {
   await navigator.clipboard.writeText(link).then(() => show({ message: 'Link copied' }), (e) => (error.value = String(e)))
 }
 
-// Phones scan the other device's QR code with the camera.
-const canScan = !isDesktop
-async function scanQr() {
-  error.value = ''
-  try {
-    const { Format, checkPermissions, requestPermissions, scan } = await import('@tauri-apps/plugin-barcode-scanner')
-    let perm = await checkPermissions()
-    if (perm !== 'granted') perm = await requestPermissions()
-    if (perm !== 'granted') {
-      error.value = 'Camera access is needed to scan. Allow it in Android settings, or enter the address instead.'
-      return
-    }
-    const { content } = await scan({ windowed: false, formats: [Format.QRCode] })
-    if (!content.trim().startsWith('befikr://pair?')) {
-      error.value = 'That QR code isn’t a Befikr pairing code.'
-      return
-    }
-    await run(() => api.pairWithLink(content), 'Paired')
-  } catch (e) {
-    if (!/cancel/i.test(String(e))) error.value = String(e)
-  }
-}
-
 // Restart discovery; keep the spinner for a moment so the press registers.
 const scanning = ref(false)
 async function rescan() {
   scanning.value = true
   await run(api.rescanSync)
   setTimeout(() => (scanning.value = false), 1200)
+}
+
+// Phones scan the other device's QR code with the camera (QrScanner).
+const canScan = !isDesktop
+const camera = ref(false)
+function scanned(text: string) {
+  camera.value = false
+  if (!text.trim().startsWith('befikr://pair?')) {
+    error.value = 'That QR code isn’t a Befikr pairing code.'
+    return
+  }
+  run(() => api.pairWithLink(text), 'Paired')
+}
+function scanFailed(message: string) {
+  camera.value = false
+  error.value = message
 }
 </script>
 
@@ -226,7 +219,7 @@ async function rescan() {
         </div>
         <template v-else>
           <button class="btn wide" :disabled="busy" @click="run(api.startPairing)"><Link2 :size="18" /> Show a pairing code</button>
-          <button v-if="canScan" class="btn wide scan" :disabled="busy" @click="scanQr"><ScanLine :size="18" /> Scan a pairing code</button>
+          <button v-if="canScan" class="btn wide scan" :disabled="busy" @click="error = ''; camera = true"><ScanLine :size="18" /> Scan a pairing code</button>
         </template>
 
         <template v-if="!st.pairing">
@@ -286,6 +279,7 @@ async function rescan() {
         <p class="muted small tip">Using a VPN? Allow LAN connections in its settings (Proton VPN: Settings → Connection → Advanced).</p>
       </template>
     </template>
+    <QrScanner v-if="camera" @found="scanned" @error="scanFailed" @close="camera = false" />
   </main>
 </template>
 
