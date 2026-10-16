@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (menus)** — Desktop right-click menus (`useContextMenu` + `ContextMenu.vue`; Android untouched): task rows (Open, Complete, Snooze…, Skip, Delete with Undo), shopping items (Got it, Add to Usually), chips (Add to list, Remove), completed rows (Open, Undo). Webview's own menu hidden except in text fields / selected text. Shopping: bookmark button on items that aren't chips yet → Add to Usually. Checked in mocked Chromium. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (app id)** — Vicinae focused Zed (window titled "befikr") instead of launching Befikr: it matched `StartupWMClass=befikr` against window titles. Linux window app id is now `com.befikr.app` (`glib::set_prgname` in `run`; Tauri's `enableGTKAppId` alone didn't change it) and the .deb desktop entry comes from `packaging/linux/befikr.desktop` with `StartupWMClass=com.befikr.app`. Single instance still works. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (late rule)** — Stats: a task is late only if done after its due day ended (was: >1 min after due). Completed-list "late" label follows. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (notif icon)** — Device: reminder survived the app update (re-armed). Notification showed the system bell: release resource shrinking dropped `ic_stat_befikr` (looked up by name, so unreferenced). Kept via `res/raw/keep.xml`. **Next:** phone↔Linux sync test.

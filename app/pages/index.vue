@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChartColumn, Plus, Settings, ShoppingCart } from 'lucide-vue-next'
+import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -45,6 +45,43 @@ async function complete(row: Row) {
     show({ message: String(e) })
   }
   setTimeout(refresh, 400)
+}
+
+// Desktop right-click on a task.
+function menu(e: MouseEvent, row: Row) {
+  const canSnooze = row.dueAt != null || row.snoozedUntil != null
+  openMenu(e, [
+    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${row.id}`) },
+    { label: 'Complete', icon: Check, run: () => complete(row) },
+    ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => router.push(`/snooze?id=${row.id}`) }] : []),
+    ...(row.rrule ? [{ label: 'Skip this one', icon: SkipForward, run: () => skip(row) }] : []),
+    'separator',
+    { label: 'Delete', icon: Trash2, danger: true, run: () => remove(row) },
+  ])
+}
+
+async function skip(row: Row) {
+  try {
+    const t = await api.skipTask(row.id)
+    show({
+      message: `Skipped · next ${dayLabel(t.dueAt!)}`,
+      action: { label: 'Undo', run: () => api.updateTask(row.id, { dueAt: row.dueAt }).then(refresh) },
+    })
+  } catch (e) {
+    show({ message: String(e) })
+  }
+  refresh()
+}
+
+async function remove(row: Row) {
+  rows.value = rows.value.filter((r) => r.id !== row.id)
+  try {
+    await api.deleteTask(row.id)
+    show({ message: 'Deleted', action: { label: 'Undo', run: () => api.restoreTask(row.id).then(refresh) } })
+  } catch (e) {
+    show({ message: String(e) })
+    refresh()
+  }
 }
 
 // Overdue / Today / Tomorrow / This week / This month / Later / No date.
@@ -119,6 +156,7 @@ onUnmounted(() => {
           @complete="complete(r)"
           @open="router.push(`/task/${r.id}`)"
           @snooze="router.push(`/snooze?id=${r.id}`)"
+          @menu="menu($event, r)"
         />
       </TransitionGroup>
     </section>

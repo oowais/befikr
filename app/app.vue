@@ -8,6 +8,8 @@ const { current: toast, dismiss } = useToast()
 rememberHistoryStart()
 
 onMounted(async () => {
+  // Desktop: our own right-click menus only (see useContextMenu).
+  document.addEventListener('contextmenu', suppressDefaultMenu)
   loadTimeWords()
   handleBackButton().catch(() => {})
   // Each step on its own: one failing (desktop/browser has no reminders
@@ -36,6 +38,7 @@ function runAction() {
 
 <template>
   <NuxtPage />
+  <ContextMenu />
   <Transition name="toast">
     <div v-if="toast" class="toast popover" role="status">
       <span>{{ toast.message }}</span>

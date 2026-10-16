@@ -2,7 +2,7 @@
 // Stats on top (range switch, last 8 weeks chart), completion history below.
 // Tap a row to open the task; tap the tick to undo (only the latest
 // completion of a task can be undone).
-import { ArrowLeft, Check } from 'lucide-vue-next'
+import { ArrowLeft, Check, PanelRightOpen, RotateCcw } from 'lucide-vue-next'
 import type { Completion, Stats, WeekStats } from '~/composables/api'
 
 const DAY = 86_400_000
@@ -49,6 +49,13 @@ const undoable = computed(() => {
   const seen = new Set<string>()
   return new Set(items.value.filter((c) => !seen.has(c.taskId) && seen.add(c.taskId)).map((c) => c.id))
 })
+
+function rowMenu(e: MouseEvent, c: Completion) {
+  openMenu(e, [
+    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${c.taskId}`) },
+    ...(undoable.value.has(c.id) ? [{ label: 'Undo completion', icon: RotateCcw, run: () => undo(c) }] : []),
+  ])
+}
 
 async function undo(c: Completion) {
   haptic()
@@ -134,7 +141,7 @@ async function undo(c: Completion) {
     </template>
 
     <ul v-if="items.length" class="pane rows list">
-      <li v-for="c in items" :key="c.id">
+      <li v-for="c in items" :key="c.id" @contextmenu="rowMenu($event, c)">
         <button
           class="check"
           :disabled="!undoable.has(c.id)"

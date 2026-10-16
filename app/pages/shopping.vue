@@ -2,8 +2,9 @@
 // Shopping list: separate from tasks, no reminders. Top: what to buy (tap to
 // tick off; it clears away, Undo in the toast). Below: chips of things
 // usually bought; tap one to add it. Edit shows ✕ on chips and a field for
-// new ones.
-import { ArrowLeft, Check, Pencil, Plus, X } from 'lucide-vue-next'
+// new ones. An item that isn't a chip yet can be saved as one (bookmark).
+// Desktop: right-click items and chips for the same actions.
+import { ArrowLeft, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 import type { ShoppingItem, Staple } from '~/composables/api'
 
 const router = useRouter()
@@ -33,6 +34,7 @@ watch(listVersion, load)
 
 const key = (s: string) => s.trim().toLowerCase()
 const onList = computed(() => new Set(items.value.map((i) => key(i.name))))
+const isStaple = computed(() => new Set(staples.value.map((s) => key(s.name))))
 
 async function add(name: string) {
   name = name.replace(/\s+/g, ' ').trim()
@@ -71,16 +73,34 @@ async function tick(item: ShoppingItem) {
   show({ message: `Got ${item.name}`, action: { label: 'Undo', run: () => api.setShoppingBought(item.id, false).then(load) } })
 }
 
-async function addStaple() {
-  const name = newStaple.value.replace(/\s+/g, ' ').trim()
-  newStaple.value = ''
-  if (!name || staples.value.some((s) => key(s.name) === key(name))) return
+async function addStaple(typedName?: string) {
+  const name = (typedName ?? newStaple.value).replace(/\s+/g, ' ').trim()
+  if (typedName == null) newStaple.value = ''
+  if (!name || isStaple.value.has(key(name))) return
+  if (typedName != null) {
+    haptic()
+    show({ message: `${name} added to Usually` })
+  }
   try {
     const s = await api.addStaple(name)
     staples.value = [...staples.value, s].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
   } catch (e) {
     error.value = String(e)
   }
+}
+
+function itemMenu(e: MouseEvent, i: ShoppingItem) {
+  openMenu(e, [
+    { label: 'Got it', icon: Check, run: () => tick(i) },
+    ...(isStaple.value.has(key(i.name)) ? [] : [{ label: 'Add to Usually', icon: BookmarkPlus, run: () => addStaple(i.name) }]),
+  ])
+}
+
+function stapleMenu(e: MouseEvent, s: Staple) {
+  openMenu(e, [
+    ...(onList.value.has(key(s.name)) ? [] : [{ label: 'Add to list', icon: ListPlus, run: () => add(s.name) }]),
+    { label: 'Remove from Usually', icon: Trash2, danger: true, run: () => removeStaple(s) },
+  ])
 }
 
 async function removeStaple(s: Staple) {
@@ -116,10 +136,19 @@ async function removeStaple(s: Staple) {
     <p v-if="error" class="error">{{ error }}</p>
 
     <TransitionGroup v-if="items.length" tag="ul" name="list" class="pane rows list">
-      <li v-for="i in items" :key="i.id">
+      <li v-for="i in items" :key="i.id" class="line" @contextmenu="itemMenu($event, i)">
         <button class="item" :class="{ done: ticked.has(i.id) }" :aria-label="`Got ${i.name}`" @click="tick(i)">
           <span class="checkbox" :class="{ checked: ticked.has(i.id) }"><Check :size="14" :stroke-width="3" /></span>
           <span class="name">{{ i.name }}</span>
+        </button>
+        <button
+          v-if="!isStaple.has(key(i.name)) && !ticked.has(i.id)"
+          class="icon-btn save"
+          :aria-label="`Add ${i.name} to Usually`"
+          title="Add to Usually"
+          @click="addStaple(i.name)"
+        >
+          <BookmarkPlus :size="18" />
         </button>
       </li>
     </TransitionGroup>
@@ -145,13 +174,14 @@ async function removeStaple(s: Staple) {
           :class="{ off: onList.has(key(s.name)) }"
           :aria-label="onList.has(key(s.name)) ? `${s.name} is on the list` : `Add ${s.name}`"
           @click="add(s.name)"
+          @contextmenu="stapleMenu($event, s)"
         >
           <Check v-if="onList.has(key(s.name))" :size="14" />{{ s.name }}
         </button>
         <button v-if="!staples.length" class="chip off" @click="editing = true"><Plus :size="14" /> Add things you usually buy</button>
       </template>
     </div>
-    <form v-if="editing" class="add staple" @submit.prevent="addStaple">
+    <form v-if="editing" class="add staple" @submit.prevent="addStaple()">
       <input
         :value="newStaple"
         class="field"
@@ -169,7 +199,9 @@ async function removeStaple(s: Staple) {
 .add { display: flex; gap: 8px; margin-top: 4px; }
 .add .btn { flex: none; padding: 8px 12px; }
 .list { list-style: none; margin: 12px 0 0; }
-.item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 0; text-align: left; transition: opacity 0.3s; }
+.line { display: flex; align-items: center; }
+.item { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 12px 0; text-align: left; transition: opacity 0.3s; }
+.save { flex: none; color: var(--muted); margin-right: -10px; }
 .item.done { opacity: 0.45; }
 .item.done .name { text-decoration: line-through; }
 .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
