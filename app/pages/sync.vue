@@ -3,7 +3,7 @@
 // device's name, paired devices, and pairing: one device shows a code, the
 // other picks it from "Nearby" and types the code.
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, Laptop, Link2, RefreshCw, X } from 'lucide-vue-next'
+import { ArrowLeft, Laptop, Link2, Radar, RefreshCw, X } from 'lucide-vue-next'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -95,6 +95,14 @@ const left = computed(() => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 })
 const on = computed(() => st.value && st.value.mode !== 'off')
+
+// Restart discovery; keep the spinner for a moment so the press registers.
+const scanning = ref(false)
+async function rescan() {
+  scanning.value = true
+  await run(api.rescanSync)
+  setTimeout(() => (scanning.value = false), 1200)
+}
 </script>
 
 <template>
@@ -138,7 +146,7 @@ const on = computed(() => st.value && st.value.mode !== 'off')
           @keydown.enter="($event.target as HTMLInputElement).blur()"
         />
 
-        <h2 class="section-title">Paired devices</h2>
+        <h2 class="section-title">Paired devices<span v-if="st.syncing" class="syncing"> · Syncing…</span></h2>
         <div v-if="st.peers.length" class="pane rows">
           <div v-for="p in st.peers" :key="p.endpoint" class="item">
             <Laptop :size="20" class="muted" />
@@ -162,7 +170,13 @@ const on = computed(() => st.value && st.value.mode !== 'off')
         <button v-else class="btn wide" :disabled="busy" @click="run(api.startPairing)"><Link2 :size="18" /> Show a pairing code</button>
 
         <template v-if="!st.pairing">
-          <h2 class="section-title">Nearby, waiting to pair</h2>
+          <div class="nearby-head">
+            <h2 class="section-title">Nearby, waiting to pair</h2>
+            <button class="btn small-btn" :disabled="busy || scanning" @click="rescan"><RefreshCw :size="15" :class="{ spin: scanning }" /> Search again</button>
+          </div>
+          <p v-if="st.running" class="muted small looking">
+            <Radar :size="15" class="pulse" /> Looking for devices {{ st.mode === 'relay' ? 'nearby' : 'on this Wi-Fi' }}…
+          </p>
           <div v-if="st.nearby.length" class="pane rows">
             <template v-for="n in st.nearby" :key="n.endpoint">
               <button class="item" @click="joining = joining?.endpoint === n.endpoint ? null : n; code = ''">
@@ -185,7 +199,7 @@ const on = computed(() => st.value && st.value.mode !== 'off')
             </template>
           </div>
           <p v-else class="muted small">
-            Tap “Show a pairing code” on the other device; it shows up here. Both need sync on and the same Wi-Fi.
+            None yet. Tap “Show a pairing code” on the other device; it shows up here. Both need sync on and the same Wi-Fi.
           </p>
         </template>
 
@@ -212,6 +226,12 @@ const on = computed(() => st.value && st.value.mode !== 'off')
 .code { font-size: 2.2rem; font-weight: 600; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
 .join { display: flex; gap: 8px; padding: 0 0 12px 32px; }
 .tip { margin-top: 24px; }
+.nearby-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.small-btn { min-height: 32px; padding: 4px 10px; font-size: 0.85rem; margin-top: 16px; }
+.looking { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
+.syncing { font-weight: 400; }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

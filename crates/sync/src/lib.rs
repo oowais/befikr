@@ -60,6 +60,8 @@ pub struct Status {
     /// This device's name ("" = not set yet).
     pub name: String,
     pub running: bool,
+    /// A sync with some device is in progress.
+    pub syncing: bool,
     pub endpoint: String,
     pub peers: Vec<Peer>,
     /// Befikr devices on this network that are waiting to pair.
@@ -106,6 +108,8 @@ struct State {
     last_seen_sync: BTreeMap<EndpointId, Instant>,
     /// One sync at a time per device; a second waits for the first.
     syncing: BTreeMap<EndpointId, Arc<tokio::sync::Mutex<()>>>,
+    /// Syncs in progress (for the status).
+    in_flight: usize,
     last_error: Option<String>,
 }
 
@@ -271,6 +275,7 @@ impl<H: Host> SyncService<H> {
             mode: settings.as_ref().map_or(SyncMode::Off, |s| s.mode),
             name: settings.map(|s| s.name).unwrap_or_default(),
             running: st.running.is_some(),
+            syncing: st.in_flight > 0,
             endpoint: self.endpoint_id(),
             nearby: st
                 .seen
@@ -350,9 +355,36 @@ impl<H: Host> SyncService<H> {
         let ep = self.endpoint().ok_or("sync is off")?;
         let lock = self.state().syncing.entry(id).or_default().clone();
         let _one_at_a_time = lock.lock().await;
-        let conn = connect(&ep, id).await?;
-        let r = proto::sync_as_client(&self.inner.host, &conn, &self.my_name()).await;
-        conn.close(0u32.into(), b"done");
+        self.state().in_flight += 1;
+        self.inner.host.status_changed();
+        let r = async {
+            let conn = connect(&ep, id).await?;
+            let r = proto::sync_as_client(&self.inner.host, &conn, &self.my_name()).await;
+            conn.close(0u32.into(), b"done");
+            r
+        }
+        .await;
+        self.state().in_flight -= 1;
+        self.inner.host.status_changed();
+        r
+    }
+
+    /// Look for devices again: restart the endpoint, so discovery starts
+    /// over and this device announces itself afresh.
+    pub async fn rescan(&self) -> Result<()> {
+        let Some(mode) = self.state().running.as_ref().map(|r| r.mode) else {
+            return Err("sync is off".into());
+        };
+        let pairing = self.state().pairing.take();
+        self.stop().await;
+        let r = self.start(mode).await;
+        if let Err(e) = &r {
+            self.state().last_error = Some(e.clone());
+        } else if pairing.is_some() {
+            self.state().pairing = pairing;
+            self.advertise();
+        }
+        self.inner.host.status_changed();
         r
     }
 

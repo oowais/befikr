@@ -108,6 +108,11 @@ pub(crate) async fn unpair(sync: State<'_, Sync>, endpoint: String) -> Res<()> {
 }
 
 #[tauri::command]
+pub(crate) async fn rescan_sync(sync: State<'_, Sync>) -> Res<()> {
+    sync.rescan().await
+}
+
+#[tauri::command]
 pub(crate) async fn sync_now(sync: State<'_, Sync>) -> Res<()> {
     sync.sync_now().await;
     match sync.status().last_error {

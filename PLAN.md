@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (sync status)** — Sync page: "Looking for devices on this Wi-Fi…" while sync runs, "Search again" (restarts the endpoint so discovery starts over, keeps an open pairing window), "Syncing…" next to Paired devices during a sync (`Status.syncing`).
 - **Oct 16, 2026 (shopping 2)** — Shopping items can be deleted (menu → Delete, Undo; soft delete `set_shopping_deleted`). Chip editing shows suggestions: names added ≥2 times (`shopping_suggestions`) first, then common groceries (not stored until tapped, so devices don't sync duplicate defaults).
 - **Oct 16, 2026 (long-press)** — Context menus on Android too: long-press fires `contextmenu` in the webview; menu opens just below the finger with 44 px entries, the finger lift is ignored for 450 ms (no accidental pick / row tap), a long-press cancels a swipe in progress, rows don't start text selection. Needs a device check.
 - **Oct 16, 2026 (menus)** — Desktop right-click menus (`useContextMenu` + `ContextMenu.vue`; Android untouched): task rows (Open, Complete, Snooze…, Skip, Delete with Undo), shopping items (Got it, Add to Usually), chips (Add to list, Remove), completed rows (Open, Undo). Webview's own menu hidden except in text fields / selected text. Shopping: bookmark button on items that aren't chips yet → Add to Usually. Checked in mocked Chromium. **Next:** phone↔Linux sync test.

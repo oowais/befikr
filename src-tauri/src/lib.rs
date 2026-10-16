@@ -341,6 +341,7 @@ pub fn run() {
             sync::pair_with,
             sync::unpair,
             sync::sync_now,
+            sync::rescan_sync,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

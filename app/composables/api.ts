@@ -41,6 +41,7 @@ export type SyncStatus = {
   mode: SyncMode
   name: string
   running: boolean
+  syncing: boolean
   endpoint: string
   peers: Peer[]
   nearby: { endpoint: string; name: string }[]
@@ -110,6 +111,7 @@ export const api = {
   pairWith: (endpoint: string, code: string) => invoke<void>('pair_with', { endpoint, code }),
   unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
   syncNow: () => invoke<void>('sync_now'),
+  rescanSync: () => invoke<void>('rescan_sync'),
   /** Desktop only; rejects on Android. */
   desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
   setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),
