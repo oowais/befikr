@@ -11,6 +11,7 @@ onMounted(async () => {
   // Desktop: our own right-click menus only (see useContextMenu).
   document.addEventListener('contextmenu', suppressDefaultMenu)
   loadTimeWords()
+  useUpdate().check().catch(() => {})
   handleBackButton().catch(() => {})
   // Each step on its own: one failing (desktop/browser has no reminders
   // plugin) must not skip the others.

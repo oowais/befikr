@@ -31,6 +31,8 @@ tauri-plugin-autostart = "2"
 # File and folder pickers for backups.
 tauri-plugin-dialog = "2"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+# In-app updates (used on Windows; see desktop/update.rs).
+tauri-plugin-updater = "2"
 
 # Window app id (`com.befikr.app`, see `run`).
 [target.'cfg(target_os = "linux")'.dependencies]

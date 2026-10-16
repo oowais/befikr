@@ -182,15 +182,37 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: pnpm install --frozen-lockfile
-      - run: pnpm tauri build --bundles nsis --ci
+      # With the updater key set (repo secrets), the installer is also signed
+      # for in-app updates and latest.json (the updater's manifest) is made.
+      - name: Build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            pnpm tauri build --bundles nsis --ci --config '{"bundle":{"createUpdaterArtifacts":true}}'
+          else
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set: no in-app update for this release"
+            pnpm tauri build --bundles nsis --ci
+          fi
       - name: Package
         run: |
-          cp target/release/bundle/nsis/*-setup.exe "befikr_${VERSION}_x64-setup.exe"
-          ls -la befikr_*_x64-setup.exe
+          EXE="befikr_${VERSION}_x64-setup.exe"
+          cp target/release/bundle/nsis/*-setup.exe "$EXE"
+          ls -la "$EXE"
+          SIG=$(ls target/release/bundle/nsis/*-setup.exe.sig 2>/dev/null | head -1)
+          if [ -n "$SIG" ]; then
+            jq -n --arg v "$VERSION" --arg sig "$(cat "$SIG")" \
+              --arg url "https://github.com/${{ github.repository }}/releases/download/v${VERSION}/${EXE}" \
+              '{version: $v, pub_date: (now | todate), platforms: {"windows-x86_64": {signature: $sig, url: $url}}}' > latest.json
+            cat latest.json
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: befikr-${{ env.VERSION }}-windows
-          path: befikr_*_x64-setup.exe
+          path: |
+            befikr_*_x64-setup.exe
+            latest.json
 
   # After the APK job has created the release: add the desktop files to it.
   desktop-release:
@@ -209,3 +231,4 @@ jobs:
             befikr_*_amd64.deb
             PKGBUILD
             befikr_*_x64-setup.exe
+            latest.json

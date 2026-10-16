@@ -7,6 +7,7 @@ const router = useRouter()
 const { open: openSnooze } = useSnoozeSheet()
 const { open: openTask } = useTaskSheet()
 const { show } = useToast()
+const update = useUpdate()
 const sound = useSound()
 const rows = ref<Row[]>([])
 const completing = ref(new Set<string>())
@@ -156,7 +157,9 @@ onUnmounted(() => {
       <span class="grow" />
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
-      <NuxtLink to="/settings" class="icon-btn" aria-label="Settings"><Settings :size="22" /></NuxtLink>
+      <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
+        <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
+      </NuxtLink>
     </header>
 
     <p v-if="error" class="muted">{{ error }}</p>
@@ -198,6 +201,8 @@ onUnmounted(() => {
 <style scoped>
 /* Title doesn't stretch, so the sync dot sits right next to it. */
 .topbar h1.brand { flex: none; }
+.gear { position: relative; }
+.update-dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .grow { flex: 1; }
 .list { margin: 8px 0 0; position: relative; overflow: hidden; }
 .section .section-title { margin: 20px 0 0; }

@@ -304,8 +304,27 @@ async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
     Ok(serde_json::json!({ "path": desktop::backup::pick_import(&app)? }))
 }
 
+/// Download and install the latest release (Windows; signed, see
+/// `plugins.updater` in tauri.conf.json), then restart. `false` = up to date.
+#[cfg(desktop)]
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Res<bool> {
+    use tauri_plugin_updater::UpdaterExt;
+    let Some(update) = app.updater().map_err(err)?.check().await.map_err(err)? else {
+        return Ok(false);
+    };
+    update.download_and_install(|_, _| {}, || {}).await.map_err(err)?;
+    app.restart()
+}
+
 #[cfg(mobile)]
 const DESKTOP_ONLY: &str = "desktop only";
+
+#[cfg(mobile)]
+#[tauri::command]
+fn install_update() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
 
 #[cfg(mobile)]
 #[tauri::command]
@@ -375,6 +394,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(desktop::on_window_event);
     builder
         .plugin(tauri_plugin_reminders::init())
@@ -439,6 +459,7 @@ pub fn run() {
             backup_now,
             export_backup,
             pick_import_file,
+            install_update,
             sync::sync_status,
             sync::set_sync_mode,
             sync::set_device_name,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, FolderSync } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -26,6 +26,31 @@ const error = ref('')
 const version = ref('')
 const backup = ref<BackupStatus | null>(null)
 onMounted(async () => (version.value = await getVersion().catch(() => '')))
+const update = useUpdate()
+const updateNote = ref('')
+const updateFailed = ref(false)
+async function checkUpdate() {
+  updateNote.value = ''
+  updateFailed.value = false
+  try {
+    await update.check(true)
+    if (!update.available.value) updateNote.value = 'Up to date'
+  } catch (e) {
+    updateNote.value = `Couldn't check: ${e}`
+    updateFailed.value = true
+  }
+}
+async function installUpdate() {
+  updateNote.value = ''
+  updateFailed.value = false
+  try {
+    const r = await update.install()
+    if (r.needsPermission) updateNote.value = 'Allow Befikr to install apps, then tap Update again'
+  } catch (e) {
+    updateNote.value = `Update failed: ${e}`
+    updateFailed.value = true
+  }
+}
 
 async function load() {
   try {
@@ -80,6 +105,19 @@ async function run(f: () => Promise<unknown>) {
       <h1>Settings</h1>
     </header>
     <p v-if="error" class="error">{{ error }}</p>
+
+    <div v-if="update.available.value" class="pane rows">
+      <div class="item">
+        <Download :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Befikr {{ update.available.value }} is out</span>
+          <span class="muted small">{{ update.canInstall.value ? `You have ${version}` : 'Update with your package manager or the install script' }}</span>
+        </span>
+        <button v-if="update.canInstall.value" class="btn primary" :disabled="update.installing.value" @click="installUpdate">
+          {{ update.installing.value ? 'Downloading…' : 'Update' }}
+        </button>
+      </div>
+    </div>
 
     <h2 class="section-title">Devices</h2>
     <div class="pane rows">
@@ -175,7 +213,11 @@ async function run(f: () => Promise<unknown>) {
       </NuxtLink>
     </div>
 
-    <p v-if="version" class="muted small version">Befikr {{ version }}</p>
+    <div v-if="version" class="muted small version">
+      <p>Befikr {{ version }}</p>
+      <button class="btn" :disabled="update.checking.value" @click="checkUpdate">{{ update.checking.value ? 'Checking…' : 'Check for updates' }}</button>
+      <p v-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
+    </div>
   </main>
 </template>
 
@@ -201,7 +243,8 @@ a.item { color: inherit; text-decoration: none; }
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .switch.on .knob { transform: translateX(18px); }
-.version { margin-top: 40px; text-align: center; }
+.version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.version p { margin: 0; }
 .seg {
   display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
   box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);

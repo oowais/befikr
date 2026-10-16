@@ -18,6 +18,7 @@ Allows all reminders and backup commands.
 - `allow-backup-now`
 - `allow-export-backup`
 - `allow-pick-import-file`
+- `allow-install-update`
 - `allow-register-listener`
 - `allow-remove-listener`
 
@@ -182,6 +183,32 @@ Enables the export_backup command without any pre-configured scope.
 <td>
 
 Denies the export_backup command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-install-update`
+
+</td>
+<td>
+
+Enables the install_update command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-install-update`
+
+</td>
+<td>
+
+Denies the install_update command without any pre-configured scope.
 
 </td>
 </tr>

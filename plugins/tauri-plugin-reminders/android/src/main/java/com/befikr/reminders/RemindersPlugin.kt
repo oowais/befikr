@@ -34,6 +34,11 @@ class CancelArgs {
 }
 
 @InvokeArg
+class InstallUpdateArgs {
+    lateinit var url: String
+}
+
+@InvokeArg
 class ConfigureArgs {
     lateinit var dbPath: String
 }
@@ -118,6 +123,27 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         SyncWorker.schedule(activity)
         Thread { Backup.runIfDue(activity.applicationContext) }.start()
         invoke.resolve()
+    }
+
+    // ---- Update ----
+
+    /**
+     * Download the APK at `url` and start installing it (the system asks to
+     * confirm). Without "Install unknown apps" for Befikr, opens that setting
+     * instead and resolves `{ needsPermission: true }`.
+     */
+    @Command
+    fun installUpdate(invoke: Invoke) {
+        val url = invoke.parseArgs(InstallUpdateArgs::class.java).url
+        if (!Updater.canInstall(activity)) {
+            Updater.openInstallSettings(activity)
+            invoke.resolve(JSObject().apply { put("needsPermission", true) })
+            return
+        }
+        background(invoke) {
+            Updater.downloadAndInstall(activity.applicationContext, url)
+            JSObject().apply { put("needsPermission", false) }
+        }
     }
 
     // ---- Backups ----

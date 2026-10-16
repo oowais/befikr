@@ -236,7 +236,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
-| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release. Windows dev setup works (`pnpm tauri dev`). AUR later |
+| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
 
 **Next:** encrypted backups (passphrase) or example phrases in the "New task" bar.
@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (in-app update)** — Issue #7: GitHub's latest release is checked once a day (and by Settings → Check for updates); a newer one puts a dot on the gear and an "is out" row at the top of Settings. Android: Update downloads `befikr.apk` and starts a `PackageInstaller` session (system confirm; first asks for "Install unknown apps"). Windows: `install_update` via `tauri-plugin-updater` (passive NSIS), CI signs the installer and publishes `latest.json` when `TAURI_SIGNING_PRIVATE_KEY` is set. Linux: row only (packages update it). Kotlin first compiles in CI. **Next:** user sets up the updater key; encrypted backups or "New task" example phrases.
 
 - **Oct 16, 2026 (past tasks)** — Quick add suggests past tasks (Post-MVP 5): one chip at most, from the 2nd letter, only titles added ≥2 times / in the last 30 days / still open ("On your list" opens it, no duplicate). Tap fills title, keeps date words, copies notes; a known title pre-selects its usual time. `Store::past_tasks` groups `tasks` by title with recency-weighted ranking (2 core tests). Checked in mocked Chromium. **Next:** encrypted backups or "New task" example phrases.
 
