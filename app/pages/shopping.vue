@@ -2,7 +2,8 @@
 // Shopping list: separate from tasks, no reminders. Top: what to buy (tap to
 // tick off; it clears away, Undo in the toast). Below: chips of things
 // usually bought; tap one to add it. Edit shows ✕ on chips and a field for
-// new ones. An item that isn't a chip yet can be saved as one (bookmark).
+// new ones, plus suggestions (bought often + common groceries). An item that
+// isn't a chip yet can be saved as one (bookmark).
 // Desktop: right-click items and chips for the same actions.
 import { ArrowLeft, Bookmark, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 import type { ShoppingItem, Staple } from '~/composables/api'
@@ -35,6 +36,15 @@ watch(listVersion, load)
 const key = (s: string) => s.trim().toLowerCase()
 const onList = computed(() => new Set(items.value.map((i) => key(i.name))))
 const isStaple = computed(() => new Set(staples.value.map((s) => key(s.name))))
+
+/** Starter ideas for the chips; what you add often comes first. */
+const COMMON = ['Milk', 'Eggs', 'Bread', 'Butter', 'Cheese', 'Yogurt', 'Bananas', 'Apples', 'Tomatoes', 'Onions', 'Potatoes', 'Rice', 'Pasta', 'Coffee', 'Tea', 'Toilet paper', 'Dish soap']
+const frequent = ref<string[]>([])
+watch(editing, async (on) => on && (frequent.value = await api.shoppingSuggestions().catch(() => [])))
+const suggestions = computed(() => {
+  const seen = new Set(isStaple.value)
+  return [...frequent.value, ...COMMON].filter((n) => !seen.has(key(n)) && seen.add(key(n))).slice(0, 14)
+})
 
 async function add(name: string) {
   name = name.replace(/\s+/g, ' ').trim()
@@ -79,7 +89,8 @@ async function addStaple(typedName?: string) {
   if (!name || isStaple.value.has(key(name))) return
   if (typedName != null) {
     haptic()
-    show({ message: `${name} added to Usually` })
+    // While editing the new chip shows up right there; no toast per tap.
+    if (!editing.value) show({ message: `${name} added to Usually` })
   }
   try {
     const s = await api.addStaple(name)
@@ -93,7 +104,21 @@ function itemMenu(e: MouseEvent, i: ShoppingItem) {
   openMenu(e, [
     { label: 'Got it', icon: Check, run: () => tick(i) },
     ...(isStaple.value.has(key(i.name)) ? [] : [{ label: 'Add to Usually', icon: BookmarkPlus, run: () => addStaple(i.name) }]),
+    'separator',
+    { label: 'Delete', icon: Trash2, danger: true, run: () => removeItem(i) },
   ])
+}
+
+/** Off the list without buying it (a mistake, changed mind). */
+async function removeItem(i: ShoppingItem) {
+  items.value = items.value.filter((x) => x.id !== i.id)
+  try {
+    await api.setShoppingDeleted(i.id, true)
+    show({ message: `Removed ${i.name}`, action: { label: 'Undo', run: () => api.setShoppingDeleted(i.id, false).then(load) } })
+  } catch (e) {
+    error.value = String(e)
+    load()
+  }
 }
 
 function stapleMenu(e: MouseEvent, s: Staple) {
@@ -181,6 +206,14 @@ async function removeStaple(s: Staple) {
         <button v-if="!staples.length" class="chip off" @click="editing = true"><Plus :size="14" /> Add things you usually buy</button>
       </template>
     </div>
+    <template v-if="editing && suggestions.length">
+      <p class="muted small sugg-title">Suggestions</p>
+      <div class="chips">
+        <button v-for="n in suggestions" :key="n" class="chip off" :aria-label="`Add ${n} to Usually`" @click="addStaple(n)">
+          <Plus :size="14" />{{ n }}
+        </button>
+      </div>
+    </template>
     <form v-if="editing" class="add staple" @submit.prevent="addStaple()">
       <input
         :value="newStaple"
@@ -210,6 +243,7 @@ async function removeStaple(s: Staple) {
 .usual-head .section-title { margin: 8px 0; display: inline-flex; align-items: center; gap: 5px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .staple { margin-top: 12px; }
+.sugg-title { margin: 14px 0 8px; }
 .list-leave-active { transition: opacity 0.2s, transform 0.2s; }
 .list-leave-to { opacity: 0; transform: translateX(16px); }
 </style>

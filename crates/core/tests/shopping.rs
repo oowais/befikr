@@ -49,3 +49,23 @@ fn staples_add_remove() {
         "removed one stays removed"
     );
 }
+
+#[test]
+fn delete_undo_and_suggestions() {
+    let mut s = Store::open_in_memory().unwrap();
+    let soap = s.add_shopping_item("soap").unwrap();
+    s.set_shopping_deleted(&soap.id, true).unwrap();
+    assert!(names(&s).0.is_empty());
+    s.set_shopping_deleted(&soap.id, false).unwrap();
+    assert_eq!(names(&s).0, ["soap"]);
+
+    // Bought twice → suggested; once → not; already a chip → not.
+    s.set_shopping_bought(&soap.id, true).unwrap();
+    s.add_shopping_item("Soap").unwrap();
+    s.add_shopping_item("rice").unwrap();
+    let milk = s.add_shopping_item("milk").unwrap();
+    s.set_shopping_bought(&milk.id, true).unwrap();
+    s.add_shopping_item("milk").unwrap();
+    s.add_staple("Milk").unwrap();
+    assert_eq!(s.shopping_suggestions(5).unwrap(), ["Soap"]);
+}

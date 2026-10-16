@@ -201,7 +201,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - Below: chips of things usually bought ("milk", "eggs", …). Tap a chip → added to the list (tap again or already on list → no duplicate).
    - Manage chips in place: add a new chip, long-press/✕ to remove.
    - Design notes (decide when building): separate from the main task list and its reminders; own tables (`staples`, `shopping_items`) following the sync-ready rules; later, suggest chips from what gets added most often.
-   - ✅ Oct 16: `/shopping` (cart button on the main screen). Migration 2 adds `shopping_items` (`bought_at` = ticked) + `staples`; core in `crates/core/src/shopping.rs`. Add field on top, tap to tick (Undo toast), chips already on the list show ✓ and don't duplicate; pencil → ✕ on chips + field for new ones. Not yet: suggesting chips from history.
+   - ✅ Oct 16: `/shopping` (cart button on the main screen). Migration 2 adds `shopping_items` (`bought_at` = ticked) + `staples`; core in `crates/core/src/shopping.rs`. Add field on top, tap to tick (Undo toast), chips already on the list show ✓ and don't duplicate; pencil → ✕ on chips + field for new ones. Suggestions from history + common groceries ✅ Oct 16.
 
 ## Risks and open items
 
@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (shopping 2)** — Shopping items can be deleted (menu → Delete, Undo; soft delete `set_shopping_deleted`). Chip editing shows suggestions: names added ≥2 times (`shopping_suggestions`) first, then common groceries (not stored until tapped, so devices don't sync duplicate defaults).
 - **Oct 16, 2026 (long-press)** — Context menus on Android too: long-press fires `contextmenu` in the webview; menu opens just below the finger with 44 px entries, the finger lift is ignored for 450 ms (no accidental pick / row tap), a long-press cancels a swipe in progress, rows don't start text selection. Needs a device check.
 - **Oct 16, 2026 (menus)** — Desktop right-click menus (`useContextMenu` + `ContextMenu.vue`; Android untouched): task rows (Open, Complete, Snooze…, Skip, Delete with Undo), shopping items (Got it, Add to Usually), chips (Add to list, Remove), completed rows (Open, Undo). Webview's own menu hidden except in text fields / selected text. Shopping: bookmark button on items that aren't chips yet → Add to Usually. Checked in mocked Chromium. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (app id)** — Vicinae focused Zed (window titled "befikr") instead of launching Befikr: it matched `StartupWMClass=befikr` against window titles. Linux window app id is now `com.befikr.app` (`glib::set_prgname` in `run`; Tauri's `enableGTKAppId` alone didn't change it) and the .deb desktop entry comes from `packaging/linux/befikr.desktop` with `StartupWMClass=com.befikr.app`. Single instance still works. **Next:** phone↔Linux sync test.

@@ -166,6 +166,16 @@ fn set_shopping_bought(db: State<Db>, id: String, bought: bool) -> Res<ShoppingI
 }
 
 #[tauri::command]
+fn set_shopping_deleted(db: State<Db>, id: String, deleted: bool) -> Res<()> {
+    db.store.lock().map_err(err)?.set_shopping_deleted(&id, deleted).map_err(err)
+}
+
+#[tauri::command]
+fn shopping_suggestions(db: State<Db>) -> Res<Vec<String>> {
+    db.store.lock().map_err(err)?.shopping_suggestions(12).map_err(err)
+}
+
+#[tauri::command]
 fn add_staple(db: State<Db>, name: String) -> Res<Staple> {
     db.store.lock().map_err(err)?.add_staple(&name).map_err(err)
 }
@@ -311,6 +321,8 @@ pub fn run() {
             shopping_list,
             add_shopping_item,
             set_shopping_bought,
+            set_shopping_deleted,
+            shopping_suggestions,
             add_staple,
             remove_staple,
             get_settings,

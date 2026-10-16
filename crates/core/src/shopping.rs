@@ -94,6 +94,35 @@ impl Store {
         })
     }
 
+    /// Take an item off the list without buying it (`deleted` = false undoes).
+    pub fn set_shopping_deleted(&mut self, id: &str, deleted: bool) -> Result<()> {
+        self.write(|c, now| {
+            let at = deleted.then_some(now);
+            let n = c.execute(
+                "UPDATE shopping_items SET deleted_at = ?2, updated_at = ?3 WHERE id = ?1",
+                params![id, at, now],
+            )?;
+            if n == 0 {
+                return Err(Error::NotFound(id.to_string()));
+            }
+            Ok(())
+        })
+    }
+
+    /// Names added to the list at least twice that aren't chips yet, most
+    /// often first (latest spelling).
+    pub fn shopping_suggestions(&self, limit: u32) -> Result<Vec<String>> {
+        let mut st = self.conn.prepare(
+            "SELECT (SELECT s.name FROM shopping_items s WHERE lower(s.name) = lower(i.name) ORDER BY s.id DESC LIMIT 1)
+             FROM shopping_items i
+             WHERE NOT EXISTS (SELECT 1 FROM staples p WHERE p.deleted_at IS NULL AND lower(p.name) = lower(i.name))
+             GROUP BY lower(i.name) HAVING count(*) >= 2
+             ORDER BY count(*) DESC, max(i.id) DESC LIMIT ?1",
+        )?;
+        let rows = st.query_map([limit], |r| r.get(0))?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     pub fn remove_staple(&mut self, id: &str) -> Result<()> {
         self.write(|c, now| {
             c.execute(
