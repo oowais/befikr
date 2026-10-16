@@ -299,7 +299,7 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 - A local edit overwritten by a newer remote one is written to `conflicts` (for the Conflicts page later).
 - "Marked completed elsewhere" needs no special message: the completion row + task fields arrive, then the receiving device re-runs its alarm logic for touched tasks (cancel / reschedule notifications, list refresh). Same for snooze, skip, delete.
 
-**When:** only while both are running. Desktop runs in the tray, so it's usually there. Phone: sync on app open/resume and while open; background sync (WorkManager) later if needed. Both devices may ring for the same task until they've synced.
+**When:** only while both are running. Desktop runs in the tray, so it's usually there. Phone: sync on app open/resume and while open; with the app closed, background sync every ~15 min (✅ Oct 16: `SyncWorker` → JNI `Native.syncOnce` → `SyncService::sync_once`, alarms re-armed from the merge). Both devices may ring for the same task until they've synced.
 
 **Build steps**
 1. Core: HLC, change log written by every repository write, export changes since X, merge incoming with LWW + conflicts log, alarm re-run for touched tasks. Tested with two in-memory stores, no network. ✅ Oct 16 (conflicts log moved to step 3): migration 3 (`sync_state`, `changes`), `crates/core/src/sync.rs` — triggers generated from one table/field list (re-created on every open; rows that predate them are backfilled once), `Store::changes_since(seq)`, `Store::merge(changes)` → alarm changes. Restoring a backup keeps this device's sync id; restored data is older, so peers' newer edits win on the next sync.
@@ -389,6 +389,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (background sync)** — Android background sync: WorkManager `SyncWorker` (every 15 min, needs network; scheduled from `configure` on app start, survives reboot) calls JNI `Native.syncOnce(db, sync.key)` → `SyncService::sync_once` (start endpoint, one round with every paired device, stop; 90 s cap) and applies the returned alarm changes with `Scheduler.apply`. Skipped when sync is off, nothing is paired, or the app's own sync runs in the process (`APP_SYNC`, so one key never has two endpoints). Kotlin first compiles in CI. **Next:** device test — add a task on the PC with the phone app closed, wait ≤15 min (or `adb shell cmd jobscheduler run -f com.befikr.app <id>`), reminder should arrive.
 
 - **Oct 16, 2026 (home layout)** — Home list is one screen tall: list scrolls inside (fades out at its bottom), a full-width "New task" bar at thumb height replaces the + button (no longer covers the last task), and a line-drawn landscape (`Doodle.vue`, sun/moon by time of day) fills leftover space above the bar; with nothing to do it's the whole screen with "All clear…". Tried a bottom-anchored, upside-down list and a glass dock first; kept the normal sort and plain header. **Next:** device test; rotating example phrases in the bar.
 

@@ -107,3 +107,16 @@ async fn too_many_wrong_codes_close_the_window() {
     assert!(pc_svc.status().pairing.is_none());
     assert!(phone_svc.pair_with_link(&link).await.is_err(), "right code, but too late");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn sync_once_syncs_then_stops() {
+    let (pc, pc_svc) = device("Desktop").await;
+    let (phone, phone_svc) = device("Pixel").await;
+    phone_svc.pair_with_link(&pairing_link(&pc_svc)).await.unwrap();
+
+    pc.store(|s| s.add_task(NewTask { title: "added on the desktop".into(), ..Default::default() })).unwrap();
+    phone_svc.sync_once().await.unwrap();
+    assert_eq!(phone.titles(), ["added on the desktop"]);
+    assert!(!phone_svc.status().running, "endpoint closed after the round");
+    assert!(phone.0 .1.load(Ordering::SeqCst) >= 1, "merge reported to the host (alarms)");
+}

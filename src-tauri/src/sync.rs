@@ -31,6 +31,10 @@ impl Host for AppHost {
 
 pub(crate) type Sync = SyncService<AppHost>;
 
+/// The app's own sync runs in this process: background sync (JNI
+/// `syncOnce`) must not start a second endpoint with the same key.
+pub(crate) static APP_SYNC: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Device key: a file next to the database, not in it (backups must not
 /// carry it to another device).
 pub(crate) fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -49,6 +53,7 @@ pub(crate) fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     app.manage(SyncService::new(AppHost(app.clone()), key));
+    APP_SYNC.store(true, std::sync::atomic::Ordering::SeqCst);
     let app = app.clone();
     tauri::async_runtime::spawn(async move { restart(&app).await });
     Ok(())

@@ -319,6 +319,20 @@ impl<H: Host> SyncService<H> {
         Ok(peer)
     }
 
+    /// One sync round with every paired device, then stop: for background
+    /// sync with no app running (Android WorkManager). Nothing when sync is
+    /// off. Errors: the last sync error, if any device failed.
+    pub async fn sync_once(&self) -> Result<()> {
+        self.apply_mode().await?;
+        if self.endpoint().is_none() {
+            return Ok(());
+        }
+        self.sync_now().await;
+        let error = self.state().last_error.clone();
+        self.stop().await;
+        error.map_or(Ok(()), Err)
+    }
+
     pub async fn unpair(&self, endpoint: &str) -> Result<()> {
         self.inner.host.store(|s| s.remove_peer(endpoint))?;
         self.inner.host.status_changed();

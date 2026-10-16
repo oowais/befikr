@@ -346,6 +346,7 @@ dependencies = [
  "tauri-plugin-autostart",
  "tauri-plugin-reminders",
  "tauri-plugin-single-instance",
+ "tokio",
 ]
 
 [[package]]

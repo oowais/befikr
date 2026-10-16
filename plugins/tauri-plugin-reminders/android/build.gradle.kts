@@ -30,5 +30,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.appcompat:appcompat:1.6.0")
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // Background sync (SyncWorker).
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation(project(":tauri-android"))
 }

@@ -21,4 +21,7 @@ object Native {
 
     /** Consistent snapshot of the database to [outPath]. → `{}` */
     external fun exportTo(dbPath: String, outPath: String): String
+
+    /** One background sync round. → `{"alarms": [AlarmChange], "skipped"?, "problem"?}` */
+    external fun syncOnce(dbPath: String, keyPath: String): String
 }
