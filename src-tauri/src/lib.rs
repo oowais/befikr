@@ -260,6 +260,45 @@ fn set_start_hidden(app: AppHandle, on: bool) -> Res<()> {
     desktop::prefs::set_start_hidden(&app, on)
 }
 
+// ---- Backups on this computer (Android: the reminders plugin's commands).
+// Dialogs block, so these run off the main thread (async).
+
+#[cfg(desktop)]
+#[tauri::command]
+fn backup_status(app: AppHandle) -> desktop::backup::BackupStatus {
+    desktop::backup::status(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn pick_backup_folder(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::pick_folder(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn clear_backup_folder(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::clear_folder(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn backup_now(app: AppHandle) -> Res<desktop::backup::BackupStatus> {
+    desktop::backup::run_now(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn export_backup(app: AppHandle) -> Res<serde_json::Value> {
+    Ok(serde_json::json!({ "saved": desktop::backup::export(&app)? }))
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
+    Ok(serde_json::json!({ "path": desktop::backup::pick_import(&app)? }))
+}
+
 #[cfg(mobile)]
 const DESKTOP_ONLY: &str = "desktop only";
 
@@ -281,6 +320,42 @@ fn set_start_hidden() -> Res<()> {
     Err(DESKTOP_ONLY.into())
 }
 
+#[cfg(mobile)]
+#[tauri::command]
+fn backup_status() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn pick_backup_folder() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn clear_backup_folder() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn backup_now() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn export_backup() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn pick_import_file() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app id / X11 class `com.befikr.app` (matches StartupWMClass in
@@ -294,6 +369,7 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| desktop::show_main(app)))
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--autostart"])))
+        .plugin(tauri_plugin_dialog::init())
         .on_window_event(desktop::on_window_event);
     builder
         .plugin(tauri_plugin_reminders::init())
@@ -351,6 +427,12 @@ pub fn run() {
             desktop_prefs,
             set_autostart,
             set_start_hidden,
+            backup_status,
+            pick_backup_folder,
+            clear_backup_folder,
+            backup_now,
+            export_backup,
+            pick_import_file,
             sync::sync_status,
             sync::set_sync_mode,
             sync::set_device_name,

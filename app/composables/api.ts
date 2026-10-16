@@ -146,17 +146,21 @@ export type BackupStatus = { folder: string | null; lastAt: number | null; lastE
 
 export type Status = { notifications: boolean; exactAlarms: boolean; batteryUnrestricted: boolean; sdk: number; device: string }
 
-/** Android-only plugin commands; reject on desktop. */
+export const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
+/** Backup runs in the Kotlin plugin on Android, in the app process on computers. */
+const backupCmd = (name: string) => (isAndroid ? `plugin:reminders|${name}` : name)
+
+/** Android-only plugin commands (backup ones work on both); reject on desktop. */
 export const reminders = {
   status: () => invoke<Status>('plugin:reminders|status'),
   requestNotifications: () => invoke('plugin:reminders|request_notifications'),
   openExactAlarmSettings: () => invoke('plugin:reminders|open_exact_alarm_settings'),
   openBatterySettings: () => invoke('plugin:reminders|open_battery_settings'),
   takeLaunchRoute: () => invoke<{ route?: string }>('plugin:reminders|take_launch_route'),
-  backupStatus: () => invoke<BackupStatus>('plugin:reminders|backup_status'),
-  pickBackupFolder: () => invoke<BackupStatus>('plugin:reminders|pick_backup_folder'),
-  clearBackupFolder: () => invoke<BackupStatus>('plugin:reminders|clear_backup_folder'),
-  backupNow: () => invoke<BackupStatus>('plugin:reminders|backup_now'),
-  exportBackup: () => invoke<{ saved: boolean }>('plugin:reminders|export_backup'),
-  pickImportFile: () => invoke<{ path?: string }>('plugin:reminders|pick_import_file'),
+  backupStatus: () => invoke<BackupStatus>(backupCmd('backup_status')),
+  pickBackupFolder: () => invoke<BackupStatus>(backupCmd('pick_backup_folder')),
+  clearBackupFolder: () => invoke<BackupStatus>(backupCmd('clear_backup_folder')),
+  backupNow: () => invoke<BackupStatus>(backupCmd('backup_now')),
+  exportBackup: () => invoke<{ saved: boolean }>(backupCmd('export_backup')),
+  pickImportFile: () => invoke<{ path?: string }>(backupCmd('pick_import_file')),
 }

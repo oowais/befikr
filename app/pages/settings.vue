@@ -25,8 +25,6 @@ const allSet = computed(() => !!status.value && allGranted(status.value))
 const error = ref('')
 const version = ref('')
 const backup = ref<BackupStatus | null>(null)
-// Backup runs in the Android plugin (folder picker, daily alarm); computers have none.
-const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)
 onMounted(async () => (version.value = await getVersion().catch(() => '')))
 
 async function load() {
@@ -36,7 +34,7 @@ async function load() {
     error.value = String(e)
   }
   status.value = await reminders.status().catch(() => null)
-  if (isAndroid) backup.value = await reminders.backupStatus().catch(() => null)
+  backup.value = await reminders.backupStatus().catch(() => null)
 }
 onMounted(load)
 const { theme, setTheme } = useTheme()
@@ -165,8 +163,8 @@ async function run(f: () => Promise<unknown>) {
       </div>
     </template>
 
-    <h2 v-if="isAndroid" class="section-title">Data</h2>
-    <div v-if="isAndroid" class="pane rows">
+    <h2 class="section-title">Data</h2>
+    <div class="pane rows">
       <NuxtLink to="/backup" class="item">
         <FolderSync :size="20" class="muted" />
         <span class="flex stack">

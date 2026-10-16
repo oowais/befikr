@@ -187,6 +187,7 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - **System tray** on both: open / quick add / quit; closing the window hides to tray so reminders keep running.
    - **Notifications** on both: native toasts at due time with Complete / Snooze actions where the OS allows; scheduler runs in the Rust process (no AlarmManager on desktop), re-arms from the DB on start.
    - Single instance: a second launch focuses the running one.
+   - **Backup** (Oct 16): same Backup page as Android. Export a copy / restore via native file dialogs (`tauri-plugin-dialog`); optional daily backup into a picked folder, keep newest 7, checked hourly while the app runs (catches up after sleep). `src-tauri/src/desktop/backup.rs`; state in `backup.json` beside `desktop.json`.
 2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online. 🟡 Built Oct 16 (step 7) — see **P2P sync — plan** below.
    - Conflict strategy: per-field last-write-wins.
    - **Conflicts page**: every overwritten value is logged; review and restore from there. ✅ Oct 16 (side-by-side cards, tap the version to keep).
@@ -235,7 +236,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
-| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, packages in every release. Windows dev setup works (`pnpm tauri dev`). AUR later |
+| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release. Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
 
 **Next:** device tests of 7 (background sync: task added on the PC rings on the closed phone) and the home screen fix; then encrypted backups (passphrase) or example phrases in the "New task" bar.
@@ -392,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (desktop backup)** — 0.17.2 crash fix released (Android CI green). Backup now on Windows/Linux: export, restore (copies the picked file to the cache first, so `import_backup` never deletes the user's file), daily to a folder keeping 7 (`desktop/backup.rs`, hourly check in a thread). Frontend routes backup commands to the plugin on Android, plain commands on desktop. UI checked with mocked commands; native dialogs not yet tried on a real PC. **Next:** try export/restore/daily on Windows; then suggestions from past tasks.
 
 - **Oct 16, 2026 (crash fix)** — 0.17.1 crashed on every Android process start: WorkManager's startup provider couldn't instantiate `WorkDatabase_Impl` (R8 stripped its no-arg constructor). Keep rules added to the reminders plugin's `consumer-rules.pro`. Not built locally (no Android SDK); confirm in CI and on the phone. **Next:** device check that the app opens and reminders fire; then suggestions from past tasks (design discussed, questions open).
 

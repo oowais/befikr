@@ -3,6 +3,7 @@
 //! the tray keeps the app running with the window closed. Android uses the
 //! Kotlin plugin instead.
 
+pub mod backup;
 mod notify;
 pub mod prefs;
 mod scheduler;
@@ -39,6 +40,7 @@ pub fn setup(app: &AppHandle) {
         Ok(()) => TRAY.store(true, Ordering::Relaxed),
         Err(e) => eprintln!("tray unavailable: {e}"),
     }
+    backup::start_daily(app.clone());
     let hidden = prefs::launch_hidden(app);
     if !hidden || !TRAY.load(Ordering::Relaxed) {
         show_main(app);

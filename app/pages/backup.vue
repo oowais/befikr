@@ -76,8 +76,8 @@ async function confirmImport() {
           <FolderSync :size="20" class="muted" />
           <span class="flex stack">
             <span>Daily backup</span>
-            <span v-if="backup.folder" class="muted small">On · every night, keeps the newest 7</span>
-            <span v-else class="muted small">Off · saves a copy each night to a folder you pick, e.g. Syncthing</span>
+            <span v-if="backup.folder" class="muted small">On · {{ isAndroid ? 'every night' : 'once a day' }}, keeps the newest 7</span>
+            <span v-else class="muted small">Off · saves a copy each {{ isAndroid ? 'night' : 'day' }} to a folder you pick, e.g. Syncthing</span>
           </span>
           <span class="switch" :class="{ on: backup.folder }"><span class="knob" /></span>
         </button>
