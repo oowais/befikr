@@ -112,11 +112,15 @@ function later() {
 .l2 { stroke: #24452a; }
 .l3 { stroke: #e07a5f; }
 @media (prefers-color-scheme: dark) {
-  .logo-bg { fill: #23262b; }
-  .l1 { stroke: #b9f6ca; }
-  .l2 { stroke: #ffffff; }
-  .l3 { stroke: #69f0ae; }
+  :global(:root:not([data-theme="light"])) .logo-bg { fill: #23262b; }
+  :global(:root:not([data-theme="light"])) .l1 { stroke: #b9f6ca; }
+  :global(:root:not([data-theme="light"])) .l2 { stroke: #ffffff; }
+  :global(:root:not([data-theme="light"])) .l3 { stroke: #69f0ae; }
 }
+:global(:root[data-theme="dark"]) .logo-bg { fill: #23262b; }
+:global(:root[data-theme="dark"]) .l1 { stroke: #b9f6ca; }
+:global(:root[data-theme="dark"]) .l2 { stroke: #ffffff; }
+:global(:root[data-theme="dark"]) .l3 { stroke: #69f0ae; }
 .steps { list-style: none; margin: 0; }
 .step { display: flex; align-items: center; gap: 12px; padding: 14px 0; opacity: 0.55; }
 .step.active, .step:has(.checked) { opacity: 1; }

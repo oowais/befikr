@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (theme, backup row)** — Settings → Theme: System / Light / Dark (per device, localStorage; `data-theme` on <html>, splash + window frame follow). Backup "Last" row wraps on phones instead of overlapping the button. Sync debugging: `cargo run -p befikr-sync --example discover` lists Befikr devices heard via mDNS — on the user's LAN the PC (wired, ufw default DROP) hears only itself, not the phone.
 - **Oct 16, 2026 (sync status)** — Sync page: "Looking for devices on this Wi-Fi…" while sync runs, "Search again" (restarts the endpoint so discovery starts over, keeps an open pairing window), "Syncing…" next to Paired devices during a sync (`Status.syncing`).
 - **Oct 16, 2026 (shopping 2)** — Shopping items can be deleted (menu → Delete, Undo; soft delete `set_shopping_deleted`). Chip editing shows suggestions: names added ≥2 times (`shopping_suggestions`) first, then common groceries (not stored until tapped, so devices don't sync duplicate defaults).
 - **Oct 16, 2026 (long-press)** — Context menus on Android too: long-press fires `contextmenu` in the webview; menu opens just below the finger with 44 px entries, the finger lift is ignored for 450 ms (no accidental pick / row tap), a long-press cancels a swipe in progress, rows don't start text selection. Needs a device check.

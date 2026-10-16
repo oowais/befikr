@@ -86,6 +86,7 @@ async function confirmImport() {
   }
 }
 onMounted(load)
+const { theme, setTheme } = useTheme()
 const sync = ref<SyncStatus | null>(null)
 onMounted(async () => (sync.value = await api.syncStatus().catch(() => null)))
 const syncLabel = computed(() => {
@@ -178,6 +179,22 @@ function addWord() {
       </div>
       <button v-if="!allSet || permsOpen" class="btn link" @click="router.push('/welcome')">Open setup guide</button>
     </template>
+
+    <h2 class="section-title">Theme</h2>
+    <div class="seg" role="radiogroup" aria-label="Theme">
+      <button
+        v-for="t in (['system', 'light', 'dark'] as const)"
+        :key="t"
+        type="button"
+        role="radio"
+        class="opt"
+        :class="{ chosen: theme === t }"
+        :aria-checked="theme === t"
+        @click="setTheme(t)"
+      >
+        {{ { system: 'System', light: 'Light', dark: 'Dark' }[t] }}
+      </button>
+    </div>
 
     <h2 class="section-title">Feedback</h2>
     <div class="pane rows">
@@ -319,13 +336,20 @@ a.item { color: inherit; text-decoration: none; }
 }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; }
+.seg {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);
+}
+.opt { padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
+.opt.chosen { color: var(--text); }
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .confirm { margin-top: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .end { justify-content: flex-end; }
 .details { padding: 4px 0 12px 32px; display: flex; flex-direction: column; gap: 8px; }
-.detail { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.detail { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 44px; }
+.detail > .btn { margin-left: auto; }
 .detail > .muted:first-child { width: 48px; flex: none; font-size: 0.9rem; }
-.value { min-width: 0; overflow-wrap: anywhere; }
+.value { min-width: 8rem; overflow-wrap: anywhere; }
 .ok { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .note { margin: 0; }
 .spin { animation: spin 1s linear infinite; }

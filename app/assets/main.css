@@ -75,8 +75,10 @@
   color-scheme: light dark;
 }
 
+/* Dark: follows the system unless Settings → Theme picks one
+   (`data-theme` on <html>, set by plugins/theme.client.ts). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: oklch(0.16 0 0);
     --text: oklch(0.985 0 0);
     --muted: oklch(0.72 0 0);
@@ -124,6 +126,56 @@
     --gray: oklch(0.5 0 0);
   }
 }
+:root[data-theme="dark"] {
+  --bg: oklch(0.16 0 0);
+  --text: oklch(0.985 0 0);
+  --muted: oklch(0.72 0 0);
+  --line: oklch(1 0 0 / 9%);
+
+  --pane: oklch(0.31 0 0 / 46%);
+  --popover: oklch(0.22 0 0 / 96%);
+
+  --accent: oklch(0.94 0 0);
+  --on-accent: oklch(0.18 0 0);
+  --primary-solid: 86%;
+  --primary-rim: oklch(1 0 0);
+  --primary-under: oklch(0 0 0 / 22%);
+  --primary-inner: oklch(0 0 0 / 7%);
+  --primary-edge: oklch(1 0 0 / 26%);
+
+  --glass-rim: oklch(1 0 0 / 16%);
+  --glass-inner: oklch(1 0 0 / 4%);
+  --glass-edge: oklch(1 0 0 / 6%);
+  --popover-edge: oklch(1 0 0 / 6%);
+  --popover-under: oklch(0 0 0 / 0%);
+  --glass-shade: oklch(0 0 0 / 60%);
+  --glass-contact: oklch(0 0 0 / 10%);
+  --glass-lift: oklch(0 0 0 / 22%);
+  --glass-control: oklch(1 0 0 / 7%);
+  --glass-control-rim: oklch(1 0 0 / 11%);
+  --glass-state: oklch(1 0 0 / 7%);
+  --glass-state-rim: oklch(1 0 0 / 11%);
+  --glass-state-edge: oklch(1 0 0 / 6%);
+  --field: oklch(1 0 0 / 6%);
+  --field-rim: oklch(1 0 0 / 15%);
+  --field-edge: oklch(1 0 0 / 8%);
+  --well-shade: oklch(0 0 0 / 45%);
+  --well-rim: oklch(1 0 0 / 9%);
+  --focus-line: oklch(1 0 0 / 40%);
+  --glass-blur: blur(26px);
+
+  --light-1: transparent;
+  --light-2: transparent;
+  --light-3: transparent;
+
+  --red: oklch(0.7 0.19 22);
+  --yellow: oklch(0.77 0.15 62);
+  --green: oklch(0.78 0.13 166);
+  --gray: oklch(0.5 0 0);
+
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* ---- Base ---------------------------------------------------------------- */
 
