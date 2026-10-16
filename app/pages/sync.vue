@@ -95,6 +95,7 @@ const left = computed(() => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 })
 const on = computed(() => st.value && st.value.mode !== 'off')
+const isDesktop = typeof navigator !== 'undefined' && !/Android/i.test(navigator.userAgent)
 
 // Fallback when the other device isn't found automatically (mDNS blocked).
 const byAddress = ref(false)
@@ -180,6 +181,7 @@ async function rescan() {
           <span class="muted small">On the other device, open Sync and pick <b>{{ st.name || name }}</b>, then type:</span>
           <span class="code">{{ st.pairing.code.slice(0, 3) }} {{ st.pairing.code.slice(3) }}</span>
           <span v-if="st.addresses.length" class="muted small">Not listed there? Use “Enter an address” with <b>{{ st.addresses.join(' or ') }}</b></span>
+          <span v-if="isDesktop" class="muted small">Pairing a phone? It's easier the other way round: show the code on the phone and type its address here (a computer's firewall usually blocks incoming connections).</span>
           <span class="muted small">Closes in {{ left }}</span>
           <button class="btn" @click="run(api.stopPairing)">Cancel</button>
         </div>
@@ -239,7 +241,6 @@ async function rescan() {
         </template>
 
         <p class="muted small tip">Using a VPN? Allow LAN connections in its settings (Proton VPN: Settings → Connection → Advanced).</p>
-        <p class="muted small">Firewall on a computer? Allow port 47474 (UDP and TCP) on your home network.</p>
       </template>
     </template>
   </main>

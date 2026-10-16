@@ -46,7 +46,9 @@ const SERVICE: &str = "befikr";
 const PAIRING_WINDOW: Duration = Duration::from_secs(5 * 60);
 const PAIRING_ATTEMPTS: u8 = 5;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-const PERIODIC: Duration = Duration::from_secs(60);
+/// Also how fast changes reach a device that can only be dialled from the
+/// other side (a computer whose firewall drops incoming connections).
+const PERIODIC: Duration = Duration::from_secs(30);
 /// How often the change log is checked for local writes.
 const POLL: Duration = Duration::from_secs(2);
 /// A device seen again via mDNS within this time doesn't trigger another sync.
@@ -387,7 +389,7 @@ impl<H: Host> SyncService<H> {
         };
         let who = tokio::time::timeout(CONNECT_TIMEOUT, who_is(target))
             .await
-            .map_err(|_| "no Befikr at that address (is sync on there?)".to_string())??;
+            .map_err(|_| "No Befikr at that address. Is sync on there?".to_string())??;
         let id: EndpointId = who.endpoint.parse().map_err(|_| "bad reply".to_string())?;
         if let Some(r) = &self.state().running {
             r.memory.add_endpoint_info(EndpointAddr::new(id).with_ip_addr((target.ip(), who.port).into()));
@@ -434,11 +436,21 @@ impl<H: Host> SyncService<H> {
             let me = self.clone();
             tokio::spawn(async move { (id, me.sync_peer(id).await) })
         });
+        // A device we can't reach but that reached us lately (its firewall
+        // only lets it dial out) is fine: no error for that one.
+        let now = self.inner.host.store(|s| Ok(s.now())).unwrap_or(0);
+        let fresh = |id: &EndpointId| {
+            let id = id.to_string();
+            let synced = self.inner.host.store(|s| s.peer(&id)).ok().flatten().and_then(|p| p.last_sync_at);
+            synced.is_some_and(|t| now - t < 3 * PERIODIC.as_millis() as i64)
+        };
         let mut error = None;
         for j in jobs.collect::<Vec<_>>() {
             if let Ok((id, Err(e))) = j.await {
                 eprintln!("sync with {}: {e}", id.fmt_short());
-                error = Some(e);
+                if !fresh(&id) {
+                    error = Some(e);
+                }
             }
         }
         self.state().last_error = error;
@@ -593,7 +605,7 @@ async fn who_is(target: std::net::SocketAddr) -> Result<WhoIs> {
     use tokio::io::AsyncReadExt;
     let mut stream = tokio::net::TcpStream::connect(target)
         .await
-        .map_err(|_| "no Befikr at that address (is sync on there, firewall open?)".to_string())?;
+        .map_err(|_| "No Befikr at that address. Is sync on there? On a computer, pair from the computer instead: show the code on the other device and type its address on the computer.".to_string())?;
     let mut buf = Vec::new();
     let _ = (&mut stream).take(1024).read_to_end(&mut buf).await;
     serde_json::from_slice(buf.trim_ascii()).map_err(|_| "something else answered at that address".to_string())
