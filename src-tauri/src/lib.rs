@@ -258,6 +258,11 @@ fn set_start_hidden() -> Res<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Wayland app id / X11 class `com.befikr.app` (matches StartupWMClass in
+    // packaging/linux/befikr.desktop). The default, `befikr`, made launchers
+    // that also match window titles focus any window titled "befikr" instead.
+    #[cfg(target_os = "linux")]
+    gtk::glib::set_prgname(Some("com.befikr.app"));
     let builder = tauri::Builder::default();
     // A second launch (e.g. from the menu while in the tray) focuses this one.
     #[cfg(desktop)]

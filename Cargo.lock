@@ -351,6 +351,7 @@ dependencies = [
  "befikr-core",
  "befikr-sync",
  "chrono-tz",
+ "gtk",
  "jni 0.21.1",
  "notify-rust",
  "serde",
