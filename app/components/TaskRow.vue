@@ -8,7 +8,7 @@ const props = defineProps<{ row: Row; now: number; done?: boolean; timeOnly?: bo
 const emit = defineEmits<{ complete: []; open: []; snooze: []; menu: [e: MouseEvent] }>()
 
 const label = computed(() => dueLabel(props.row.snoozedUntil ?? props.row.dueAt, props.now, props.timeOnly))
-const big = computed(() => props.row.urgency === 'red' || props.row.urgency === 'yellow')
+const big = computed(() => props.row.urgency !== 'green' && props.row.urgency !== 'gray')
 const canSnooze = computed(() => props.row.dueAt != null || props.row.snoozedUntil != null)
 
 // ---- Swipe
@@ -156,5 +156,6 @@ function open() {
 .due, .subs { display: inline-flex; align-items: center; gap: 6px; }
 .subs { gap: 4px; }
 .red .due { color: var(--red); font-weight: 500; }
+.orange .due { color: var(--orange); font-weight: 500; }
 .yellow .due { color: var(--text); }
 </style>

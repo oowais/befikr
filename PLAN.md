@@ -390,6 +390,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (colours, restore + sync)** — List colours: red only when overdue, orange within the hour (new `Urgency::Orange`), yellow later today (now a true yellow so it differs from orange), green later. Restore bug fixed: a restored backup lowered the change-log counter, so new edits got seqs peers had already "seen" and never synced, and peers' edits rolled back by the restore never came back. `import_from` now keeps the counter above its pre-restore value and resets each peer's `their_seq` to 0; a sync asked from 0 also returns the asker's own changes. Backup section hidden on desktop. **Next:** device test (phone ↔ phone, phone ↔ desktop); Conflicts page.
+
 - **Oct 16, 2026 (sync option A)** — 0.13.1 test: Anywhere + QR works between two GrapheneOS Pixels, Same Wi-Fi doesn't. Went with option A: sync is Off / On (relay fallback), pairing by QR or pasted link only; mDNS, fixed port, who-is responder, address pairing and the multicast lock removed. Sync dot in the main top bar. **Next:** device test (phone ↔ phone, phone ↔ desktop); Conflicts page.
 
 - **Oct 16, 2026 (Windows dev setup)** — User set up the repo on Windows 11 (VS Build Tools C++ + Win11 SDK, rustup MSVC, Node 24, pnpm 12); `pnpm tauri dev` runs. Fixed two Unix-only test bits: parser defaults `TZ` to UTC in `vitest.config.ts` (an explicit `TZ` still wins, for CI's zone checks), and the export test closes the snapshot before deleting it (Windows locks open files). **Next:** unchanged — user's 0.13.1 test result, then decide sync option A/B.

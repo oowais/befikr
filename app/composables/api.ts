@@ -18,7 +18,7 @@ export type Task = {
   deletedAt: number | null
 }
 
-export type Urgency = 'red' | 'yellow' | 'green' | 'gray'
+export type Urgency = 'red' | 'orange' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
 export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
 export type CompletedGroup = {

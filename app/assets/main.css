@@ -68,7 +68,8 @@
 
   /* Hue that means something. */
   --red: oklch(0.6 0.2 27);
-  --yellow: oklch(0.66 0.16 58);
+  --orange: oklch(0.63 0.18 45);
+  --yellow: oklch(0.74 0.15 85);
   --green: oklch(0.6 0.13 165);
   --gray: oklch(0.7 0 0);
 
@@ -121,7 +122,8 @@
     --light-3: transparent;
 
     --red: oklch(0.7 0.19 22);
-    --yellow: oklch(0.77 0.15 62);
+    --orange: oklch(0.74 0.17 48);
+    --yellow: oklch(0.86 0.15 92);
     --green: oklch(0.78 0.13 166);
     --gray: oklch(0.5 0 0);
   }
@@ -169,7 +171,8 @@
   --light-3: transparent;
 
   --red: oklch(0.7 0.19 22);
-  --yellow: oklch(0.77 0.15 62);
+  --orange: oklch(0.74 0.17 48);
+  --yellow: oklch(0.86 0.15 92);
   --green: oklch(0.78 0.13 166);
   --gray: oklch(0.5 0 0);
 
@@ -331,6 +334,7 @@ svg.lucide { flex: none; }
 /* Urgency dot. */
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gray); flex: none; }
 .dot.red { background: var(--red); }
+.dot.orange { background: var(--orange); }
 .dot.yellow { background: var(--yellow); }
 .dot.green { background: var(--green); }
 

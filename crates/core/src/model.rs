@@ -195,9 +195,11 @@ pub struct Settings {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Urgency {
-    /// Overdue or due within 1 hour.
+    /// Overdue.
     Red,
-    /// Due today.
+    /// Due within the next hour.
+    Orange,
+    /// Due later today.
     Yellow,
     /// Due after today.
     Green,
@@ -210,8 +212,11 @@ const HOUR_MS: i64 = 3_600_000;
 /// List colour. `tz` is the device's current zone ("today" is local).
 pub fn urgency(effective_due: Option<i64>, now: i64, tz: Tz) -> Urgency {
     let Some(due) = effective_due else { return Urgency::Gray };
-    if due - now <= HOUR_MS {
+    if due < now {
         return Urgency::Red;
+    }
+    if due - now <= HOUR_MS {
+        return Urgency::Orange;
     }
     let (d, n) = (from_ms(due, tz), from_ms(now, tz));
     if (d.year(), d.ordinal()) == (n.year(), n.ordinal()) {
@@ -233,7 +238,11 @@ mod tests {
         let now = at(10, 0);
         assert_eq!(urgency(None, now, tz), Urgency::Gray);
         assert_eq!(urgency(Some(at(9, 0)), now, tz), Urgency::Red);
-        assert_eq!(urgency(Some(at(10, 59)), now, tz), Urgency::Red);
+        assert_eq!(urgency(Some(now - 60_000), now, tz), Urgency::Red);
+        assert_eq!(urgency(Some(now), now, tz), Urgency::Orange, "due right now isn't late yet");
+        assert_eq!(urgency(Some(at(10, 59)), now, tz), Urgency::Orange);
+        assert_eq!(urgency(Some(at(11, 0)), now, tz), Urgency::Orange);
+        assert_eq!(urgency(Some(at(11, 1)), now, tz), Urgency::Yellow);
         assert_eq!(urgency(Some(at(23, 59)), now, tz), Urgency::Yellow);
         assert_eq!(urgency(Some(at(23, 59) + 60_000), now, tz), Urgency::Green);
     }
