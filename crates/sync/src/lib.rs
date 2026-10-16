@@ -8,7 +8,8 @@
 //! the app, e.g. from a notification, count too) and every minute. Pairing: one device
 //! opens a short window with a 6-digit code ([`SyncService::start_pairing`]),
 //! the other connects and sends the code ([`SyncService::pair_with`], or
-//! [`SyncService::pair_with_address`] when mDNS can't see it).
+//! [`SyncService::pair_with_address`] when mDNS can't see it, or
+//! [`SyncService::pair_with_link`] from the QR code / link next to the code).
 //!
 //! mDNS is flaky (Android, some routers), so like Syncthing we don't rely on
 //! it: the endpoint listens on a fixed port ([`PORT`], one firewall rule),
@@ -18,6 +19,7 @@
 //!
 //! No Tauri here: the app implements [`Host`] (store access, alarms, events).
 
+mod link;
 mod proto;
 
 use std::collections::{BTreeMap, HashSet};
@@ -99,6 +101,8 @@ pub struct Nearby {
 pub struct PairingInfo {
     pub code: String,
     pub until_ms: i64,
+    /// Pairing link (id, code, name, addresses, relay), shown as a QR code.
+    pub link: String,
 }
 
 struct Pairing {
@@ -316,6 +320,7 @@ impl<H: Host> SyncService<H> {
     pub fn status(&self) -> Status {
         let settings = self.inner.host.store(|s| s.sync_settings()).ok();
         let peers = self.inner.host.store(|s| s.peers()).unwrap_or_default();
+        let my_name = self.my_name();
         let st = self.state();
         let paired: HashSet<&str> = peers.iter().map(|p| p.endpoint.as_str()).collect();
         Status {
@@ -331,7 +336,11 @@ impl<H: Host> SyncService<H> {
                 .map(|(id, (name, _))| Nearby { endpoint: id.to_string(), name: name.clone() })
                 .collect(),
             peers,
-            pairing: st.pairing.as_ref().map(|p| PairingInfo { code: p.code.clone(), until_ms: p.until_ms }),
+            pairing: st.pairing.as_ref().map(|p| PairingInfo {
+                code: p.code.clone(),
+                until_ms: p.until_ms,
+                link: st.running.as_ref().map(|r| link::encode(&r.ep.addr(), &p.code, &my_name)).unwrap_or_default(),
+            }),
             last_error: st.last_error.clone().or_else(|| st.warning.clone()),
             addresses: st.running.as_ref().map(|r| lan_addresses(&r.ep)).unwrap_or_default(),
         }
@@ -395,6 +404,15 @@ impl<H: Host> SyncService<H> {
             r.memory.add_endpoint_info(EndpointAddr::new(id).with_ip_addr((target.ip(), who.port).into()));
         }
         self.pair_with(&who.endpoint, code).await
+    }
+
+    /// Pair from a pairing link (scanned QR code or pasted): it carries the
+    /// device's id, addresses, relay and code, so no mDNS or typing needed.
+    pub async fn pair_with_link(&self, link: &str) -> Result<Peer> {
+        let link = link::decode(link)?;
+        let id = link.addr.id.to_string();
+        self.add_addr(link.addr);
+        self.pair_with(&id, &link.code).await
     }
 
     /// Answer "who's here" on TCP [`PORT`]: our id and QUIC port, one JSON

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 // Sync between this device and paired ones (P2P, no server). Mode, this
 // device's name, paired devices, and pairing: one device shows a code, the
-// other picks it from "Nearby" and types the code.
+// other picks it from "Nearby" and types the code, or scans its QR code
+// (a pairing link: id, code, addresses, relay).
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, Laptop, Link2, Radar, RefreshCw, X } from 'lucide-vue-next'
+import { ArrowLeft, Copy, Laptop, Link2, Radar, RefreshCw, ScanLine, X } from 'lucide-vue-next'
+import { renderSVG } from 'uqr'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -97,17 +99,50 @@ const left = computed(() => {
 const on = computed(() => st.value && st.value.mode !== 'off')
 const isDesktop = typeof navigator !== 'undefined' && !/Android/i.test(navigator.userAgent)
 
-// Fallback when the other device isn't found automatically (mDNS blocked).
+// Fallback when the other device isn't found automatically (mDNS blocked):
+// its address and code, or its whole pairing link (carries the code).
 const byAddress = ref(false)
 const address = ref('')
+const isLink = computed(() => address.value.trim().startsWith('befikr://pair?'))
 function pairByAddress() {
   const a = address.value.trim()
-  if (!a || code.value.trim().length !== 6) return
+  if (!a || (!isLink.value && code.value.trim().length !== 6)) return
   run(async () => {
-    await api.pairWithAddress(a, code.value.trim())
+    await (isLink.value ? api.pairWithLink(a) : api.pairWithAddress(a, code.value.trim()))
     byAddress.value = false
     address.value = code.value = ''
   }, 'Paired')
+}
+
+// QR code of the pairing link (dark on white in both themes, so cameras read it).
+const qr = computed(() => (st.value?.pairing?.link ? renderSVG(st.value.pairing.link, { border: 2 }) : ''))
+async function copyLink() {
+  const link = st.value?.pairing?.link
+  if (!link) return
+  await navigator.clipboard.writeText(link).then(() => show({ message: 'Link copied' }), (e) => (error.value = String(e)))
+}
+
+// Phones scan the other device's QR code with the camera.
+const canScan = !isDesktop
+async function scanQr() {
+  error.value = ''
+  try {
+    const { Format, checkPermissions, requestPermissions, scan } = await import('@tauri-apps/plugin-barcode-scanner')
+    let perm = await checkPermissions()
+    if (perm !== 'granted') perm = await requestPermissions()
+    if (perm !== 'granted') {
+      error.value = 'Camera access is needed to scan. Allow it in Android settings, or enter the address instead.'
+      return
+    }
+    const { content } = await scan({ windowed: false, formats: [Format.QRCode] })
+    if (!content.trim().startsWith('befikr://pair?')) {
+      error.value = 'That QR code isn’t a Befikr pairing code.'
+      return
+    }
+    await run(() => api.pairWithLink(content), 'Paired')
+  } catch (e) {
+    if (!/cancel/i.test(String(e))) error.value = String(e)
+  }
 }
 
 // Restart discovery; keep the spinner for a moment so the press registers.
@@ -178,14 +213,21 @@ async function rescan() {
 
         <h2 class="section-title">Add a device</h2>
         <div v-if="st.pairing" class="pane pairing">
-          <span class="muted small">On the other device, open Sync and pick <b>{{ st.name || name }}</b>, then type:</span>
+          <span class="muted small">On the other device, open Sync and scan this, or pick <b>{{ st.name || name }}</b> and type the code:</span>
+          <div v-if="qr" class="qr" role="img" aria-label="Pairing QR code" v-html="qr" />
           <span class="code">{{ st.pairing.code.slice(0, 3) }} {{ st.pairing.code.slice(3) }}</span>
           <span v-if="st.addresses.length" class="muted small">Not listed there? Use “Enter an address” with <b>{{ st.addresses.join(' or ') }}</b></span>
           <span v-if="isDesktop" class="muted small">Pairing a phone? It's easier the other way round: show the code on the phone and type its address here (a computer's firewall usually blocks incoming connections).</span>
           <span class="muted small">Closes in {{ left }}</span>
-          <button class="btn" @click="run(api.stopPairing)">Cancel</button>
+          <div class="row-end">
+            <button v-if="st.pairing.link" class="btn" @click="copyLink"><Copy :size="16" /> Copy link</button>
+            <button class="btn" @click="run(api.stopPairing)">Cancel</button>
+          </div>
         </div>
-        <button v-else class="btn wide" :disabled="busy" @click="run(api.startPairing)"><Link2 :size="18" /> Show a pairing code</button>
+        <template v-else>
+          <button class="btn wide" :disabled="busy" @click="run(api.startPairing)"><Link2 :size="18" /> Show a pairing code</button>
+          <button v-if="canScan" class="btn wide scan" :disabled="busy" @click="scanQr"><ScanLine :size="18" /> Scan a pairing code</button>
+        </template>
 
         <template v-if="!st.pairing">
           <div class="nearby-head">
@@ -220,11 +262,12 @@ async function rescan() {
             None yet. Tap “Show a pairing code” on the other device; it shows up here. Both need sync on and the same Wi-Fi.
           </p>
 
-          <button v-if="!byAddress" class="btn link-btn" @click="byAddress = true">Not listed? Enter an address</button>
+          <button v-if="!byAddress" class="btn link-btn" @click="byAddress = true">Not listed? Enter an address or link</button>
           <form v-else class="pane by-address" @submit.prevent="pairByAddress">
-            <span class="muted small">The other device shows its address under its pairing code.</span>
-            <input v-model="address" class="field" placeholder="192.168.1.20" inputmode="decimal" autocapitalize="off" autocorrect="off" />
+            <span class="muted small">The other device shows its address under its pairing code. Or paste its link (“Copy link” there).</span>
+            <input v-model="address" class="field" placeholder="192.168.1.20 or befikr://pair?…" autocapitalize="off" autocorrect="off" spellcheck="false" />
             <input
+              v-if="!isLink"
               v-model="code"
               class="field"
               inputmode="numeric"
@@ -235,7 +278,7 @@ async function rescan() {
             />
             <div class="row-end">
               <button type="button" class="btn" @click="byAddress = false">Cancel</button>
-              <button class="btn primary" :disabled="busy || !address.trim() || code.length !== 6">Pair</button>
+              <button class="btn primary" :disabled="busy || !address.trim() || (!isLink && code.length !== 6)">Pair</button>
             </div>
           </form>
         </template>
@@ -260,6 +303,9 @@ async function rescan() {
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; min-width: 0; }
 .wide { width: 100%; }
 .pairing { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 16px; text-align: center; }
+.qr { width: 200px; height: 200px; padding: 8px; border-radius: 12px; background: #fff; }
+.qr :deep(svg) { display: block; width: 100%; height: 100%; }
+.scan { margin-top: 8px; }
 .code { font-size: 2.2rem; font-weight: 600; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
 .join { display: flex; gap: 8px; padding: 0 0 12px 32px; }
 .tip { margin-top: 24px; }

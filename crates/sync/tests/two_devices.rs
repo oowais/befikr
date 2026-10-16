@@ -80,3 +80,19 @@ async fn unpaired_device_is_refused() {
     let r = tokio::time::timeout(Duration::from_secs(15), b.sync_peer(id)).await.unwrap();
     assert!(r.is_err());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pair_from_link_alone() {
+    let (pc, pc_svc) = device("Desktop").await;
+    let (phone, phone_svc) = device("Pixel").await;
+    pc.store(|s| s.add_task(NewTask { title: "from desktop".into(), ..Default::default() })).unwrap();
+
+    // The phone learns nothing except what the QR code carries.
+    pc_svc.start_pairing().unwrap();
+    let link = pc_svc.status().pairing.unwrap().link;
+    assert!(link.starts_with("befikr://pair?") && link.contains("name=Desktop"), "{link}");
+    assert!(phone_svc.pair_with_link("hello").await.is_err());
+    let peer = phone_svc.pair_with_link(&link).await.unwrap();
+    assert_eq!(peer.name, "Desktop");
+    assert_eq!(phone.titles(), ["from desktop"]);
+}

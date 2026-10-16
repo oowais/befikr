@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Download, FolderSync, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, FolderSync } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -22,68 +22,19 @@ const status = ref<Status | null>(null)
 // All permissions granted: one collapsed "set up" row; tap to see them.
 const permsOpen = ref(false)
 const allSet = computed(() => !!status.value && allGranted(status.value))
-const reremind = ref('')
-const newWord = ref('')
-const newTime = ref('')
 const error = ref('')
 const version = ref('')
 const backup = ref<BackupStatus | null>(null)
-const backupBusy = ref(false)
-const importPath = ref<string | null>(null)
-const { show } = useToast()
 onMounted(async () => (version.value = await getVersion().catch(() => '')))
 
 async function load() {
   try {
     settings.value = await api.settings()
-    reremind.value = settings.value.reremindMinutes.join(', ')
   } catch (e) {
     error.value = String(e)
   }
   status.value = await reminders.status().catch(() => null)
   backup.value = await reminders.backupStatus().catch(() => null)
-}
-
-async function toggleBackup() {
-  if (backup.value?.folder) return backupAction(reminders.clearBackupFolder, 'Daily backup off')
-  await backupAction(reminders.pickBackupFolder)
-  if (backup.value?.folder) show({ message: 'Daily backup on' })
-}
-
-async function backupAction(f: () => Promise<BackupStatus | unknown>, done?: string) {
-  backupBusy.value = true
-  error.value = ''
-  try {
-    const r = await f()
-    if (r && typeof r === 'object' && 'folder' in r) backup.value = r as BackupStatus
-    if (done) show({ message: done })
-  } catch (e) {
-    error.value = String(e)
-  } finally {
-    backupBusy.value = false
-    backup.value = await reminders.backupStatus().catch(() => backup.value)
-  }
-}
-async function exportCopy() {
-  const r = await reminders.exportBackup().catch((e) => ((error.value = String(e)), null))
-  if (r?.saved) show({ message: 'Backup saved' })
-}
-async function chooseImport() {
-  const r = await reminders.pickImportFile().catch((e) => ((error.value = String(e)), null))
-  if (r?.path) importPath.value = r.path
-}
-async function confirmImport() {
-  const path = importPath.value
-  importPath.value = null
-  if (!path) return
-  try {
-    await api.importBackup(path)
-    await loadTimeWords(true)
-    await load()
-    show({ message: 'Backup restored' })
-  } catch (e) {
-    error.value = String(e)
-  }
 }
 onMounted(load)
 const { theme, setTheme } = useTheme()
@@ -95,6 +46,18 @@ const syncLabel = computed(() => {
   const n = s.peers.length
   return `${s.mode === 'lan' ? 'Same Wi-Fi' : 'Anywhere'} · ${n ? `${n} ${n === 1 ? 'device' : 'devices'}` : 'no devices yet'}`
 })
+const timesLabel = computed(() => {
+  const s = settings.value
+  if (!s) return ''
+  const n = Object.keys(s.timeWords).length
+  return `Re-remind after ${s.reremindMinutes.join(', ')} min · ${n} time ${n === 1 ? 'word' : 'words'}`
+})
+const backupLabel = computed(() => {
+  const b = backup.value
+  if (!b?.folder) return 'Daily backup off · export, restore'
+  if (b.lastError) return 'Last backup failed'
+  return b.lastAt ? `Daily · last: ${dayLabel(b.lastAt)}` : 'Daily · not yet'
+})
 const onVisible = () => document.visibilityState === 'visible' && load()
 onMounted(() => document.addEventListener('visibilitychange', onVisible))
 onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
@@ -104,35 +67,9 @@ async function run(f: () => Promise<unknown>) {
     await f()
     error.value = ''
     await load()
-    await loadTimeWords(true)
   } catch (e) {
     error.value = String(e)
   }
-}
-
-const saveReremind = () =>
-  run(() => api.setReremindMinutes(reremind.value.split(/[,\s]+/).filter(Boolean).map(Number)))
-const setWord = (w: string, t: string) => run(() => api.setTimeWord(w, t))
-// Time words use our own picker (time mode), never the native one.
-/** Word being edited (null = the new word's time), or nothing open. */
-const pickingFor = ref<{ word: string | null; time: string } | null>(null)
-const todayAt = (t: string) => {
-  const d = new Date()
-  return localMs(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`, t)
-}
-const hhmm = (ms: number) => new Date(ms).toTimeString().slice(0, 5)
-function pickedTime(ms: number | null) {
-  const p = pickingFor.value
-  if (ms == null || !p) return
-  if (p.word == null) newTime.value = hhmm(ms)
-  else setWord(p.word, hhmm(ms))
-}
-
-function addWord() {
-  if (!newWord.value || !newTime.value) return
-  const [w, t] = [newWord.value, newTime.value]
-  newWord.value = newTime.value = ''
-  setWord(w, t)
 }
 </script>
 
@@ -156,9 +93,9 @@ function addWord() {
       </NuxtLink>
     </div>
 
-    <template v-if="status">
-      <h2 class="section-title">Reminders</h2>
-      <div class="pane rows">
+    <h2 class="section-title">Reminders</h2>
+    <div class="pane rows">
+      <template v-if="status">
         <button v-if="allSet" class="item" :aria-expanded="permsOpen" @click="permsOpen = !permsOpen">
           <Check :size="20" class="muted" />
           <span class="flex left">All set up</span>
@@ -176,9 +113,17 @@ function addWord() {
           <button v-else class="btn" @click="run(p.allow)">Allow</button>
         </div>
         </template>
-      </div>
-      <button v-if="!allSet || permsOpen" class="btn link" @click="router.push('/welcome')">Open setup guide</button>
-    </template>
+      </template>
+      <NuxtLink to="/timing" class="item">
+        <Clock :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Times</span>
+          <span class="muted small">{{ timesLabel }}</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+    </div>
+    <button v-if="status && (!allSet || permsOpen)" class="btn link" @click="router.push('/welcome')">Open setup guide</button>
 
     <h2 class="section-title">Theme</h2>
     <div class="seg" role="radiogroup" aria-label="Theme">
@@ -218,93 +163,17 @@ function addWord() {
       </div>
     </template>
 
-    <template v-if="backup">
-      <h2 class="section-title">Backup</h2>
-      <div class="pane rows">
-        <button
-          class="item"
-          role="switch"
-          :aria-checked="!!backup.folder"
-          :disabled="backupBusy"
-          @click="toggleBackup"
-        >
-          <FolderSync :size="20" class="muted" />
-          <span class="flex stack">
-            <span>Daily backup</span>
-            <span v-if="backup.folder" class="muted small">On · every night, keeps the newest 7</span>
-            <span v-else class="muted small">Off · saves a copy each night to a folder you pick, e.g. Syncthing</span>
-          </span>
-          <span class="switch" :class="{ on: backup.folder }"><span class="knob" /></span>
-        </button>
-        <div v-if="backup.folder" class="details">
-          <div class="detail">
-            <span class="muted">Folder</span>
-            <span class="flex value">{{ backup.folder }}</span>
-            <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.pickBackupFolder)">Change</button>
-          </div>
-          <div class="detail">
-            <span class="muted">Last</span>
-            <span class="flex stack value">
-              <span v-if="backup.lastError" class="error">Failed: {{ backup.lastError }}</span>
-              <span v-else-if="backup.lastAt" class="ok"><Check :size="15" :stroke-width="3" /> {{ dayLabel(backup.lastAt) }}</span>
-              <span v-else>Not yet</span>
-            </span>
-            <button class="btn" :disabled="backupBusy" @click="backupAction(reminders.backupNow, 'Backed up')">
-              <RefreshCw :size="16" :class="{ spin: backupBusy }" /> Back up now
-            </button>
-          </div>
-          <p class="muted small note">Turning it off keeps the backups already in the folder.</p>
-        </div>
-        <button class="item" @click="exportCopy">
-          <Upload :size="20" class="muted" /><span class="flex left">Export a copy…</span>
-        </button>
-        <button class="item" @click="chooseImport">
-          <Download :size="20" class="muted" /><span class="flex left">Restore from a backup…</span>
-        </button>
-      </div>
-      <div v-if="importPath" class="pane confirm">
-        <b>Replace all tasks with this backup?</b>
-        <span class="muted small">Your current tasks are saved first, just in case.</span>
-        <div class="row end">
-          <button class="btn" @click="importPath = null">Cancel</button>
-          <button class="btn primary" @click="confirmImport">Replace</button>
-        </div>
-      </div>
-    </template>
-
-    <template v-if="settings">
-      <h2 class="section-title">Re-remind every (minutes)</h2>
-      <form class="row" @submit.prevent="saveReremind">
-        <input v-model="reremind" class="field" inputmode="numeric" />
-        <button class="btn">Save</button>
-      </form>
-      <p class="muted small">Unacted reminders come back after each interval; the last one repeats.</p>
-
-      <h2 class="section-title">Time words</h2>
-      <div class="pane rows">
-        <div v-for="(time, word) in settings.timeWords" :key="word" class="item">
-          <span class="flex word">{{ word }}</span>
-          <button type="button" class="field time" @click="pickingFor = { word: String(word), time }">{{ timeLabel(todayAt(time)) }}</button>
-          <button class="icon-btn" :aria-label="`Remove ${word}`" @click="run(() => api.removeTimeWord(String(word)))"><X :size="18" /></button>
-        </div>
-        <form class="item" @submit.prevent="addWord">
-          <input v-model="newWord" class="field" placeholder="e.g. dawn" autocapitalize="none" />
-          <button type="button" class="field time" :class="{ muted: !newTime }" @click="pickingFor = { word: null, time: newTime || '09:00' }">
-            {{ newTime ? timeLabel(todayAt(newTime)) : 'Time' }}
-          </button>
-          <button class="icon-btn" aria-label="Add time word" :disabled="!newWord || !newTime"><Plus :size="20" /></button>
-        </form>
-      </div>
-    </template>
-
-    <DateTimeSheet
-      v-if="pickingFor"
-      mode="time"
-      :model-value="todayAt(pickingFor.time)"
-      :title="pickingFor.word ? `${pickingFor.word[0]!.toUpperCase()}${pickingFor.word.slice(1)}` : 'Time'"
-      @update:model-value="pickedTime"
-      @close="pickingFor = null"
-    />
+    <h2 class="section-title">Data</h2>
+    <div class="pane rows">
+      <NuxtLink to="/backup" class="item">
+        <FolderSync :size="20" class="muted" />
+        <span class="flex stack">
+          <span>Backup</span>
+          <span class="muted small" :class="{ error: backup?.lastError }">{{ backupLabel }}</span>
+        </span>
+        <ChevronRight :size="20" class="muted" />
+      </NuxtLink>
+    </div>
 
     <p v-if="version" class="muted small version">Befikr {{ version }}</p>
   </main>
@@ -316,9 +185,6 @@ a.item { color: inherit; text-decoration: none; }
 .flex { flex: 1; }
 .left { text-align: left; }
 .hint { display: block; margin-top: 2px; }
-.word { text-transform: capitalize; }
-.time { width: 136px; flex: none; padding: 8px 10px; text-align: left; }
-.row { display: flex; gap: 8px; }
 .link { margin-top: 10px; width: 100%; }
 .switch {
   width: 46px; height: 28px; border-radius: 999px; position: relative; flex: none;
@@ -343,15 +209,4 @@ a.item { color: inherit; text-decoration: none; }
 .opt { padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
 .opt.chosen { color: var(--text); }
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; }
-.confirm { margin-top: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
-.end { justify-content: flex-end; }
-.details { padding: 4px 0 12px 32px; display: flex; flex-direction: column; gap: 8px; }
-.detail { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 44px; }
-.detail > .btn { margin-left: auto; }
-.detail > .muted:first-child { width: 48px; flex: none; font-size: 0.9rem; }
-.value { min-width: 8rem; overflow-wrap: anywhere; }
-.ok { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.note { margin: 0; }
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>

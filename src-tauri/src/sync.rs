@@ -108,6 +108,11 @@ pub(crate) async fn pair_with_address(sync: State<'_, Sync>, address: String, co
 }
 
 #[tauri::command]
+pub(crate) async fn pair_with_link(sync: State<'_, Sync>, link: String) -> Res<()> {
+    sync.pair_with_link(&link).await.map(|_| ())
+}
+
+#[tauri::command]
 pub(crate) async fn unpair(sync: State<'_, Sync>, endpoint: String) -> Res<()> {
     sync.unpair(&endpoint).await
 }

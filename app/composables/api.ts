@@ -45,7 +45,7 @@ export type SyncStatus = {
   endpoint: string
   peers: Peer[]
   nearby: { endpoint: string; name: string }[]
-  pairing: { code: string; untilMs: number } | null
+  pairing: { code: string; untilMs: number; link: string } | null
   lastError: string | null
   addresses: string[]
 }
@@ -111,6 +111,7 @@ export const api = {
   stopPairing: () => invoke<void>('stop_pairing'),
   pairWith: (endpoint: string, code: string) => invoke<void>('pair_with', { endpoint, code }),
   pairWithAddress: (address: string, code: string) => invoke<void>('pair_with_address', { address, code }),
+  pairWithLink: (link: string) => invoke<void>('pair_with_link', { link }),
   unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
   syncNow: () => invoke<void>('sync_now'),
   rescanSync: () => invoke<void>('rescan_sync'),
