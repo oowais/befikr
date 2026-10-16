@@ -390,6 +390,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (home layout)** — Home list is one screen tall: list scrolls inside (fades out at its bottom), a full-width "New task" bar at thumb height replaces the + button (no longer covers the last task), and a line-drawn landscape (`Doodle.vue`, sun/moon by time of day) fills leftover space above the bar; with nothing to do it's the whole screen with "All clear…". Tried a bottom-anchored, upside-down list and a glass dock first; kept the normal sort and plain header. **Next:** device test; rotating example phrases in the bar.
+
 - **Oct 16, 2026 (icons)** — Notification small icon glyph ~1.5× bigger (`STAT_SCALE` in `gen.py`; no safe circle there). Desktop icon set (tray, taskbar, installers) now rendered from `icon-dark.svg` (`tauri icon` into a scratch dir, desktop files copied; Android res untouched). Spike (uncommitted, Settings → Home): bottom "New task" dock.
 
 - **Oct 16, 2026 (task sheet)** — The task view is a bottom sheet too (`TaskSheet.vue`, `?task=<id>`), over the list or Stats; its top bar (Snooze / Skip / Done) doubles as the drag handle. Sheets in the URL are mounted once in `RouteSheets` (app.vue) via `useQuerySheet('task' | 'snooze')`; snooze from the task sheet stacks on top and returns to it. Shared `useSheetDrag` (ignores presses on buttons/inputs). Every edit in the sheet calls `listChanged()`, so the list behind updates live. `/task/<id>` redirects to `/?task=<id>`. **Next:** device test of sheets (drag feel, keyboard over the sheet); background sync on Android.

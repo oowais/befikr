@@ -149,7 +149,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="page">
+  <main class="page home">
     <header class="topbar">
       <h1 class="brand">Befikr</h1>
       <SyncDot />
@@ -161,29 +161,36 @@ onUnmounted(() => {
 
     <p v-if="error" class="muted">{{ error }}</p>
 
-    <section v-for="s in sections" :key="s.id" class="section">
-      <h2 class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
-      <TransitionGroup tag="ul" name="list" class="list pane rows">
-        <TaskRow
-          v-for="r in s.rows"
-          :key="r.id"
-          :row="r"
-          :now="now"
-          :time-only="s.id === 'today' || s.id === 'tomorrow'"
-          :done="completing.has(r.id)"
-          @complete="complete(r)"
-          @open="openTask(r.id)"
-          @snooze="openSnooze(r.id)"
-          @menu="menu($event, r)"
-        />
-      </TransitionGroup>
-    </section>
-    <div v-if="!rows.length && !error" class="empty">
-      <p>Nothing to do.</p>
-      <p class="muted">Tap + and type something like “call mom tomorrow 6pm”.</p>
+    <div class="stage">
+      <template v-if="rows.length">
+        <div class="scroll">
+          <section v-for="s in sections" :key="s.id" class="section">
+            <h2 class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
+            <TransitionGroup tag="ul" name="list" class="list pane rows">
+              <TaskRow
+                v-for="r in s.rows"
+                :key="r.id"
+                :row="r"
+                :now="now"
+                :time-only="s.id === 'today' || s.id === 'tomorrow'"
+                :done="completing.has(r.id)"
+                @complete="complete(r)"
+                @open="openTask(r.id)"
+                @snooze="openSnooze(r.id)"
+                @menu="menu($event, r)"
+              />
+            </TransitionGroup>
+          </section>
+        </div>
+      </template>
+      <Doodle v-else-if="!error" class="scene" clear />
+      <Doodle v-if="rows.length" class="below" />
+      <!-- Adding lives at thumb height: tap to open quick add. -->
+      <div class="dock">
+        <button class="composer field" @click="adding = true"><Plus :size="22" /> <span>New task</span></button>
+      </div>
     </div>
 
-    <button v-if="!adding" class="fab ink" aria-label="Add task" @click="adding = true"><Plus :size="28" /></button>
     <QuickAdd v-if="adding" @close="adding = false" @saved="refresh" />
   </main>
 </template>
@@ -199,9 +206,20 @@ onUnmounted(() => {
 .list-leave-active { transition: opacity 0.25s ease; position: absolute; left: 14px; right: 14px; }
 .list-leave-to { opacity: 0; }
 .list-move { transition: transform 0.3s ease; }
-.empty { text-align: center; margin-top: 30vh; }
-.fab {
-  position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 30;
-  width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center;
+
+/* One screen tall: the list scrolls inside, the doodle takes whatever room
+   is left above the "New task" bar (none once the list needs it), and with
+   nothing to do the doodle is the whole screen. */
+.page.home { height: 100dvh; display: flex; flex-direction: column; padding-bottom: 0; }
+/* Fade at the bottom of the list says "more below". */
+.scroll { mask-image: linear-gradient(to top, transparent 0, #000 28px); }
+.stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 10px; scrollbar-width: none; }
+.below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 45%); }
+.dock { flex: none; padding: 10px 0 calc(14px + env(safe-area-inset-bottom)); }
+.scene { flex: 1; min-height: 0; }
+.composer {
+  flex: none; display: flex; align-items: center; gap: 12px; min-height: 60px; text-align: left;
+  font-size: 1.05rem; color: var(--muted); border-radius: 18px; cursor: text;
 }
 </style>
