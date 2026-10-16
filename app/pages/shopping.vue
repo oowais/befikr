@@ -4,7 +4,7 @@
 // usually bought; tap one to add it. Edit shows ✕ on chips and a field for
 // new ones. An item that isn't a chip yet can be saved as one (bookmark).
 // Desktop: right-click items and chips for the same actions.
-import { ArrowLeft, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+import { ArrowLeft, Bookmark, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 import type { ShoppingItem, Staple } from '~/composables/api'
 
 const router = useRouter()
@@ -155,7 +155,7 @@ async function removeStaple(s: Staple) {
     <p v-else class="muted empty">Nothing to buy.</p>
 
     <div class="usual-head">
-      <h2 class="section-title">Usually</h2>
+      <h2 class="section-title"><Bookmark :size="13" aria-hidden="true" /> Usually</h2>
       <button v-if="staples.length || editing" class="icon-btn" :aria-label="editing ? 'Done editing' : 'Edit chips'" @click="editing = !editing">
         <Check v-if="editing" :size="18" /><Pencil v-else :size="18" />
       </button>
@@ -207,7 +207,7 @@ async function removeStaple(s: Staple) {
 .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .empty { margin: 16px 0 0; }
 .usual-head { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
-.usual-head .section-title { margin: 8px 0; }
+.usual-head .section-title { margin: 8px 0; display: inline-flex; align-items: center; gap: 5px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .staple { margin-top: 12px; }
 .list-leave-active { transition: opacity 0.2s, transform 0.2s; }
