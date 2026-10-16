@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// Sync at a glance in the top bar, only while sync is on: green = working,
-// red = a problem (error or not running), grey = no paired devices yet.
-// Opens the Sync page (devices, last sync, the error in full).
+// Sync at a glance in the top bar, only while sync is on: a dot, green =
+// working (pulses while syncing), red = a problem (error or not running),
+// grey = no paired devices yet. Tapping it opens the Sync page (devices,
+// last sync, the error in full).
 import { listen } from '@tauri-apps/api/event'
-import { RefreshCw } from 'lucide-vue-next'
 import type { SyncStatus } from '~/composables/api'
 
 const st = ref<SyncStatus | null>(null)
@@ -32,21 +32,16 @@ const label = computed(() => {
 </script>
 
 <template>
-  <NuxtLink v-if="state" to="/sync" class="icon-btn sync-dot" :aria-label="label" :title="label">
-    <RefreshCw :size="20" :class="{ spin: st?.syncing }" />
-    <span class="dot" :class="state" />
+  <NuxtLink v-if="state" to="/sync" class="icon-btn" :aria-label="label" :title="label">
+    <span class="dot" :class="[state, { pulse: st?.syncing }]" />
   </NuxtLink>
 </template>
 
 <style scoped>
-.sync-dot { position: relative; }
-.dot {
-  position: absolute; top: 9px; right: 8px; width: 9px; height: 9px; border-radius: 50%;
-  box-shadow: 0 0 0 2px var(--bg);
-}
+.dot { width: 12px; height: 12px; border-radius: 50%; }
 .ok { background: var(--green); }
 .bad { background: var(--red); }
 .idle { background: var(--muted); }
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.pulse { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
 </style>
