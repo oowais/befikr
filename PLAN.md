@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (crash fix)** — 0.17.1 crashed on every Android process start: WorkManager's startup provider couldn't instantiate `WorkDatabase_Impl` (R8 stripped its no-arg constructor). Keep rules added to the reminders plugin's `consumer-rules.pro`. Not built locally (no Android SDK); confirm in CI and on the phone. **Next:** device check that the app opens and reminders fire; then suggestions from past tasks (design discussed, questions open).
+
 - **Oct 16, 2026 (plan tidy)** — Status table brought up to date: steps 6 (desktop) and 7 (sync) added, test counts, step 3 ✅ (in daily use), stale risks and notes fixed. **Next:** device tests of sync/background sync and the home screen; then encrypted backups or "New task" example phrases.
 
 - **Oct 16, 2026 (background sync)** — Android background sync: WorkManager `SyncWorker` (every 15 min, needs network; scheduled from `configure` on app start, survives reboot) calls JNI `Native.syncOnce(db, sync.key)` → `SyncService::sync_once` (start endpoint, one round with every paired device, stop; 90 s cap) and applies the returned alarm changes with `Scheduler.apply`. Skipped when sync is off, nothing is paired, or the app's own sync runs in the process (`APP_SYNC`, so one key never has two endpoints). Kotlin first compiles in CI. **Next:** device test — add a task on the PC with the phone app closed, wait ≤15 min (or `adb shell cmd jobscheduler run -f com.befikr.app <id>`), reminder should arrive.
