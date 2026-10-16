@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Snooze a task: a bottom sheet over the list or task view (opened with
-// `?snooze=<id>`, see useSnoozeSheet). Quick picks, a date & time picker,
+// `?snooze=<id>`, see useQuerySheet). Quick picks, a date & time picker,
 // typing ("fri 3pm"), and Skip for repeating tasks. Closes by dragging it
 // down, tapping outside, Back, or once a choice is made.
 import { CalendarDays, Keyboard, SkipForward } from 'lucide-vue-next'
@@ -89,24 +89,7 @@ async function skip() {
   }
 }
 
-// Drag the top of the sheet down to close it; short drags snap back.
-const dragY = ref(0)
-const dragging = ref(false)
-let startY = 0
-function dragStart(e: PointerEvent) {
-  dragging.value = true
-  startY = e.clientY
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-}
-function dragMove(e: PointerEvent) {
-  if (dragging.value) dragY.value = Math.max(0, e.clientY - startY)
-}
-function dragEnd() {
-  if (!dragging.value) return
-  dragging.value = false
-  if (dragY.value > 90) emit('close')
-  else dragY.value = 0
-}
+const drag = useSheetDrag(() => emit('close'))
 </script>
 
 <template>
@@ -115,10 +98,10 @@ function dragEnd() {
       class="sheet popover"
       role="dialog"
       aria-label="Snooze"
-      :class="{ dragging }"
-      :style="dragY ? { transform: `translateY(${dragY}px)` } : undefined"
+      :class="{ dragging: drag.dragging.value }"
+      :style="drag.style.value"
     >
-      <div class="grab" @pointerdown="dragStart" @pointermove="dragMove" @pointerup="dragEnd" @pointercancel="dragEnd">
+      <div class="grab" v-on="drag.handlers">
         <span class="handle" />
         <span class="title">{{ task?.title ?? '' }}</span>
         <span class="muted small">Snooze until…</span>

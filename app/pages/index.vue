@@ -4,7 +4,8 @@ import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
 const router = useRouter()
-const { id: snoozeId, open: openSnooze, close: closeSnooze } = useSnoozeSheet()
+const { open: openSnooze } = useSnoozeSheet()
+const { open: openTask } = useTaskSheet()
 const { show } = useToast()
 const sound = useSound()
 const rows = ref<Row[]>([])
@@ -52,7 +53,7 @@ async function complete(row: Row) {
 function menu(e: MouseEvent, row: Row) {
   const canSnooze = row.dueAt != null || row.snoozedUntil != null
   openMenu(e, [
-    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${row.id}`) },
+    { label: 'Open', icon: PanelRightOpen, run: () => openTask(row.id) },
     { label: 'Complete', icon: Check, run: () => complete(row) },
     ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => openSnooze(row.id) }] : []),
     ...(row.rrule ? [{ label: 'Skip this one', icon: SkipForward, run: () => skip(row) }] : []),
@@ -171,7 +172,7 @@ onUnmounted(() => {
           :time-only="s.id === 'today' || s.id === 'tomorrow'"
           :done="completing.has(r.id)"
           @complete="complete(r)"
-          @open="router.push(`/task/${r.id}`)"
+          @open="openTask(r.id)"
           @snooze="openSnooze(r.id)"
           @menu="menu($event, r)"
         />
@@ -184,7 +185,6 @@ onUnmounted(() => {
 
     <button v-if="!adding" class="fab ink" aria-label="Add task" @click="adding = true"><Plus :size="28" /></button>
     <QuickAdd v-if="adding" @close="adding = false" @saved="refresh" />
-    <SnoozeSheet v-if="snoozeId" :key="snoozeId" :task-id="snoozeId" @close="closeSnooze" @done="closeSnooze(); refresh()" />
   </main>
 </template>
 

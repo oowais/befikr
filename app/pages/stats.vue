@@ -14,6 +14,7 @@ const ranges = [
 ] as const
 
 const router = useRouter()
+const { open: openTask } = useTaskSheet()
 const { show } = useToast()
 const items = ref<CompletedGroup[]>([])
 const stats = ref<Stats | null>(null)
@@ -34,6 +35,7 @@ const load = async () => {
   await loadStats()
 }
 onMounted(load)
+watch(listVersion, load)
 watch(range, loadStats)
 
 const dated = computed(() => (stats.value ? stats.value.onTime + stats.value.late : 0))
@@ -49,7 +51,7 @@ const late = (g: CompletedGroup) =>
 
 function rowMenu(e: MouseEvent, g: CompletedGroup) {
   openMenu(e, [
-    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${g.taskId}`) },
+    { label: 'Open', icon: PanelRightOpen, run: () => openTask(g.taskId) },
     { label: g.retired ? 'Bring back' : 'Undo completion', icon: RotateCcw, run: () => undo(g) },
   ])
 }
@@ -141,13 +143,13 @@ async function undo(g: CompletedGroup) {
           <Sunset v-if="g.retired" :size="20" class="muted" />
           <span v-else class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
         </button>
-        <NuxtLink :to="`/task/${g.taskId}`" class="text">
+        <button class="text" @click="openTask(g.taskId)">
           <span>{{ g.title }}<span v-if="g.count > 1" class="muted times"> · {{ g.count }}×</span></span>
           <span class="muted small">
             <template v-if="g.retired">Retired {{ dayLabel(g.lastAt) }}</template>
             <template v-else>{{ g.count > 1 ? 'Last: ' : '' }}{{ dayLabel(g.lastAt) }}<template v-if="late(g)"> · {{ span(g.lastAt - g.dueAtThen!) }} late</template></template>
           </span>
-        </NuxtLink>
+        </button>
       </li>
     </ul>
     <p v-else class="muted">Nothing completed yet. Stats show up here once you finish tasks.</p>
@@ -184,5 +186,5 @@ async function undo(g: CompletedGroup) {
 .list li { display: flex; align-items: flex-start; gap: 2px; padding: 6px 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .check { width: 44px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -10px; }
 .times { font-variant-numeric: tabular-nums; }
-.text { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 6px 0; color: inherit; text-decoration: none; min-width: 0; }
+.text { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 6px 0; color: inherit; text-decoration: none; min-width: 0; text-align: left; }
 </style>

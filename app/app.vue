@@ -38,6 +38,7 @@ function runAction() {
 
 <template>
   <NuxtPage />
+  <RouteSheets />
   <ContextMenu />
   <Transition name="toast">
     <div v-if="toast" class="toast popover" role="status">
