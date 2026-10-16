@@ -7,7 +7,14 @@
 //! after any local write (the change log is polled, so writes made outside
 //! the app, e.g. from a notification, count too) and every minute. Pairing: one device
 //! opens a short window with a 6-digit code ([`SyncService::start_pairing`]),
-//! the other connects and sends the code ([`SyncService::pair_with`]).
+//! the other connects and sends the code ([`SyncService::pair_with`], or
+//! [`SyncService::pair_with_address`] when mDNS can't see it).
+//!
+//! mDNS is flaky (Android, some routers), so like Syncthing we don't rely on
+//! it: the endpoint listens on a fixed port ([`PORT`], one firewall rule),
+//! a tiny TCP responder on the same port tells who's here (for pairing by
+//! address), and each Hello carries the sender's addresses, which the other
+//! side stores and dials directly next time.
 //!
 //! No Tauri here: the app implements [`Host`] (store access, alarms, events).
 
@@ -29,6 +36,10 @@ use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
 pub use proto::ALPN;
+
+/// Sync listens on this UDP port (QUIC) and TCP port (who's-here lookup).
+/// Falls back to a random UDP port if taken.
+pub const PORT: u16 = 47474;
 
 /// mDNS service name: only Befikr devices see each other.
 const SERVICE: &str = "befikr";
@@ -68,6 +79,9 @@ pub struct Status {
     pub nearby: Vec<Nearby>,
     /// Our open pairing window: code and when it closes (UTC ms).
     pub pairing: Option<PairingInfo>,
+    /// This device's LAN addresses, to type on the other device when it
+    /// doesn't show up under Nearby ("192.168.1.20", or "ip:port" off PORT).
+    pub addresses: Vec<String>,
     pub last_error: Option<String>,
 }
 
@@ -192,16 +206,26 @@ impl<H: Host> SyncService<H> {
     }
 
     async fn start(&self, mode: SyncMode) -> Result<()> {
-        let builder = match mode {
-            SyncMode::Lan => Endpoint::builder(presets::Minimal).relay_mode(RelayMode::Disabled),
-            _ => Endpoint::builder(presets::N0),
+        let builder = || {
+            let b = match mode {
+                SyncMode::Lan => Endpoint::builder(presets::Minimal).relay_mode(RelayMode::Disabled),
+                _ => Endpoint::builder(presets::N0),
+            };
+            b.secret_key(self.inner.secret.clone()).alpns(vec![ALPN.to_vec()])
         };
-        let ep = builder
-            .secret_key(self.inner.secret.clone())
-            .alpns(vec![ALPN.to_vec()])
-            .bind()
-            .await
-            .map_err(|e| format!("sync endpoint: {e}"))?;
+        let fixed = builder()
+            .bind_addr(format!("0.0.0.0:{PORT}"))
+            .and_then(|b| b.bind_addr(format!("[::]:{PORT}")))
+            .map_err(|e| e.to_string());
+        let ep = match fixed {
+            Ok(b) => match b.bind().await {
+                Ok(ep) => ep,
+                // Port taken (another copy running): any port still works via
+                // stored addresses and mDNS.
+                Err(_) => builder().bind().await.map_err(|e| format!("sync endpoint: {e}"))?,
+            },
+            Err(_) => builder().bind().await.map_err(|e| format!("sync endpoint: {e}"))?,
+        };
         let lookups = ep.address_lookup().map_err(|e| e.to_string())?;
         let memory = MemoryLookup::new();
         lookups.add(memory.clone());
@@ -211,7 +235,12 @@ impl<H: Host> SyncService<H> {
             .map_err(|e| format!("local discovery: {e}"))?;
         lookups.add(mdns.clone());
 
+        // Dial paired devices where they last were.
+        for p in self.inner.host.store(|s| s.peers()).unwrap_or_default() {
+            hint(&memory, &p.endpoint, &p.addrs);
+        }
         let tasks = vec![
+            tokio::spawn(self.clone().id_server(ep.clone())),
             tokio::spawn(self.clone().accept_loop(ep.clone())),
             tokio::spawn(self.clone().discovery_loop(mdns)),
             tokio::spawn(self.clone().sync_loop()),
@@ -238,6 +267,11 @@ impl<H: Host> SyncService<H> {
         if let Ok(data) = UserData::try_from(format!("{flag}{name}")) {
             r.ep.set_user_data_for_address_lookup(Some(data));
         }
+    }
+
+    fn me(&self) -> proto::Me {
+        let addrs = self.endpoint().map(|ep| ep.addr().ip_addrs().map(|a| a.to_string()).collect()).unwrap_or_default();
+        proto::Me { name: self.my_name(), addrs }
     }
 
     fn my_name(&self) -> String {
@@ -286,6 +320,7 @@ impl<H: Host> SyncService<H> {
             peers,
             pairing: st.pairing.as_ref().map(|p| PairingInfo { code: p.code.clone(), until_ms: p.until_ms }),
             last_error: st.last_error.clone(),
+            addresses: st.running.as_ref().map(|r| lan_addresses(&r.ep)).unwrap_or_default(),
         }
     }
 
@@ -318,12 +353,53 @@ impl<H: Host> SyncService<H> {
         let ep = self.endpoint().ok_or("turn sync on first")?;
         let id: EndpointId = endpoint.parse().map_err(|_| "not a device id".to_string())?;
         let conn = connect(&ep, id).await?;
-        let peer = proto::pair(&self.inner.host, &conn, &self.my_name(), code.trim()).await;
+        let peer = proto::pair(&self.inner.host, &conn, &self.me(), code.trim()).await;
         conn.close(0u32.into(), b"done");
         let peer = peer?;
         self.inner.host.status_changed();
         let _ = self.sync_peer(id).await;
         Ok(peer)
+    }
+
+    /// Pair with a device by its address ("192.168.1.20" or "ip:port"), for
+    /// when it doesn't show up under Nearby. Its id comes from the TCP
+    /// responder on that address; the code (shown on that device) proves it.
+    pub async fn pair_with_address(&self, address: &str, code: &str) -> Result<Peer> {
+        let address = address.trim();
+        let target = if address.parse::<std::net::IpAddr>().is_ok() {
+            match address.parse::<std::net::Ipv6Addr>() {
+                Ok(v6) => std::net::SocketAddr::from((v6, PORT)),
+                Err(_) => format!("{address}:{PORT}").parse().map_err(|_| "not an address".to_string())?,
+            }
+        } else {
+            address.parse::<std::net::SocketAddr>().map_err(|_| "type an address like 192.168.1.20".to_string())?
+        };
+        let who = tokio::time::timeout(CONNECT_TIMEOUT, who_is(target))
+            .await
+            .map_err(|_| "no Befikr at that address (is sync on there?)".to_string())??;
+        let id: EndpointId = who.endpoint.parse().map_err(|_| "bad reply".to_string())?;
+        if let Some(r) = &self.state().running {
+            r.memory.add_endpoint_info(EndpointAddr::new(id).with_ip_addr((target.ip(), who.port).into()));
+        }
+        self.pair_with(&who.endpoint, code).await
+    }
+
+    /// Answer "who's here" on TCP [`PORT`]: our id and QUIC port, one JSON
+    /// line. Public information (the id is a public key); pairing still
+    /// needs the code.
+    async fn id_server(self, ep: Endpoint) {
+        let Ok(listener) = tokio::net::TcpListener::bind(("::", PORT)).await.or(tokio::net::TcpListener::bind(("0.0.0.0", PORT)).await) else {
+            return;
+        };
+        let port = ep.bound_sockets().first().map_or(PORT, |a| a.port());
+        let line = format!("{}\n", serde_json::json!({ "endpoint": ep.id().to_string(), "port": port }));
+        while let Ok((mut stream, _)) = listener.accept().await {
+            let line = line.clone();
+            tokio::spawn(async move {
+                use tokio::io::AsyncWriteExt;
+                let _ = stream.write_all(line.as_bytes()).await;
+            });
+        }
     }
 
     pub async fn unpair(&self, endpoint: &str) -> Result<()> {
@@ -359,7 +435,7 @@ impl<H: Host> SyncService<H> {
         self.inner.host.status_changed();
         let r = async {
             let conn = connect(&ep, id).await?;
-            let r = proto::sync_as_client(&self.inner.host, &conn, &self.my_name()).await;
+            let r = proto::sync_as_client(&self.inner.host, &conn, &self.me()).await;
             conn.close(0u32.into(), b"done");
             r
         }
@@ -393,8 +469,7 @@ impl<H: Host> SyncService<H> {
             let me = self.clone();
             tokio::spawn(async move {
                 let Ok(conn) = incoming.await else { return };
-                let name = me.my_name();
-                let r = proto::serve(&me.inner.host, &conn, &name, |code| me.check_code(code)).await;
+                let r = proto::serve(&me.inner.host, &conn, &me.me(), |code| me.check_code(code)).await;
                 match r {
                     Ok(proto::Served::Paired) => {
                         me.stop_pairing();
@@ -487,6 +562,48 @@ impl<H: Host> SyncService<H> {
             }
         }
     }
+}
+
+#[derive(serde::Deserialize)]
+struct WhoIs {
+    endpoint: String,
+    port: u16,
+}
+
+async fn who_is(target: std::net::SocketAddr) -> Result<WhoIs> {
+    use tokio::io::AsyncReadExt;
+    let mut stream = tokio::net::TcpStream::connect(target)
+        .await
+        .map_err(|_| "no Befikr at that address (is sync on there, firewall open?)".to_string())?;
+    let mut buf = Vec::new();
+    let _ = (&mut stream).take(1024).read_to_end(&mut buf).await;
+    serde_json::from_slice(buf.trim_ascii()).map_err(|_| "something else answered at that address".to_string())
+}
+
+/// Tell the endpoint where a paired device was last seen.
+fn hint(memory: &MemoryLookup, endpoint: &str, addrs: &[String]) {
+    let Ok(id) = endpoint.parse::<EndpointId>() else { return };
+    let ips: Vec<std::net::SocketAddr> = addrs.iter().filter_map(|a| a.parse().ok()).collect();
+    if !ips.is_empty() {
+        memory.add_endpoint_info(EndpointAddr::new(id).with_addrs(ips.into_iter().map(iroh::TransportAddr::Ip)));
+    }
+}
+
+/// Private IPv4 addresses (home network), as typed on another device.
+fn lan_addresses(ep: &Endpoint) -> Vec<String> {
+    let mut out: Vec<String> = ep
+        .addr()
+        .ip_addrs()
+        .filter_map(|a| match a.ip() {
+            std::net::IpAddr::V4(v4) if v4.is_private() => {
+                Some(if a.port() == PORT { v4.to_string() } else { a.to_string() })
+            }
+            _ => None,
+        })
+        .collect();
+    out.sort();
+    out.dedup();
+    out
 }
 
 async fn connect(ep: &Endpoint, id: EndpointId) -> Result<iroh::endpoint::Connection> {

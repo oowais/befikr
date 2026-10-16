@@ -143,6 +143,13 @@ pub fn migrations() -> Migrations<'static> {
         );
         ",
         ),
+        M::up(
+            "
+        -- Last known addresses of a paired device (JSON list of \"ip:port\"),
+        -- dialled directly so sync doesn't depend on mDNS.
+        ALTER TABLE peers ADD COLUMN addrs TEXT NOT NULL DEFAULT '[]';
+        ",
+        ),
     ])
 }
 

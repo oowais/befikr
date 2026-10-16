@@ -51,6 +51,8 @@ pub struct Peer {
     pub their_seq: i64,
     pub paired_at: i64,
     pub last_sync_at: Option<i64>,
+    /// Last known addresses ("ip:port"), newest report wins.
+    pub addrs: Vec<String>,
 }
 
 fn row_peer(r: &Row) -> rusqlite::Result<Peer> {
@@ -61,10 +63,11 @@ fn row_peer(r: &Row) -> rusqlite::Result<Peer> {
         their_seq: r.get(3)?,
         paired_at: r.get(4)?,
         last_sync_at: r.get(5)?,
+        addrs: serde_json::from_str(&r.get::<_, String>(6)?).unwrap_or_default(),
     })
 }
 
-const PEER_COLS: &str = "endpoint, device, name, their_seq, paired_at, last_sync_at";
+const PEER_COLS: &str = "endpoint, device, name, their_seq, paired_at, last_sync_at, addrs";
 
 impl Store {
     pub fn sync_settings(&self) -> Result<SyncSettings> {
@@ -122,6 +125,13 @@ impl Store {
     pub fn remove_peer(&mut self, endpoint: &str) -> Result<()> {
         let now = self.now();
         self.conn.execute("UPDATE peers SET deleted_at = ?2, updated_at = ?2 WHERE endpoint = ?1", params![endpoint, now])?;
+        Ok(())
+    }
+
+    /// Where the device said it can be reached (sent in each Hello).
+    pub fn set_peer_addrs(&mut self, endpoint: &str, addrs: &[String]) -> Result<()> {
+        let json = serde_json::to_string(addrs).map_err(|e| Error::Invalid(e.to_string()))?;
+        self.conn.execute("UPDATE peers SET addrs = ?2 WHERE endpoint = ?1", params![endpoint, json])?;
         Ok(())
     }
 

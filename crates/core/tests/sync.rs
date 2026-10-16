@@ -118,6 +118,8 @@ fn peers_and_settings_are_local() {
     a.remove_peer("ep1").unwrap();
     a.add_peer("ep1", "dev1", "Desktop").unwrap();
     assert_eq!(a.peer("ep1").unwrap().unwrap().their_seq, 42, "re-pairing keeps progress");
+    a.set_peer_addrs("ep1", &["192.168.1.5:47474".into()]).unwrap();
+    assert_eq!(a.peer("ep1").unwrap().unwrap().addrs, ["192.168.1.5:47474"]);
 
     let (mut b, _) = device();
     sync(&a, &mut b, &mut 0);

@@ -339,6 +339,7 @@ pub fn run() {
             sync::start_pairing,
             sync::stop_pairing,
             sync::pair_with,
+            sync::pair_with_address,
             sync::unpair,
             sync::sync_now,
             sync::rescan_sync,

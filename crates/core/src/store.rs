@@ -547,6 +547,7 @@ impl Store {
         for p in peers {
             self.add_peer(&p.endpoint, &p.device, &p.name)?;
             self.peer_synced(&p.endpoint, p.their_seq, &p.name)?;
+            self.set_peer_addrs(&p.endpoint, &p.addrs)?;
         }
         sync::install(&self.conn)?;
         Ok(())

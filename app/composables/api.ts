@@ -47,6 +47,7 @@ export type SyncStatus = {
   nearby: { endpoint: string; name: string }[]
   pairing: { code: string; untilMs: number } | null
   lastError: string | null
+  addresses: string[]
 }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
@@ -109,6 +110,7 @@ export const api = {
   startPairing: () => invoke<string>('start_pairing'),
   stopPairing: () => invoke<void>('stop_pairing'),
   pairWith: (endpoint: string, code: string) => invoke<void>('pair_with', { endpoint, code }),
+  pairWithAddress: (address: string, code: string) => invoke<void>('pair_with_address', { address, code }),
   unpair: (endpoint: string) => invoke<void>('unpair', { endpoint }),
   syncNow: () => invoke<void>('sync_now'),
   rescanSync: () => invoke<void>('rescan_sync'),

@@ -96,6 +96,19 @@ const left = computed(() => {
 })
 const on = computed(() => st.value && st.value.mode !== 'off')
 
+// Fallback when the other device isn't found automatically (mDNS blocked).
+const byAddress = ref(false)
+const address = ref('')
+function pairByAddress() {
+  const a = address.value.trim()
+  if (!a || code.value.trim().length !== 6) return
+  run(async () => {
+    await api.pairWithAddress(a, code.value.trim())
+    byAddress.value = false
+    address.value = code.value = ''
+  }, 'Paired')
+}
+
 // Restart discovery; keep the spinner for a moment so the press registers.
 const scanning = ref(false)
 async function rescan() {
@@ -164,6 +177,7 @@ async function rescan() {
         <div v-if="st.pairing" class="pane pairing">
           <span class="muted small">On the other device, open Sync and pick <b>{{ st.name || name }}</b>, then type:</span>
           <span class="code">{{ st.pairing.code.slice(0, 3) }} {{ st.pairing.code.slice(3) }}</span>
+          <span v-if="st.addresses.length" class="muted small">Not listed there? Use “Enter an address” with <b>{{ st.addresses.join(' or ') }}</b></span>
           <span class="muted small">Closes in {{ left }}</span>
           <button class="btn" @click="run(api.stopPairing)">Cancel</button>
         </div>
@@ -201,9 +215,29 @@ async function rescan() {
           <p v-else class="muted small">
             None yet. Tap “Show a pairing code” on the other device; it shows up here. Both need sync on and the same Wi-Fi.
           </p>
+
+          <button v-if="!byAddress" class="btn link-btn" @click="byAddress = true">Not listed? Enter an address</button>
+          <form v-else class="pane by-address" @submit.prevent="pairByAddress">
+            <span class="muted small">The other device shows its address under its pairing code.</span>
+            <input v-model="address" class="field" placeholder="192.168.1.20" inputmode="decimal" autocapitalize="off" autocorrect="off" />
+            <input
+              v-model="code"
+              class="field"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="7"
+              placeholder="6-digit code"
+              @input="code = code.replace(/\D/g, '')"
+            />
+            <div class="row-end">
+              <button type="button" class="btn" @click="byAddress = false">Cancel</button>
+              <button class="btn primary" :disabled="busy || !address.trim() || code.length !== 6">Pair</button>
+            </div>
+          </form>
         </template>
 
         <p class="muted small tip">Using a VPN? Allow LAN connections in its settings (Proton VPN: Settings → Connection → Advanced).</p>
+        <p class="muted small">Firewall on a computer? Allow port 47474 (UDP and TCP) on your home network.</p>
       </template>
     </template>
   </main>
@@ -226,6 +260,9 @@ async function rescan() {
 .code { font-size: 2.2rem; font-weight: 600; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
 .join { display: flex; gap: 8px; padding: 0 0 12px 32px; }
 .tip { margin-top: 24px; }
+.link-btn { width: 100%; margin-top: 10px; }
+.by-address { display: flex; flex-direction: column; gap: 8px; padding: 14px; margin-top: 10px; }
+.row-end { display: flex; justify-content: flex-end; gap: 8px; }
 .nearby-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .small-btn { min-height: 32px; padding: 4px 10px; font-size: 0.85rem; margin-top: 16px; }
 .looking { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; }
