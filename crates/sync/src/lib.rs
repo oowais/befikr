@@ -124,6 +124,9 @@ struct State {
     syncing: BTreeMap<EndpointId, Arc<tokio::sync::Mutex<()>>>,
     /// Syncs in progress (for the status).
     in_flight: usize,
+    /// Lasting problem with this device's setup (shown when there's no
+    /// fresher error), e.g. mDNS unavailable.
+    warning: Option<String>,
     last_error: Option<String>,
 }
 
@@ -229,25 +232,33 @@ impl<H: Host> SyncService<H> {
         let lookups = ep.address_lookup().map_err(|e| e.to_string())?;
         let memory = MemoryLookup::new();
         lookups.add(memory.clone());
-        let mdns = MdnsAddressLookup::builder()
-            .service_name(SERVICE)
-            .build(ep.id())
-            .map_err(|e| format!("local discovery: {e}"))?;
-        lookups.add(mdns.clone());
+        // Nearby discovery is a bonus: if mDNS can't start (some Android
+        // versions, odd networks), sync still runs via addresses.
+        let mdns = MdnsAddressLookup::builder().service_name(SERVICE).build(ep.id());
+        let warning = match &mdns {
+            Ok(m) => {
+                lookups.add(m.clone());
+                None
+            }
+            Err(e) => Some(format!("Nearby devices unavailable ({e}); pair by address instead")),
+        };
 
         // Dial paired devices where they last were.
         for p in self.inner.host.store(|s| s.peers()).unwrap_or_default() {
             hint(&memory, &p.endpoint, &p.addrs);
         }
-        let tasks = vec![
+        let mut tasks = vec![
             tokio::spawn(self.clone().id_server(ep.clone())),
             tokio::spawn(self.clone().accept_loop(ep.clone())),
-            tokio::spawn(self.clone().discovery_loop(mdns)),
             tokio::spawn(self.clone().sync_loop()),
         ];
+        if let Ok(m) = mdns {
+            tasks.push(tokio::spawn(self.clone().discovery_loop(m)));
+        }
         {
             let mut st = self.state();
             st.last_error = None;
+            st.warning = warning;
             st.running = Some(Running { mode, ep, memory, tasks });
         }
         self.advertise();
@@ -319,7 +330,7 @@ impl<H: Host> SyncService<H> {
                 .collect(),
             peers,
             pairing: st.pairing.as_ref().map(|p| PairingInfo { code: p.code.clone(), until_ms: p.until_ms }),
-            last_error: st.last_error.clone(),
+            last_error: st.last_error.clone().or_else(|| st.warning.clone()),
             addresses: st.running.as_ref().map(|r| lan_addresses(&r.ep)).unwrap_or_default(),
         }
     }
@@ -388,8 +399,16 @@ impl<H: Host> SyncService<H> {
     /// line. Public information (the id is a public key); pairing still
     /// needs the code.
     async fn id_server(self, ep: Endpoint) {
-        let Ok(listener) = tokio::net::TcpListener::bind(("::", PORT)).await.or(tokio::net::TcpListener::bind(("0.0.0.0", PORT)).await) else {
-            return;
+        let listener = match tokio::net::TcpListener::bind(("::", PORT)).await {
+            Ok(l) => l,
+            Err(_) => match tokio::net::TcpListener::bind(("0.0.0.0", PORT)).await {
+                Ok(l) => l,
+                Err(e) => {
+                    self.state().warning = Some(format!("Pairing by address unavailable on this device: {e}"));
+                    self.inner.host.status_changed();
+                    return;
+                }
+            },
         };
         let port = ep.bound_sockets().first().map_or(PORT, |a| a.port());
         let line = format!("{}\n", serde_json::json!({ "endpoint": ep.id().to_string(), "port": port }));

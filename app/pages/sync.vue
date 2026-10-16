@@ -128,6 +128,8 @@ async function rescan() {
       </button>
     </header>
     <p v-if="error" class="error">{{ error }}</p>
+    <p v-else-if="st?.lastError" class="error">{{ st.lastError }}</p>
+    <p v-if="st && st.mode !== 'off' && !st.running" class="error">Sync isn't running. Switch it off and on again.</p>
 
     <template v-if="st">
       <div class="seg" role="radiogroup" aria-label="Sync">
