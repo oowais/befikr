@@ -210,10 +210,11 @@ onUnmounted(() => {
 /* One screen tall: the list scrolls inside, the doodle takes whatever room
    is left above the "New task" bar (none once the list needs it), and with
    nothing to do the doodle is the whole screen. */
-/* body already pads for the status and gesture bars: subtract them, or the
-   page is taller than the screen and the whole thing can be dragged. */
+/* Pinned between the status and gesture bars: its size comes from the
+   window edges (no height arithmetic to round wrong), and a fixed element
+   can't make the page taller, so nothing but the list can ever scroll. */
 .page.home {
-  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  position: fixed; top: env(safe-area-inset-top); bottom: env(safe-area-inset-bottom); left: 0; right: 0;
   display: flex; flex-direction: column; padding-bottom: 0;
 }
 /* Fade at the bottom of the list says "more below". */
