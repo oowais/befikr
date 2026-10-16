@@ -187,11 +187,11 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - **System tray** on both: open / quick add / quit; closing the window hides to tray so reminders keep running.
    - **Notifications** on both: native toasts at due time with Complete / Snooze actions where the OS allows; scheduler runs in the Rust process (no AlarmManager on desktop), re-arms from the DB on start.
    - Single instance: a second launch focuses the running one.
-2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online. 🟡 Planned Oct 16 — see **P2P sync — plan** below.
+2. **P2P sync, no server** — Syncthing-style: each device has its own database; pair devices with codes; sync whenever both are online. 🟡 Built Oct 16 (step 7) — see **P2P sync — plan** below.
    - Conflict strategy: per-field last-write-wins.
-   - **Conflicts page**: every overwritten value is logged; review and restore from there.
+   - **Conflicts page**: every overwritten value is logged; review and restore from there. ✅ Oct 16 (side-by-side cards, tap the version to keep).
 3. **Share-to-app** — share a link from browser → new task. ✅ Oct 15: own intent filter (reminders plugin manifest, merged into MainActivity) → route `/?shareText=…&shareSubject=…` → quick add with title from the page title / text, link in notes.
-4. **Native snooze overlay** — true Android bottom sheet without opening the full app (custom Kotlin). Low priority; MVP opens the app on the snooze route.
+4. **Native snooze overlay** — true Android bottom sheet without opening the full app (custom Kotlin). Low priority; Snooze in a notification opens the app with the snooze sheet over the list (`/?snooze=<id>`).
 5. **Completion history analysis** — suggest/reuse past tasks while adding.
 6. **Statistics page** — on-time vs late completion rate, how often and how many times tasks get snoozed, how long tasks stay overdue (hours/days), trends over time. Late = done on a later day than due (task's zone); same day counts as on time (changed Oct 16 from a 1-minute grace). ✅ Oct 16: Completed page became **Stats** (`/stats`, chart icon): range switch (7 days / 30 days / all time), tiles (done, % on time, median lateness, snoozes, missed repeats), last-8-weeks stacked bars (on time / late / no date), completion list below. Numbers from `Store::stats` in core.
 7. **Gamification** (way later) — Todoist Karma-style levels, streaks, goals, built on the same stats.
@@ -205,9 +205,8 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 
 ## Risks and open items
 
-- **Exact alarms**: Android 12+ needs exact-alarm permission, or Doze delays reminders. Verify the Tauri notification plugin schedules exactly; fallback = small Kotlin plugin using `AlarmManager.setExactAndAllowWhileIdle`.
-- **Re-remind on swipe**: needs a delete intent on the notification to reschedule. Check plugin support; may need native code.
-- **Notification actions**: confirm "Complete" runs without opening the app (background handler + DB write).
+- ~~Exact alarms / re-remind on swipe / notification actions~~: settled by the step 0 spike (custom Kotlin plugin, `setExactAndAllowWhileIdle`, Complete runs via JNI without the app).
+- **Background sync timing**: WorkManager runs ~every 15 min but Doze can stretch it; a task added elsewhere may ring late if the phone is idle. Watch in daily use.
 - **Battery optimization**: some Android OEMs kill background apps; may need a prompt to exempt the app.
 - **Parser edge cases**: `RRule.fromText` coverage is limited; build a test table early.
 - Open: exact sort tie-breaker for tasks due at the same time (creation order?).
@@ -231,11 +230,15 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
 | 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
-| 1 | **Parser** (`packages/parser`), test table first | ✅ | 57 tests; day-of-month, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
-| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 24 tests. Exposed as Tauri commands + JNI in step 3 |
-| 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | 🟡 | Built; APK from CI releases `v0.x.y` (main only). Needs on-device check (see step 3 notes) |
-| 4 | Re-remind escalation, snooze sheet, subtasks, history page, backup (`VACUUM INTO`, keep 7) | 🟡 | All built (backup in PR #1). Needs on-device check of backup (folder picker, daily run, restore) |
-| 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, shorter time labels, snooze/completed labels. Pass 2: quick add + task view tidy-ups |
+| 1 | **Parser** (`packages/parser`), test table first | ✅ | 66 tests (run in any time zone); day-of-month, ordinals, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
+| 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 48 tests; migrations 1–6 (6: `changes.prev_hlc`, `conflicts`) |
+| 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
+| 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
+| 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
+| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, packages in every release. Windows dev setup works (`pnpm tauri dev`). AUR later |
+| 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
+
+**Next:** device tests of 7 (background sync: task added on the PC rings on the closed phone) and the home screen fix; then encrypted backups (passphrase) or example phrases in the "New task" bar.
 
 ### Step 0 — spike checklist
 
@@ -330,7 +333,7 @@ Decided Oct 16, 2026 (after looking at iroh and the user's setup: Proton VPN alw
 
 ### Step 3 — app notes
 
-Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed, settings) → Tauri commands in `src-tauri/src/lib.rs` → `befikr-core`. Kotlin plugin promoted to `plugins/tauri-plugin-reminders`; its receivers call `src-tauri/src/jni.rs` → core (Complete from a notification uses the same `complete_task` as the app, recurring tasks reschedule their next occurrence natively). Spike deleted (git history has it).
+Pieces: `app/` (Nuxt pages: list, stats, shopping, settings, sync, conflicts; sheets: quick add, task, snooze, date/time, repeat) → Tauri commands in `src-tauri/src/lib.rs` → `befikr-core`. Kotlin plugin promoted to `plugins/tauri-plugin-reminders`; its receivers call `src-tauri/src/jni.rs` → core (Complete from a notification uses the same `complete_task` as the app, recurring tasks reschedule their next occurrence natively). Spike deleted (git history has it).
 
 - App id `com.befikr.app` (spike was `com.befikr.spike`; uninstall it).
 - CI `android.yml` builds a **release** APK signed with the committed sideload key (`src-tauri/android/`), so updates install in place. Download: `https://github.com/oowais/befikr/releases/latest/download/befikr.apk`. Pushes to `main` release `v0.x.y` (semver from Conventional Commits, see CLAUDE.md) so Discoverium auto-updates.
@@ -340,7 +343,7 @@ Pieces: `app/` (Nuxt pages: list, quick add sheet, task view, snooze, completed,
 - Permission tour (`/welcome`): shown on launch while a permission is missing (unless "Later" in the last 7 days); steps tick off as Android reports them granted. Reopen from Settings.
 - Date & time picker (`DateTimeSheet.vue`): quick days, month calendar, time-word chips, hour/minute wheels; used in quick add, task view, snooze.
 - Swipe gestures on list rows: right = complete (ink reveal), left = snooze sheet (amber reveal; dated tasks only). Axis-locked so vertical scroll is untouched; haptic tick at the threshold; a swipe never counts as a tap.
-- Known MVP gaps: desktop builds have no reminder scheduler. (Fixed: editing a title offers its date/repeat; parsed words are highlighted inline in quick add.)
+- (Fixed: desktop reminder scheduler, see step 6; editing a title offers its date/repeat; parsed words are highlighted inline in quick add.)
 
 Device checklist:
 - [ ] Quick add: "call mom tomorrow 6pm", "buy milk friday" (time prompt), "bins every monday evening" (repeat chip + schedule toggle)
@@ -348,7 +351,7 @@ Device checklist:
 - [ ] Recurring: Complete from notification → next occurrence scheduled and fires
 - [ ] Snooze from notification → snooze sheet → reminder at the new time
 - [ ] Undo after completing; completed history; subtasks; settings (time word "dawn", re-remind minutes)
-- [ ] Update install: next CI build installs over the previous one, data kept
+- [x] Update install: next CI build installs over the previous one, data kept (reminders re-armed, Oct 16)
 
 ### Step 4 — backup notes
 
@@ -389,6 +392,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 16, 2026 (plan tidy)** — Status table brought up to date: steps 6 (desktop) and 7 (sync) added, test counts, step 3 ✅ (in daily use), stale risks and notes fixed. **Next:** device tests of sync/background sync and the home screen; then encrypted backups or "New task" example phrases.
 
 - **Oct 16, 2026 (background sync)** — Android background sync: WorkManager `SyncWorker` (every 15 min, needs network; scheduled from `configure` on app start, survives reboot) calls JNI `Native.syncOnce(db, sync.key)` → `SyncService::sync_once` (start endpoint, one round with every paired device, stop; 90 s cap) and applies the returned alarm changes with `Scheduler.apply`. Skipped when sync is off, nothing is paired, or the app's own sync runs in the process (`APP_SYNC`, so one key never has two endpoints). Kotlin first compiles in CI. **Next:** device test — add a task on the PC with the phone app closed, wait ≤15 min (or `adb shell cmd jobscheduler run -f com.befikr.app <id>`), reminder should arrive.
 
