@@ -296,3 +296,18 @@ pub struct PastTask {
     /// An open task with this title, if any (to open instead of adding again).
     pub open_id: Option<String>,
 }
+
+/// Carefree days: a day counts when it ends with nothing overdue (tasks due
+/// that day or earlier are done, skipped or moved by noon the next day).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Carefree {
+    /// Current run, up to the last finished day. One missed day per 7 is
+    /// forgiven (doesn't count, doesn't break the run).
+    pub streak: u32,
+    pub best: u32,
+    /// Completions on or before their due day, all time (the landscape's trees).
+    pub on_time_total: u32,
+    /// The same since Monday (the landscape's flowers).
+    pub on_time_week: u32,
+}

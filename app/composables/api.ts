@@ -30,6 +30,7 @@ export type CompletedGroup = {
   repeating: boolean
   retired: boolean
 }
+export type Carefree = { streak: number; best: number; onTimeTotal: number; onTimeWeek: number }
 export type WeekStats = { start: number; onTime: number; late: number; undated: number }
 export type Stats = {
   completed: number
@@ -105,6 +106,7 @@ export const api = {
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),
   completedGroups: () => invoke<CompletedGroup[]>('completed_groups'),
   taskHistory: (id: string) => invoke<Completion[]>('task_history', { id }),
+  carefree: () => invoke<Carefree>('carefree', { tz: deviceTz() }),
   stats: (since: number | null, weekStarts: number[]) => invoke<Stats>('stats', { since, weekStarts }),
   addTask: (task: NewTask) => invoke<Task>('add_task', { task }),
   updateTask: (id: string, patch: TaskPatch) => invoke<Task>('update_task', { id, patch }),

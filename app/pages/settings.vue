@@ -5,6 +5,7 @@ import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~
 
 const router = useRouter()
 const sound = useSound()
+const carefree = useCarefree()
 // This computer's startup (desktop only; null on Android).
 const desktop = ref<DesktopPrefs | null>(null)
 onMounted(async () => (desktop.value = await api.desktopPrefs().catch(() => null)))
@@ -184,6 +185,10 @@ async function run(f: () => Promise<unknown>) {
       <button class="item" role="switch" :aria-checked="sound.enabled.value" @click="sound.setEnabled(!sound.enabled.value); sound.enabled.value && sound.complete()">
         <span class="flex left">Sound when completing</span>
         <span class="switch" :class="{ on: sound.enabled.value }"><span class="knob" /></span>
+      </button>
+      <button class="item" role="switch" :aria-checked="carefree.enabled.value" @click="carefree.setEnabled(!carefree.enabled.value)">
+        <span class="flex left">Carefree days<span class="muted small hint">Streak beside the title; the landscape grows as you finish on time</span></span>
+        <span class="switch" :class="{ on: carefree.enabled.value }"><span class="knob" /></span>
       </button>
     </div>
 

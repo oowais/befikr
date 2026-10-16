@@ -4,6 +4,7 @@
 //! change events later. No Tauri or platform code here: the app calls it
 //! from Tauri commands, Android calls it via JNI when no webview runs.
 
+mod carefree;
 mod conflicts;
 mod model;
 mod past;

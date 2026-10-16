@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sunset, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -8,6 +8,8 @@ const { open: openSnooze } = useSnoozeSheet()
 const { open: openTask } = useTaskSheet()
 const { show } = useToast()
 const update = useUpdate()
+const carefree = useCarefree()
+const garden = computed(() => (carefree.enabled.value ? carefree.data.value : null))
 const sound = useSound()
 const rows = ref<Row[]>([])
 const completing = ref(new Set<string>())
@@ -20,6 +22,7 @@ async function refresh() {
   try {
     rows.value = await api.listOpen()
     error.value = ''
+    carefree.refresh()
   } catch (e) {
     error.value = String(e)
   }
@@ -154,6 +157,9 @@ onUnmounted(() => {
     <header class="topbar">
       <h1 class="brand">Befikr</h1>
       <SyncDot />
+      <NuxtLink v-if="garden?.streak" to="/stats" class="streak" :aria-label="`${garden.streak} carefree ${garden.streak === 1 ? 'day' : 'days'} in a row`">
+        <Sprout :size="17" /> {{ garden.streak }}
+      </NuxtLink>
       <span class="grow" />
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
@@ -186,8 +192,8 @@ onUnmounted(() => {
           </section>
         </div>
       </template>
-      <Doodle v-else-if="!error" class="scene" clear />
-      <Doodle v-if="rows.length" class="below" />
+      <Doodle v-else-if="!error" class="scene" clear :garden="garden" />
+      <Doodle v-if="rows.length" class="below" :garden="garden" />
       <!-- Adding lives at thumb height: tap to open quick add. -->
       <div class="dock">
         <button class="composer field" @click="adding = true"><Plus :size="22" /> <span>New task</span></button>
@@ -202,6 +208,10 @@ onUnmounted(() => {
 /* Title doesn't stretch, so the sync dot sits right next to it. */
 .topbar h1.brand { flex: none; }
 .gear { position: relative; }
+.streak {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 2px 8px 2px 6px;
+  border-radius: 999px; font-size: 0.9rem; font-weight: 500; color: var(--muted); text-decoration: none;
+}
 .update-dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .grow { flex: 1; }
 .list { margin: 8px 0 0; position: relative; overflow: hidden; }

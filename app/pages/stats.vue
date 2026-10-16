@@ -3,7 +3,7 @@
 // one row per task ("Water plants · 58×"). Tap a row to open the task and
 // its history; tap the tick to undo its latest completion (or bring back a
 // retired task).
-import { ArrowLeft, Check, PanelRightOpen, RotateCcw, Sunset } from 'lucide-vue-next'
+import { ArrowLeft, Check, PanelRightOpen, RotateCcw, Sprout, Sunset } from 'lucide-vue-next'
 import type { CompletedGroup, Stats, WeekStats } from '~/composables/api'
 
 const DAY = 86_400_000
@@ -19,6 +19,7 @@ const { show } = useToast()
 const items = ref<CompletedGroup[]>([])
 const stats = ref<Stats | null>(null)
 const range = ref<number>(30)
+const carefree = useCarefree()
 
 /** Local Monday 00:00 of this week and the 7 before it, oldest first. */
 function weekStarts(): number[] {
@@ -31,6 +32,7 @@ function weekStarts(): number[] {
 const loadStats = async () =>
   (stats.value = await api.stats(range.value ? Date.now() - range.value * DAY : null, weekStarts()).catch(() => null))
 const load = async () => {
+  carefree.refresh()
   items.value = await api.completedGroups().catch(() => [])
   await loadStats()
 }
@@ -74,6 +76,17 @@ async function undo(g: CompletedGroup) {
       <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <h1>Stats</h1>
     </header>
+
+    <div v-if="carefree.enabled.value && carefree.data.value" class="pane carefree">
+      <Sprout :size="22" class="muted" />
+      <div class="flex">
+        <p class="cf-num">
+          {{ carefree.data.value.streak }} carefree {{ carefree.data.value.streak === 1 ? 'day' : 'days' }}
+          <span v-if="carefree.data.value.best > carefree.data.value.streak" class="muted small">· best {{ carefree.data.value.best }}</span>
+        </p>
+        <p class="muted small">Days that end with nothing overdue (done by noon the next day is fine). One missed day a week is forgiven.</p>
+      </div>
+    </div>
 
     <template v-if="items.length && stats">
       <div class="seg" role="radiogroup" aria-label="Range">
@@ -164,6 +177,10 @@ async function undo(g: CompletedGroup) {
 .opt { padding: 5px 12px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
 .opt.chosen { color: var(--text); }
 
+.carefree { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; padding: 14px 16px; }
+.carefree p { margin: 0; }
+.carefree .flex { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.cf-num { font-weight: 600; font-size: 1.05rem; }
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; margin-top: 12px; padding: 16px; }
 .tile { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .num { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
