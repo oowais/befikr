@@ -25,7 +25,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ5NzVFOTc4QkQ5RjgwNTQKUldSVWdKKzllT2wxMllsT3IrQVd2Z3BldW8zVDR1d3VkV1BTbWtTUEFxVXBFZlNENGhMY1UreGQK",
       "endpoints": ["https://github.com/oowais/befikr/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }
