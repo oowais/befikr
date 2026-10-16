@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release builds shrink resources and drop ones no code references by R.
+     The notification icon is looked up by name (Reminders.kt smallIcon), so
+     it must be kept explicitly, or notifications fall back to a system bell. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_befikr" />

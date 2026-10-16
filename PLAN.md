@@ -370,6 +370,7 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (notif icon)** — Device: reminder survived the app update (re-armed). Notification showed the system bell: release resource shrinking dropped `ic_stat_befikr` (looked up by name, so unreferenced). Kept via `res/raw/keep.xml`. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (size)** — v0.9.0 APK 38 MB (was 17): the Rust `.so` ships unstripped (36.6 MB in the APK). Release profile now `strip`, `lto`, `codegen-units = 1`, `opt-level = "s"`; iroh without default features (no metrics/portmapper). Linux lib 10.4 → 6.3 MB stripped+optimised. `panic = "abort"` not used: JNI relies on `catch_unwind`. **Next:** phone↔Linux sync test.
 - **Oct 16, 2026 (apk fix)** — First CI run after the share + sync pushes: Rust (incl. iroh) builds for Android, but the manifest merge failed (share intent filter on `MainActivity` without `android:exported`). Fixed. **Next:** push, then phone↔Linux sync test.
 - **Oct 16, 2026 (sync net)** — Sync step 2: `crates/sync` (iroh, mDNS, pairing code, protocol), Tauri glue + `/sync` page (Off / Same Wi-Fi / Anywhere, device name, paired devices, show code, nearby + code). Two-process mDNS test passes on Linux. **Next:** run `android` workflow by hand to check iroh builds for Android; device test phone↔desktop; then QR/link pairing and the Conflicts page.
