@@ -38,9 +38,10 @@ const label = computed(() => {
 </template>
 
 <style scoped>
-/* Narrow hit area (still full height) so the dot hugs the title. */
-.sync-dot { width: 32px; margin-left: 2px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
+/* Narrow hit area (still full height); the dot sits at the title's top
+   right, like an exponent. */
+.sync-dot { width: 24px; margin-left: -9px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: -16px; }
 .ok { background: var(--green); }
 .bad { background: var(--red); }
 .idle { background: var(--muted); }
