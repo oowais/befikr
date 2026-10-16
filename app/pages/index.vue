@@ -149,8 +149,9 @@ onUnmounted(() => {
 <template>
   <main class="page">
     <header class="topbar">
-      <h1>Befikr</h1>
+      <h1 class="brand">Befikr</h1>
       <SyncDot />
+      <span class="grow" />
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
       <NuxtLink to="/settings" class="icon-btn" aria-label="Settings"><Settings :size="22" /></NuxtLink>
@@ -186,6 +187,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Title doesn't stretch, so the sync dot sits right next to it. */
+.topbar h1.brand { flex: none; }
+.grow { flex: 1; }
 .list { margin: 8px 0 0; position: relative; overflow: hidden; }
 .section .section-title { margin: 20px 0 0; }
 .section:first-of-type .section-title { margin-top: 4px; }

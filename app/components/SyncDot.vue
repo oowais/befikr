@@ -32,13 +32,15 @@ const label = computed(() => {
 </script>
 
 <template>
-  <NuxtLink v-if="state" to="/sync" class="icon-btn" :aria-label="label" :title="label">
+  <NuxtLink v-if="state" to="/sync" class="icon-btn sync-dot" :aria-label="label" :title="label">
     <span class="dot" :class="[state, { pulse: st?.syncing }]" />
   </NuxtLink>
 </template>
 
 <style scoped>
-.dot { width: 12px; height: 12px; border-radius: 50%; }
+/* Narrow hit area (still full height) so the dot hugs the title. */
+.sync-dot { width: 32px; margin-left: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
 .ok { background: var(--green); }
 .bad { background: var(--red); }
 .idle { background: var(--muted); }
