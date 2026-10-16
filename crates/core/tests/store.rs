@@ -290,6 +290,7 @@ fn export_snapshot_is_openable() {
     s.export_to(path.to_str().unwrap()).unwrap();
     let copy = Store::open(path.to_str().unwrap()).unwrap();
     assert_eq!(titles(&copy), ["keep me"]);
+    drop(copy); // Windows can't delete a file that's still open
     std::fs::remove_dir_all(dir).unwrap();
 }
 

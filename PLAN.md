@@ -388,6 +388,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 16, 2026 (Windows dev setup)** — User set up the repo on Windows 11 (VS Build Tools C++ + Win11 SDK, rustup MSVC, Node 24, pnpm 12); `pnpm tauri dev` runs. Fixed two Unix-only test bits: parser defaults `TZ` to UTC in `vitest.config.ts` (an explicit `TZ` still wins, for CI's zone checks), and the export test closes the snapshot before deleting it (Windows locks open files). **Next:** unchanged — user's 0.13.1 test result, then decide sync option A/B.
+
 - **Oct 16, 2026 (sync rethink)** — Sync keeps failing at connecting (mDNS on Android, desktop firewall, Play Services crash). Wrote **Sync transport — rethink**: A = iroh relay + QR only, B = Syncthing folder transport (recommended if 0.13.1 fails), C = both. **Next:** user's 0.13.1 test result (two Androids, Anywhere + QR), then decide A/B.
 - **Oct 16, 2026 (QR crash)** — 0.13.0 crashed on scan (Pixel, no Play Services): the barcode plugin uses Play Services ML Kit. Replaced with an in-webview scanner (getUserMedia + jsQR, Apache-2.0); CAMERA permission in our plugin manifest. **Next:** device test of scan + pair between two Androids.
 - **Oct 16, 2026 (retire, grouped history)** — Repeating tasks can be **retired** (`Store::retire_task`: `completed_at` set, no completion row, event `retired`; `reopen_task` brings it back without touching completions). Unlike delete, history + stats stay. Stats → Completed is grouped per task (`completed_groups`: count, last, retired); task page shows its history (`task_history`, “Done N×”). **Next:** device test; Conflicts page.
