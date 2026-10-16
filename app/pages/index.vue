@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -55,6 +55,7 @@ function menu(e: MouseEvent, row: Row) {
     { label: 'Complete', icon: Check, run: () => complete(row) },
     ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => router.push(`/snooze?id=${row.id}`) }] : []),
     ...(row.rrule ? [{ label: 'Skip this one', icon: SkipForward, run: () => skip(row) }] : []),
+    ...(row.rrule ? [{ label: 'Retire', icon: Sunset, run: () => retire(row) }] : []),
     'separator',
     { label: 'Delete', icon: Trash2, danger: true, run: () => remove(row) },
   ])
@@ -71,6 +72,19 @@ async function skip(row: Row) {
     show({ message: String(e) })
   }
   refresh()
+}
+
+// Repeating task done for good: off the list, history kept.
+async function retire(row: Row) {
+  haptic()
+  rows.value = rows.value.filter((r) => r.id !== row.id)
+  try {
+    await api.retireTask(row.id)
+    show({ message: 'Retired · history kept', action: { label: 'Undo', run: () => api.reopenTask(row.id).then(refresh) } })
+  } catch (e) {
+    show({ message: String(e) })
+    refresh()
+  }
 }
 
 async function remove(row: Row) {

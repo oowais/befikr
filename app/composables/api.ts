@@ -21,6 +21,15 @@ export type Task = {
 export type Urgency = 'red' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
 export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
+export type CompletedGroup = {
+  taskId: string
+  title: string
+  count: number
+  lastAt: number
+  dueAtThen: number | null
+  repeating: boolean
+  retired: boolean
+}
 export type WeekStats = { start: number; onTime: number; late: number; undated: number }
 export type Stats = {
   completed: number
@@ -83,12 +92,15 @@ export const api = {
   getTask: (id: string) => invoke<Task>('get_task', { id }),
   listSubtasks: (id: string) => invoke<Task[]>('list_subtasks', { id }),
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),
+  completedGroups: () => invoke<CompletedGroup[]>('completed_groups'),
+  taskHistory: (id: string) => invoke<Completion[]>('task_history', { id }),
   stats: (since: number | null, weekStarts: number[]) => invoke<Stats>('stats', { since, weekStarts }),
   addTask: (task: NewTask) => invoke<Task>('add_task', { task }),
   updateTask: (id: string, patch: TaskPatch) => invoke<Task>('update_task', { id, patch }),
   completeTask: (id: string) => invoke<Task>('complete_task', { id }),
   reopenTask: (id: string) => invoke<Task>('reopen_task', { id }),
   skipTask: (id: string) => invoke<Task>('skip_task', { id }),
+  retireTask: (id: string) => invoke<Task>('retire_task', { id }),
   snoozeTask: (id: string, until: number) => invoke<Task>('snooze_task', { id, until }),
   deleteTask: (id: string) => invoke<Task>('delete_task', { id }),
   restoreTask: (id: string) => invoke<Task>('restore_task', { id }),

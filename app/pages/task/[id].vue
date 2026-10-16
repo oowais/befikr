@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeft, CalendarDays, Check, CheckCircle2, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
-import type { Task } from '~/composables/api'
+import type { Completion, Task } from '~/composables/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -11,6 +11,8 @@ const id = computed(() => String(route.params.id))
 
 const task = ref<Task | null>(null)
 const subtasks = ref<Task[]>([])
+const history = ref<Completion[]>([])
+const allHistory = ref(false)
 const title = ref('')
 const description = ref('')
 const newSub = ref('')
@@ -25,6 +27,7 @@ async function load() {
   try {
     task.value = await api.getTask(id.value)
     subtasks.value = await api.listSubtasks(id.value)
+    history.value = await api.taskHistory(id.value).catch(() => [])
     title.value = task.value.title
     description.value = task.value.description
     showNotes.value = !!task.value.description
@@ -138,11 +141,29 @@ async function skip() {
     error.value = String(e)
   }
 }
-async function reopen() {
+// Retired = a repeating task closed with no completion at that moment.
+const retired = computed(() => !!task.value?.rrule && !!task.value.completedAt && history.value[0]?.completedAt !== task.value.completedAt)
+async function retire() {
   haptic()
   try {
+    const t = await api.retireTask(id.value)
+    show({ message: 'Retired · history kept', action: { label: 'Undo', run: () => api.reopenTask(t.id).then(listChanged) } })
+    router.back()
+  } catch (e) {
+    error.value = String(e)
+  }
+}
+const dayOf = (ms: number) => new Date(ms).toDateString()
+const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen && dayOf(c.completedAt) !== dayOf(c.dueAtThen)
+const shownHistory = computed(() => (allHistory.value ? history.value : history.value.slice(0, 5)))
+
+async function reopen() {
+  haptic()
+  const wasRetired = retired.value
+  try {
     task.value = await api.reopenTask(id.value)
-    show({ message: 'Back in to-do' })
+    history.value = await api.taskHistory(id.value).catch(() => history.value)
+    show({ message: wasRetired ? 'Brought back' : 'Back in to-do' })
   } catch (e) {
     error.value = String(e)
   }
@@ -159,7 +180,7 @@ async function remove() {
     <header class="topbar">
       <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
       <span style="flex: 1" />
-      <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> Undo</button>
+      <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> {{ retired ? 'Bring back' : 'Undo' }}</button>
       <template v-else-if="task">
         <NuxtLink v-if="task.dueAt" :to="`/snooze?id=${id}`" class="btn"><AlarmClock :size="18" /> Snooze</NuxtLink>
         <button v-if="task.rrule && !task.parentId" class="btn" @click="skip"><SkipForward :size="18" /> Skip</button>
@@ -186,7 +207,8 @@ async function remove() {
 
       <div class="pane rows props">
         <div v-if="task.completedAt" class="prop">
-          <CheckCircle2 :size="20" class="muted" /> <span class="flex">Completed {{ dayLabel(task.completedAt) }}</span>
+          <component :is="retired ? Sunset : CheckCircle2" :size="20" class="muted" />
+          <span class="flex">{{ retired ? 'Retired' : 'Completed' }} {{ dayLabel(task.completedAt) }}</span>
         </div>
         <div class="prop">
           <CalendarDays :size="20" class="muted" />
@@ -246,7 +268,25 @@ async function remove() {
         </form>
       </div>
 
-      <button class="btn danger delete" @click="remove"><Trash2 :size="18" /> Delete task</button>
+      <template v-if="history.length && task.rrule">
+        <h2 class="section-title">Done {{ history.length }}×</h2>
+        <div class="pane rows">
+          <div v-for="c in shownHistory" :key="c.id" class="sub">
+            <History :size="18" class="muted" />
+            <span class="flex">{{ dayLabel(c.completedAt) }}</span>
+            <span v-if="late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+          </div>
+          <button v-if="history.length > 5 && !allHistory" class="sub muted" @click="allHistory = true">Show all {{ history.length }}</button>
+        </div>
+      </template>
+
+      <div class="end-actions">
+        <template v-if="task.rrule && !task.parentId && !task.completedAt">
+          <button class="btn" @click="retire"><Sunset :size="18" /> Retire</button>
+          <p class="muted small">Stops it for good. Unlike delete, its history and stats stay.</p>
+        </template>
+        <button class="btn danger" @click="remove"><Trash2 :size="18" /> Delete task</button>
+      </div>
     </template>
 
     <RepeatSheet v-if="pickingRepeat" :model-value="task?.rrule ?? null" :start="task?.dueAt" @update:model-value="setRepeat" @close="pickingRepeat = false" />
@@ -276,7 +316,8 @@ async function remove() {
 .sub.done span:last-child { text-decoration: line-through; color: var(--muted); }
 .add-icon { margin: 0 2px; }
 .bare { flex: 1; border: 0; outline: none; background: none; padding: 12px 0; }
-.delete { margin-top: 40px; }
+.end-actions { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; }
+.end-actions p { margin: 0 0 8px; }
 .cap::first-letter { text-transform: uppercase; }
 .found { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 12px; flex-wrap: wrap; animation: float-in 0.2s; }
 </style>

@@ -393,3 +393,38 @@ fn late_means_a_later_day() {
     let st = s.stats(None, &[]).unwrap();
     assert_eq!((st.on_time, st.late), (1, 1));
 }
+
+#[test]
+fn retire_ends_a_repeat_and_keeps_its_history() {
+    let (mut s, clock) = store(); // Thu Oct 15 10:00
+    let mut t = task("water plants", Some(at(15, 9, 0)));
+    t.rrule = Some("FREQ=DAILY".into());
+    let id = s.add_task(t).unwrap().task.id;
+    let once = s.add_task(task("call bank", None)).unwrap().task.id;
+    s.complete_task(&id, Source::App).unwrap();
+    clock.store(at(16, 10, 0), Ordering::SeqCst);
+    s.complete_task(&id, Source::App).unwrap();
+    s.complete_task(&once, Source::App).unwrap();
+    assert!(s.retire_task(&once).is_err(), "only repeating tasks");
+
+    clock.store(at(16, 12, 0), Ordering::SeqCst);
+    let c = s.retire_task(&id).unwrap();
+    assert_eq!(c.alarm, AlarmChange::Cancel { task_id: id.clone() });
+    assert!(titles(&s).is_empty());
+    assert_eq!(s.task_history(&id).unwrap().len(), 2);
+    assert_eq!(s.stats(None, &[]).unwrap().completed, 3, "history still counts");
+
+    let g = s.completed_groups().unwrap();
+    assert_eq!(g.iter().map(|g| (g.title.as_str(), g.count, g.retired)).collect::<Vec<_>>(), [
+        ("water plants", 2, true),
+        ("call bank", 1, false)
+    ]);
+    assert_eq!(g[0].last_at, at(16, 12, 0));
+
+    // Bring back: open again, completions untouched.
+    let c = s.reopen_task(&id).unwrap();
+    assert_eq!(c.task.completed_at, None);
+    assert_eq!(c.task.due_at, Some(at(17, 9, 0)));
+    assert_eq!(s.task_history(&id).unwrap().len(), 2);
+    assert!(!s.completed_groups().unwrap()[0].retired);
+}

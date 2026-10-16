@@ -6,7 +6,7 @@ mod sync;
 use std::sync::Mutex;
 
 use befikr_core::{
-    urgency, AlarmChange, Change, Completion, ListItem, NewTask, Settings, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
+    urgency, AlarmChange, Change, CompletedGroup, Completion, ListItem, NewTask, Settings, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -106,6 +106,16 @@ fn list_completed(db: State<Db>, limit: u32) -> Res<Vec<Completion>> {
 }
 
 #[tauri::command]
+fn completed_groups(db: State<Db>) -> Res<Vec<CompletedGroup>> {
+    db.store.lock().map_err(err)?.completed_groups().map_err(err)
+}
+
+#[tauri::command]
+fn task_history(db: State<Db>, id: String) -> Res<Vec<Completion>> {
+    db.store.lock().map_err(err)?.task_history(&id).map_err(err)
+}
+
+#[tauri::command]
 fn stats(db: State<Db>, since: Option<i64>, week_starts: Vec<i64>) -> Res<Stats> {
     db.store.lock().map_err(err)?.stats(since, &week_starts).map_err(err)
 }
@@ -133,6 +143,11 @@ fn reopen_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
 #[tauri::command]
 fn skip_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
     write(&app, &db, |s| s.skip_task(&id, Source::App))
+}
+
+#[tauri::command]
+fn retire_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
+    write(&app, &db, |s| s.retire_task(&id))
 }
 
 #[tauri::command]
@@ -318,6 +333,9 @@ pub fn run() {
             reopen_task,
             snooze_task,
             skip_task,
+            retire_task,
+            completed_groups,
+            task_history,
             delete_task,
             restore_task,
             shopping_list,

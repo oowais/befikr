@@ -117,6 +117,58 @@ impl Store {
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
+    /// Completion history grouped by task, most recent first: how often each
+    /// was done, and whether a repeating one was retired.
+    pub fn completed_groups(&self) -> Result<Vec<CompletedGroup>> {
+        let mut st = self.conn.prepare(
+            "SELECT t.id, t.title, COUNT(c.id), MAX(c.completed_at), t.completed_at, t.rrule IS NOT NULL,
+               (SELECT c2.due_at_then FROM completions c2 WHERE c2.task_id = t.id AND c2.deleted_at IS NULL
+                ORDER BY c2.completed_at DESC, c2.id DESC LIMIT 1)
+             FROM tasks t LEFT JOIN completions c ON c.task_id = t.id AND c.deleted_at IS NULL
+             WHERE t.deleted_at IS NULL AND t.parent_id IS NULL
+             GROUP BY t.id
+             HAVING COUNT(c.id) > 0 OR (t.completed_at IS NOT NULL AND t.rrule IS NOT NULL)",
+        )?;
+        let mut rows: Vec<CompletedGroup> = st
+            .query_map([], |r| {
+                let last: Option<i64> = r.get(3)?;
+                let done_at: Option<i64> = r.get(4)?;
+                let repeating: bool = r.get(5)?;
+                Ok(CompletedGroup {
+                    task_id: r.get(0)?,
+                    title: r.get(1)?,
+                    count: r.get(2)?,
+                    last_at: last.max(done_at).unwrap_or_default(),
+                    due_at_then: r.get(6)?,
+                    repeating,
+                    retired: repeating && done_at.is_some() && done_at != last,
+                })
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        rows.sort_by(|a, b| b.last_at.cmp(&a.last_at).then_with(|| b.task_id.cmp(&a.task_id)));
+        Ok(rows)
+    }
+
+    /// One task's completions, newest first.
+    pub fn task_history(&self, id: &str) -> Result<Vec<Completion>> {
+        let mut st = self.conn.prepare(
+            "SELECT c.id, c.task_id, t.title, c.completed_at, c.due_at_then
+             FROM completions c JOIN tasks t ON t.id = c.task_id
+             WHERE c.task_id = ?1 AND c.deleted_at IS NULL
+             ORDER BY c.completed_at DESC, c.id DESC",
+        )?;
+        let rows = st.query_map([id], |r| {
+            Ok(Completion {
+                id: r.get(0)?,
+                task_id: r.get(1)?,
+                title: r.get(2)?,
+                completed_at: r.get(3)?,
+                due_at_then: r.get(4)?,
+            })
+        })?;
+        Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
     /// Stats for completions, snoozes and missed repeats since `since`.
     /// A completion is late when it falls on a later day than its due time.
     /// (`None` = all time), up to now. `week_starts` (ascending, the
@@ -270,18 +322,43 @@ impl Store {
         self.write(|c, now| complete(c, id, now, source))
     }
 
-    /// Undo the latest completion.
+    /// End a repeating task for good: no more occurrences or reminders, off
+    /// the list, its history and stats kept (unlike delete). Undo with
+    /// [`Store::reopen_task`].
+    pub fn retire_task(&mut self, id: &str) -> Result<Change> {
+        self.write(|c, now| {
+            let t = get(c, id)?;
+            if t.rrule.is_none() || t.parent_id.is_some() || !t.is_open() {
+                return Err(Error::Invalid("only open repeating tasks can be retired".into()));
+            }
+            c.execute(
+                "UPDATE tasks SET completed_at = ?2, snoozed_until = NULL, updated_at = ?2 WHERE id = ?1",
+                params![id, now],
+            )?;
+            log(c, id, "retired", now, t.effective_due(), None, Source::App)?;
+            finish(c, id, true)
+        })
+    }
+
+    /// Undo the latest completion, or bring back a retired task.
     pub fn reopen_task(&mut self, id: &str) -> Result<Change> {
         self.write(|c, now| {
             let t = get(c, id)?;
-            let last: Option<(String, Option<i64>)> = c
+            let last: Option<(String, Option<i64>, i64)> = c
                 .query_row(
-                    "SELECT id, due_at_then FROM completions WHERE task_id = ?1 AND deleted_at IS NULL
+                    "SELECT id, due_at_then, completed_at FROM completions WHERE task_id = ?1 AND deleted_at IS NULL
                      ORDER BY completed_at DESC, id DESC LIMIT 1",
                     [id],
-                    |r| Ok((r.get(0)?, r.get(1)?)),
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
                 )
                 .optional()?;
+            // Retired (done with no completion at that moment): reopen only,
+            // its completions stay.
+            if t.rrule.is_some() && t.completed_at.is_some() && last.as_ref().map(|l| l.2) != t.completed_at {
+                c.execute("UPDATE tasks SET completed_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
+                log(c, id, "reopened", now, None, None, Source::App)?;
+                return finish(c, id, true);
+            }
             if let Some(done_at) = t.completed_at {
                 c.execute("UPDATE tasks SET completed_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
                 // Reopen subtasks that were auto-checked with the parent.
@@ -290,7 +367,7 @@ impl Store {
                     params![id, done_at, now],
                 )?;
             } else if t.rrule.is_some() {
-                let Some((_, due_then)) = &last else {
+                let Some((_, due_then, _)) = &last else {
                     return Err(Error::Invalid("nothing to reopen".into()));
                 };
                 c.execute(
@@ -300,7 +377,7 @@ impl Store {
             } else {
                 return Err(Error::Invalid("task is not completed".into()));
             }
-            if let Some((cid, _)) = last {
+            if let Some((cid, _, _)) = last {
                 c.execute("UPDATE completions SET deleted_at = ?2, updated_at = ?2 WHERE id = ?1", params![cid, now])?;
             }
             log(c, id, "reopened", now, None, None, Source::App)?;

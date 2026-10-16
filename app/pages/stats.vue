@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// Stats on top (range switch, last 8 weeks chart), completion history below.
-// Tap a row to open the task; tap the tick to undo (only the latest
-// completion of a task can be undone).
-import { ArrowLeft, Check, PanelRightOpen, RotateCcw } from 'lucide-vue-next'
-import type { Completion, Stats, WeekStats } from '~/composables/api'
+// Stats on top (range switch, last 8 weeks chart), completion history below,
+// one row per task ("Water plants · 58×"). Tap a row to open the task and
+// its history; tap the tick to undo its latest completion (or bring back a
+// retired task).
+import { ArrowLeft, Check, PanelRightOpen, RotateCcw, Sunset } from 'lucide-vue-next'
+import type { CompletedGroup, Stats, WeekStats } from '~/composables/api'
 
 const DAY = 86_400_000
 const ranges = [
@@ -14,7 +15,7 @@ const ranges = [
 
 const router = useRouter()
 const { show } = useToast()
-const items = ref<Completion[]>([])
+const items = ref<CompletedGroup[]>([])
 const stats = ref<Stats | null>(null)
 const range = ref<number>(30)
 
@@ -29,7 +30,7 @@ function weekStarts(): number[] {
 const loadStats = async () =>
   (stats.value = await api.stats(range.value ? Date.now() - range.value * DAY : null, weekStarts()).catch(() => null))
 const load = async () => {
-  items.value = await api.listCompleted(300).catch(() => [])
+  items.value = await api.completedGroups().catch(() => [])
   await loadStats()
 }
 onMounted(load)
@@ -43,31 +44,25 @@ const weekLabel = (ms: number) => new Date(ms).toLocaleDateString(undefined, { d
 
 // Late = done on a later day than it was due (same rule as the stats).
 const dayOf = (ms: number) => new Date(ms).toDateString()
-const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen && dayOf(c.completedAt) !== dayOf(c.dueAtThen)
-// Newest first, so a task's first row is its latest completion.
-const undoable = computed(() => {
-  const seen = new Set<string>()
-  return new Set(items.value.filter((c) => !seen.has(c.taskId) && seen.add(c.taskId)).map((c) => c.id))
-})
+const late = (g: CompletedGroup) =>
+  !g.retired && g.dueAtThen != null && g.lastAt > g.dueAtThen && dayOf(g.lastAt) !== dayOf(g.dueAtThen)
 
-function rowMenu(e: MouseEvent, c: Completion) {
+function rowMenu(e: MouseEvent, g: CompletedGroup) {
   openMenu(e, [
-    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${c.taskId}`) },
-    ...(undoable.value.has(c.id) ? [{ label: 'Undo completion', icon: RotateCcw, run: () => undo(c) }] : []),
+    { label: 'Open', icon: PanelRightOpen, run: () => router.push(`/task/${g.taskId}`) },
+    { label: g.retired ? 'Bring back' : 'Undo completion', icon: RotateCcw, run: () => undo(g) },
   ])
 }
 
-async function undo(c: Completion) {
+async function undo(g: CompletedGroup) {
   haptic()
-  items.value = items.value.filter((x) => x.id !== c.id)
   try {
-    await api.reopenTask(c.taskId)
-    show({ message: 'Back in to-do' })
-    loadStats()
+    await api.reopenTask(g.taskId)
+    show({ message: g.retired ? 'Brought back' : 'Back in to-do' })
   } catch (e) {
     show({ message: String(e) })
-    load()
   }
+  load()
 }
 </script>
 
@@ -141,19 +136,16 @@ async function undo(c: Completion) {
     </template>
 
     <ul v-if="items.length" class="pane rows list">
-      <li v-for="c in items" :key="c.id" @contextmenu="rowMenu($event, c)">
-        <button
-          class="check"
-          :disabled="!undoable.has(c.id)"
-          :aria-label="`Undo ${c.title}`"
-          @click="undo(c)"
-        >
-          <span class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
+      <li v-for="g in items" :key="g.taskId" @contextmenu="rowMenu($event, g)">
+        <button class="check" :aria-label="g.retired ? `Bring back ${g.title}` : `Undo ${g.title}`" @click="undo(g)">
+          <Sunset v-if="g.retired" :size="20" class="muted" />
+          <span v-else class="checkbox checked"><Check :size="14" :stroke-width="3" /></span>
         </button>
-        <NuxtLink :to="`/task/${c.taskId}`" class="text">
-          <span>{{ c.title }}</span>
+        <NuxtLink :to="`/task/${g.taskId}`" class="text">
+          <span>{{ g.title }}<span v-if="g.count > 1" class="muted times"> · {{ g.count }}×</span></span>
           <span class="muted small">
-            {{ dayLabel(c.completedAt) }}<template v-if="late(c)"> · {{ span(c.completedAt - c.dueAtThen!) }} late</template>
+            <template v-if="g.retired">Retired {{ dayLabel(g.lastAt) }}</template>
+            <template v-else>{{ g.count > 1 ? 'Last: ' : '' }}{{ dayLabel(g.lastAt) }}<template v-if="late(g)"> · {{ span(g.lastAt - g.dueAtThen!) }} late</template></template>
           </span>
         </NuxtLink>
       </li>
@@ -191,6 +183,6 @@ async function undo(c: Completion) {
 .list { list-style: none; margin: 8px 0 0; }
 .list li { display: flex; align-items: flex-start; gap: 2px; padding: 6px 0; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .check { width: 44px; height: 44px; display: grid; place-items: center; flex: none; margin-left: -10px; }
-.check:disabled { opacity: 0.45; }
+.times { font-variant-numeric: tabular-nums; }
 .text { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 6px 0; color: inherit; text-decoration: none; min-width: 0; }
 </style>

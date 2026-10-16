@@ -89,6 +89,22 @@ pub struct Completion {
     pub due_at_then: Option<i64>,
 }
 
+/// A task's completions, as one row of the history ("Water plants · 58×").
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompletedGroup {
+    pub task_id: String,
+    pub title: String,
+    pub count: u32,
+    /// Latest completion, or when it was retired if later.
+    pub last_at: i64,
+    /// Due time of the latest completion (for "late").
+    pub due_at_then: Option<i64>,
+    pub repeating: bool,
+    /// A repeating task ended for good with [`crate::Store::retire_task`].
+    pub retired: bool,
+}
+
 /// Completion stats for a time range (see `Store::stats`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
