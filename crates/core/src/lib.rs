@@ -12,11 +12,13 @@ mod peers;
 pub mod recurrence;
 mod schema;
 mod shopping;
+mod snooze;
 mod store;
 mod sync;
 
 pub use model::*;
 pub use peers::{Peer, SyncMode, SyncSettings};
+pub use snooze::{snooze_picks, SnoozePick};
 pub use store::Store;
 pub use conflicts::Conflict;
 pub use sync::{MergeOutcome, SyncChange};

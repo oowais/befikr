@@ -16,6 +16,12 @@ object Native {
     /** Notification action: "complete" | "skip" | "dismiss". → AlarmChange JSON or `{"op":"none"}` */
     external fun onAction(dbPath: String, taskId: String, action: String): String
 
+    /** Snooze overlay quick picks for now in [tz]. → `[{"label","atMs"}]` */
+    external fun snoozePicks(tz: String): String
+
+    /** Snooze until [untilMs]. → AlarmChange JSON */
+    external fun snooze(dbPath: String, taskId: String, untilMs: Long): String
+
     /** Alarms to (re)arm: `[{"taskId","title","atMs"}]` */
     external fun pendingAlarms(dbPath: String): String
 

@@ -116,6 +116,7 @@ export const api = {
   reopenTask: (id: string) => invoke<Task>('reopen_task', { id }),
   skipTask: (id: string) => invoke<Task>('skip_task', { id }),
   retireTask: (id: string) => invoke<Task>('retire_task', { id }),
+  snoozePicks: () => invoke<{ label: string; atMs: number }[]>('snooze_picks', { tz: deviceTz() }),
   snoozeTask: (id: string, until: number) => invoke<Task>('snooze_task', { id, until }),
   deleteTask: (id: string) => invoke<Task>('delete_task', { id }),
   restoreTask: (id: string) => invoke<Task>('restore_task', { id }),

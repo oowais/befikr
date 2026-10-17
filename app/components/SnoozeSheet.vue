@@ -21,32 +21,10 @@ onMounted(async () => {
   task.value = await api.getTask(props.taskId).catch(() => null)
 })
 
-const HOUR = 3_600_000
-function at(daysAhead: number, h: number, m = 0) {
-  const d = new Date()
-  d.setDate(d.getDate() + daysAhead)
-  d.setHours(h, m, 0, 0)
-  return d.getTime()
-}
-
-// Relative picks land on the next 5 minutes: 15:10, not 15:07.
-const FIVE = 5 * 60_000
-const roundUp = (ms: number) => Math.ceil(ms / FIVE) * FIVE
-
-const picks = computed(() => {
-  const now = Date.now()
-  const today = new Date()
-  const list: { label: string; at: number }[] = [
-    { label: 'In 1 hour', at: roundUp(now + HOUR) },
-    { label: 'In 3 hours', at: roundUp(now + 3 * HOUR) },
-  ]
-  if (today.getHours() < 18) list.push({ label: 'This evening', at: at(0, 18) })
-  if (today.getHours() < 21) list.push({ label: 'Tonight', at: at(0, 21) })
-  list.push({ label: 'Tomorrow morning', at: at(1, 9) })
-  list.push({ label: 'Tomorrow evening', at: at(1, 18) })
-  const toMonday = ((8 - today.getDay()) % 7) || 7
-  list.push({ label: 'Next week', at: at(toMonday, 9) })
-  return list.slice(0, 6)
+// Quick picks come from core, the same ones the Android overlay offers.
+const picks = ref<{ label: string; at: number }[]>([])
+onMounted(async () => {
+  picks.value = (await api.snoozePicks().catch(() => [])).map((p) => ({ label: p.label, at: p.atMs }))
 })
 
 const typedParse = computed(() => (typed.value.trim() ? parseWith(`x ${typed.value}`, []) : null))

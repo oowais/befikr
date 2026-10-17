@@ -113,6 +113,10 @@ internal fun launchPendingIntent(ctx: Context, id: String, route: String): Pendi
     return PendingIntent.getActivity(ctx, 0, intent, PI_FLAGS)
 }
 
+/** The snooze sheet over whatever is on screen ([SnoozeActivity]). */
+internal fun snoozePendingIntent(ctx: Context, id: String, title: String, repeats: Boolean): PendingIntent =
+    PendingIntent.getActivity(ctx, 0, SnoozeActivity.intent(ctx, id, title, repeats), PI_FLAGS)
+
 internal object Notifier {
     fun ensureChannel(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -146,7 +150,7 @@ internal object Notifier {
             .setGroup("task-$id")
             .setContentIntent(launchPendingIntent(ctx, id, "/"))
             .addAction(0, "Complete", action(ACTION_COMPLETE, "complete"))
-            .addAction(0, "Snooze", launchPendingIntent(ctx, id, "/?snooze=$id"))
+            .addAction(0, "Snooze", snoozePendingIntent(ctx, id, title, repeats))
             .setDeleteIntent(action(ACTION_DISMISS, "dismiss"))
         if (repeats) b.addAction(0, "Skip", action(ACTION_SKIP, "skip"))
         val n = b.build()

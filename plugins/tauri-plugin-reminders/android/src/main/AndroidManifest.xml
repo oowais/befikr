@@ -23,6 +23,15 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <!-- Notification Snooze: a sheet over whatever is on screen, in its own
+             task so the app doesn't open behind it. -->
+        <activity
+            android:name="com.befikr.reminders.SnoozeActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
         <receiver android:name="com.befikr.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.ActionReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.BackupReceiver" android:exported="false" />

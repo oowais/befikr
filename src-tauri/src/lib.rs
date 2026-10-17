@@ -160,6 +160,12 @@ fn retire_task(app: AppHandle, db: State<Db>, id: String) -> Res<Task> {
     write(&app, &db, |s| s.retire_task(&id))
 }
 
+/// Snooze quick picks for now in `tz` (shared with the Android overlay).
+#[tauri::command]
+fn snooze_picks(tz: String) -> Res<Vec<befikr_core::SnoozePick>> {
+    befikr_core::snooze_picks(chrono::Utc::now().timestamp_millis(), &tz).map_err(err)
+}
+
 #[tauri::command]
 fn snooze_task(app: AppHandle, db: State<Db>, id: String, until: i64) -> Res<Task> {
     write(&app, &db, |s| s.snooze_task(&id, until, Source::App))
@@ -442,6 +448,7 @@ pub fn run() {
             update_task,
             complete_task,
             reopen_task,
+            snooze_picks,
             snooze_task,
             skip_task,
             retire_task,

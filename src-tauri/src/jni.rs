@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use befikr_core::{AlarmChange, MergeOutcome, Source, Store};
 use jni::objects::{JClass, JString};
-use jni::sys::jstring;
+use jni::sys::{jlong, jstring};
 use jni::JNIEnv;
 use serde_json::json;
 
@@ -65,6 +65,36 @@ pub extern "system" fn Java_com_befikr_reminders_Native_onAction<'l>(
             }
             other => Err(format!("unknown action: {other}")),
         }
+    })
+}
+
+/// Snooze overlay: quick picks for now in `tz`. → `[{"label","atMs"}]`
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_snoozePicks<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    tz: JString<'l>,
+) -> jstring {
+    respond(&mut env, |env| {
+        let now = chrono::Utc::now().timestamp_millis();
+        let picks = befikr_core::snooze_picks(now, &arg(env, &tz)?).map_err(|e| e.to_string())?;
+        serde_json::to_value(picks).map_err(|e| e.to_string())
+    })
+}
+
+/// Snooze overlay: snooze until `until_ms`. → AlarmChange JSON
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_snooze<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    task_id: JString<'l>,
+    until_ms: jlong,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (path, id) = (arg(env, &db_path)?, arg(env, &task_id)?);
+        let change = store(&path)?.snooze_task(&id, until_ms, Source::Native).map_err(|e| e.to_string())?;
+        serde_json::to_value(change.alarm).map_err(|e| e.to_string())
     })
 }
 
