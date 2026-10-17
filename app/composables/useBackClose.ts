@@ -1,6 +1,7 @@
-// Android back button: closes the top open sheet; with none open, goes back a
-// page, or leaves the app from the first one. (Registering the handler turns
-// off Tauri's default, which closed the app even with a sheet open.)
+// Android back button and Escape (computers): close the top open sheet. With
+// none open, back goes back a page, or leaves the app from the first one.
+// (Registering the handler turns off Tauri's default, which closed the app
+// even with a sheet open.)
 import { exit, onBackButtonPress } from '@tauri-apps/api/app'
 
 const open: (() => void)[] = []
@@ -11,6 +12,17 @@ export function useBackClose(close: () => void) {
   onUnmounted(() => {
     const i = open.lastIndexOf(close)
     if (i >= 0) open.splice(i, 1)
+  })
+}
+
+// Escape closes the top sheet, unless something above it (a context menu)
+// already handled the key: checked after every listener has run.
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.isComposing) return
+    setTimeout(() => {
+      if (!e.defaultPrevented) open.at(-1)?.()
+    })
   })
 }
 

@@ -43,7 +43,10 @@ function swallow(e: Event) {
 
 function key(e: KeyboardEvent) {
   if (!menu.open) return
-  if (e.key === 'Escape') return closeMenu()
+  if (e.key === 'Escape') {
+    e.preventDefault() // the sheet under the menu stays open
+    return closeMenu()
+  }
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
   e.preventDefault()
   const buttons = [...(el.value?.querySelectorAll<HTMLElement>('button') ?? [])]

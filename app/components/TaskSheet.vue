@@ -363,7 +363,7 @@ async function remove() {
 .sheet.dragging { transition: none; }
 /* The top bar is also the drag handle. */
 .bar {
-  position: relative; display: flex; align-items: center; gap: 8px; min-height: 64px; padding-top: 10px;
+  position: relative; display: flex; align-items: center; gap: 8px; min-height: 72px; padding-top: 22px;
   touch-action: none; user-select: none; cursor: grab;
 }
 .handle {
