@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (README)** — README with what Befikr is, five phone screenshots (dark first, rendered from the real UI with sample data in headless Brave at 3×, saved at 2× in `docs/screenshots/`), features, the three platforms, privacy, build steps. License: GPL-3.0-or-later (`LICENSE`, PKGBUILD). Fixed the New task hint vanishing with reduced motion. Session log moved here from PLAN.md. **Next:** device check of the snooze overlay; Windows update check on focus.
+
 - **Oct 17, 2026 (snooze overlay)** — Post-MVP 4: notification Snooze opens a native bottom sheet over whatever is on screen (`SnoozeActivity`, views built in code, follows system dark mode) instead of the app. Quick picks moved into core (`befikr_core::snooze_picks`, used by the app's sheet too); JNI `snoozePicks` + `snooze`. Kotlin first compiles in CI after the push. **Next:** device check of the overlay (looks, insets, tap outside, Pick a time); Windows update check on focus.
 
 - **Oct 17, 2026 (no Arch self-update)** — Decided against an in-app Update button on Arch: Linux apps update through the package manager, and an AUR `befikr-bin` will own that later. Linux keeps the "is out" row only. **Next:** Windows update check on focus.
