@@ -3,9 +3,10 @@
 // day, moon at night. `clear`: nothing to do, so it's the whole screen with
 // a short line. `garden` (carefree days on): trees for on-time completions
 // ever, flowers for this week's, birds (stars at night) for the streak.
-// Nothing is taken away for missed days; it just stops growing.
+// Nothing is taken away for missed days; it just stops growing. The garden
+// follows the season: blossom, summer green, autumn colours, snow.
 import type { Carefree } from '~/composables/api'
-import { FLOWER_KINDS, TREES, TREE_SCALE } from '~/utils/garden'
+import { flowersFor, seasonNow, treesFor, TREE_SCALE } from '~/utils/garden'
 const props = defineProps<{ clear?: boolean; garden?: Carefree | null }>()
 
 // Slots on the hills (y = the hill line there), in the order they fill.
@@ -23,6 +24,14 @@ const FRONT: Record<number, number> = {
 }
 const BIRDS = [[150, 48], [186, 62], [118, 30], [216, 40]] as const
 const BIRD_AT = [3, 7, 14, 30]
+
+const season = seasonNow()
+const TREES = treesFor(season)
+const FLOWER_KINDS = flowersFor(season)
+// Season in the sky: snowflakes, falling leaves, butterflies.
+const FLAKES = [[40, 30], [96, 58], [158, 22], [214, 88], [334, 108], [18, 92], [240, 18]] as const
+const LEAVES = [[70, 118, 20], [152, 108, -30], [246, 104, 60], [322, 116, -10]] as const
+const BUTTERFLIES = [[132, 112], [236, 98]] as const
 
 const trees = computed(() => {
   const n = props.garden?.onTimeTotal ?? 0
@@ -47,6 +56,19 @@ const line = computed(() =>
   <div class="doodle" :class="{ clear }" aria-hidden="true">
     <!-- Under the list: full width; when short the sky is cut, the hills stay. -->
     <svg viewBox="0 0 360 220" :preserveAspectRatio="clear ? 'xMidYMax meet' : 'xMidYMax slice'">
+      <!-- winter: snow on the ground, under everything, fading out at the bottom -->
+      <defs v-if="garden && season === 'winter'">
+        <linearGradient id="doodle-snow" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0.45" class="snow-stop" />
+          <stop offset="1" class="snow-stop" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        v-if="garden && season === 'winter'"
+        class="snowfield"
+        fill="url(#doodle-snow)"
+        d="M0 170 C50 128 92 134 130 152 S210 120 250 140 S320 158 360 132 V220 H0 Z"
+      />
       <g class="base" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
         <!-- sky -->
         <template v-if="night">
@@ -76,6 +98,15 @@ const line = computed(() =>
         <g v-for="f in flowers" :key="`f${f.x}`" :transform="`translate(${f.x} ${f.y}) scale(${GROW})`">
           <g class="sprout"><path v-for="(p, i) in f.parts" :key="i" :d="p.d" :class="p.f && `f-${p.f}`" /></g>
         </g>
+        <template v-if="season === 'winter'">
+          <path v-for="([x, y], i) in FLAKES" :key="`s${i}`" class="flake" :d="`M${x} ${y - 3} v6 M${x - 2.6} ${y - 1.5} l5.2 3 M${x - 2.6} ${y + 1.5} l5.2 -3`" />
+        </template>
+        <template v-else-if="season === 'autumn'">
+          <path v-for="([x, y, r], i) in LEAVES" :key="`l${i}`" :class="i % 2 ? 'f-rust' : 'f-gold'" :transform="`translate(${x} ${y}) rotate(${r})`" d="M-3 0 Q0 -3 3 0 Q0 3 -3 0 Z M-3 0 h-1.5" />
+        </template>
+        <template v-else-if="season === 'spring' && !night">
+          <path v-for="([x, y], i) in BUTTERFLIES" :key="`u${i}`" class="f-pink" :d="`M${x} ${y} q-4 -5 -5 -1 q1 3 5 1 q4 -5 5 -1 q-1 3 -5 1 z`" />
+        </template>
         <template v-for="([x, y], i) in birds" :key="`b${i}`">
           <path v-if="night" class="sprout" :d="`M${x} ${y - 2} l0 4 M${x - 2} ${y} l4 0`" />
           <path v-else class="sprout" :d="`M${x - 6} ${y} q3 -4 6 0 q3 -4 6 0`" />
@@ -95,6 +126,14 @@ const line = computed(() =>
 .clear { justify-content: center; }
 .clear svg { flex: none; height: auto; max-height: 320px; }
 /* Garden fills: fixed natural colours, toned slightly toward the background. */
+.snowfield { stroke: none; }
+.snow-stop { stop-color: color-mix(in oklch, white 30%, var(--bg)); }
+.flake { opacity: 0.6; }
+.f-spring { fill: color-mix(in oklch, oklch(0.82 0.15 128) 88%, var(--bg)); }
+.f-gold { fill: color-mix(in oklch, oklch(0.83 0.15 88) 88%, var(--bg)); }
+.f-rust { fill: color-mix(in oklch, oklch(0.66 0.16 42) 88%, var(--bg)); }
+.f-blossom { fill: oklch(0.99 0.01 350); stroke: none; }
+.f-snow { fill: oklch(0.99 0 0); }
 .f-pine { fill: color-mix(in oklch, oklch(0.58 0.09 155) 88%, var(--bg)); }
 .f-leaf { fill: color-mix(in oklch, oklch(0.74 0.13 135) 88%, var(--bg)); }
 .f-light { fill: color-mix(in oklch, oklch(0.84 0.12 118) 88%, var(--bg)); }
