@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Cold start: the app window, Android's splash and the WebView before its
-     first paint all use the page background (--bg in app/assets/main.css,
+     first paint all use the page background (the bg colour in app/assets/main.css,
      #splash in app/spa-loading-template.html), so nothing flashes white.
      The app theme picks it up in CI (.github/workflows/android.yml). -->
 <resources>
