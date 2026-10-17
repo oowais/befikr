@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync, WifiOff } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -103,19 +103,6 @@ async function run(f: () => Promise<unknown>) {
   <Screen title="Settings">
     <p v-if="error" class="error">{{ error }}</p>
 
-    <div v-if="update.available.value" class="pane rows">
-      <div class="item">
-        <Download :size="20" class="muted" />
-        <span class="flex stack">
-          <span>Befikr {{ update.available.value }} is out</span>
-          <span class="muted small">{{ update.canInstall.value ? `You have ${version}` : 'Update with your package manager or the install script' }}</span>
-        </span>
-        <button v-if="update.canInstall.value" class="btn primary" :disabled="update.installing.value" @click="installUpdate">
-          {{ update.installing.value ? 'Downloading…' : 'Update' }}
-        </button>
-      </div>
-    </div>
-
     <h2 class="section-title">Devices</h2>
     <div class="pane rows">
       <NuxtLink to="/sync" class="item">
@@ -214,11 +201,46 @@ async function run(f: () => Promise<unknown>) {
       </NuxtLink>
     </div>
 
-    <div v-if="version" class="muted small version">
-      <p>Befikr {{ version }}</p>
-      <button class="btn" :disabled="update.checking.value" @click="checkUpdate">{{ update.checking.value ? 'Checking…' : 'Check for updates' }}</button>
-      <p v-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
-    </div>
+    <template v-if="version">
+      <div v-if="update.available.value" class="pane rows update">
+        <div class="item">
+          <Download :size="20" class="muted" />
+          <span class="flex stack">
+            <span>Befikr {{ update.available.value }} is out</span>
+            <span class="muted small">{{ update.canInstall.value ? `You have ${version}` : 'Update with your package manager or the install script' }}</span>
+          </span>
+          <button
+            v-if="update.canInstall.value"
+            class="btn primary"
+            :disabled="update.installing.value || !update.online.value"
+            @click="installUpdate"
+          >
+            {{ update.installing.value ? 'Downloading…' : 'Update' }}
+          </button>
+        </div>
+        <div v-if="update.installing.value" class="progress-row">
+          <div
+            class="bar"
+            role="progressbar"
+            aria-label="Downloading update"
+            :aria-valuenow="update.progress.value == null ? undefined : Math.round(update.progress.value * 100)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <span :class="{ indeterminate: update.progress.value == null }" :style="update.progress.value == null ? undefined : { width: `${update.progress.value * 100}%` }" />
+          </div>
+          <span class="muted small pct">{{ update.progress.value == null ? '' : `${Math.round(update.progress.value * 100)}%` }}</span>
+        </div>
+      </div>
+      <div class="muted small version" :class="{ tight: update.available.value }">
+        <p v-if="!update.available.value">Befikr {{ version }}</p>
+        <button class="btn" :disabled="update.checking.value || update.installing.value || !update.online.value" @click="checkUpdate">
+          {{ update.checking.value ? 'Checking…' : 'Check for updates' }}
+        </button>
+        <p v-if="!update.online.value" class="offline"><WifiOff :size="14" /> No internet connection</p>
+        <p v-else-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
+      </div>
+    </template>
   </Screen>
 </template>
 
@@ -246,6 +268,23 @@ a.item { color: inherit; text-decoration: none; }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .version p { margin: 0; }
+.version.tight { margin-top: 12px; }
+.update { margin-top: 40px; }
+.offline { display: inline-flex; align-items: center; gap: 6px; }
+.update .progress-row { display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-top: 0; }
+.bar {
+  flex: 1; height: 6px; border-radius: 999px; overflow: hidden; position: relative;
+  box-shadow: inset 0 1px 1.5px var(--well-shade), inset 0 0 0 1px var(--glass-edge);
+}
+.bar span {
+  position: absolute; inset: 0 auto 0 0; border-radius: inherit;
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  transition: width 0.2s ease-out;
+}
+.bar span.indeterminate { width: 35%; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { from { left: -35%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .bar span.indeterminate { animation: none; width: 100%; opacity: 0.5; } }
+.pct { min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
 .seg {
   display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px;
   box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);

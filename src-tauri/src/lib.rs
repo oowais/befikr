@@ -322,14 +322,32 @@ async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
 
 /// Download and install the latest release (Windows; signed, see
 /// `plugins.updater` in tauri.conf.json), then restart. `false` = up to date.
+/// `on_progress` gets `{ done, total }` bytes (`total` -1 if unknown).
 #[cfg(desktop)]
 #[tauri::command]
-async fn install_update(app: AppHandle) -> Res<bool> {
+async fn install_update(app: AppHandle, on_progress: tauri::ipc::Channel<serde_json::Value>) -> Res<bool> {
     use tauri_plugin_updater::UpdaterExt;
     let Some(update) = app.updater().map_err(err)?.check().await.map_err(err)? else {
         return Ok(false);
     };
-    update.download_and_install(|_, _| {}, || {}).await.map_err(err)?;
+    let mut done = 0u64;
+    let mut last = u64::MAX;
+    update
+        .download_and_install(
+            |chunk, total| {
+                done += chunk as u64;
+                // At most once per percent (per MB without a total).
+                let step = total.map_or(done >> 20, |t| done * 100 / t.max(1));
+                if step != last {
+                    last = step;
+                    let total = total.map_or(-1, |t| t as i64);
+                    let _ = on_progress.send(serde_json::json!({ "done": done, "total": total }));
+                }
+            },
+            || {},
+        )
+        .await
+        .map_err(err)?;
     app.restart()
 }
 

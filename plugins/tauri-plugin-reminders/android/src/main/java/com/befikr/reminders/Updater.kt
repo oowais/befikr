@@ -31,10 +31,14 @@ object Updater {
         )
     }
 
-    /** Blocking: download `url`, then start the install session. */
-    fun downloadAndInstall(ctx: Context, url: String) {
+    /**
+     * Blocking: download `url`, then start the install session. `onProgress`
+     * gets bytes done and total (-1 when the server doesn't say), at most
+     * once per percent (per MB when the total is unknown).
+     */
+    fun downloadAndInstall(ctx: Context, url: String, onProgress: (Long, Long) -> Unit) {
         val apk = File(ctx.cacheDir, "update.apk")
-        download(url, apk)
+        download(url, apk, onProgress)
         try {
             install(ctx, apk)
         } finally {
@@ -43,7 +47,7 @@ object Updater {
     }
 
     /** Follows redirects across hosts (GitHub → its download host), https only. */
-    private fun download(url: String, to: File) {
+    private fun download(url: String, to: File, onProgress: (Long, Long) -> Unit) {
         var next = URL(url)
         repeat(5) {
             require(next.protocol == "https") { "update URL must be https" }
@@ -55,7 +59,25 @@ object Updater {
                 when (val code = conn.responseCode) {
                     in 300..399 -> next = URL(next, conn.getHeaderField("Location"))
                     200 -> {
-                        conn.inputStream.use { input -> to.outputStream().use { input.copyTo(it) } }
+                        val total = conn.contentLengthLong
+                        conn.inputStream.use { input ->
+                            to.outputStream().use { out ->
+                                val buf = ByteArray(64 * 1024)
+                                var done = 0L
+                                var last = -1L
+                                while (true) {
+                                    val n = input.read(buf)
+                                    if (n < 0) break
+                                    out.write(buf, 0, n)
+                                    done += n
+                                    val step = if (total > 0) done * 100 / total else done shr 20
+                                    if (step != last) {
+                                        last = step
+                                        onProgress(done, total)
+                                    }
+                                }
+                            }
+                        }
                         return
                     }
                     else -> error("download failed: HTTP $code")

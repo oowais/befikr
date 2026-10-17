@@ -130,7 +130,8 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     /**
      * Download the APK at `url` and start installing it (the system asks to
      * confirm). Without "Install unknown apps" for Befikr, opens that setting
-     * instead and resolves `{ needsPermission: true }`.
+     * instead and resolves `{ needsPermission: true }`. Emits `updateProgress`
+     * `{ done, total }` while downloading (`total` -1 if unknown).
      */
     @Command
     fun installUpdate(invoke: Invoke) {
@@ -141,7 +142,9 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
             return
         }
         background(invoke) {
-            Updater.downloadAndInstall(activity.applicationContext, url)
+            Updater.downloadAndInstall(activity.applicationContext, url) { done, total ->
+                trigger("updateProgress", JSObject().apply { put("done", done); put("total", total) })
+            }
             JSObject().apply { put("needsPermission", false) }
         }
     }

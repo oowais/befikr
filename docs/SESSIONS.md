@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (update row)** — Settings: "Befikr x is out" row moved from the top to just above Check for updates; a progress bar with percent shows while downloading (Kotlin `updateProgress` plugin event on Android, Tauri channel on Windows); Update and Check are disabled with "No internet connection" when offline, and the daily check skips while offline. Checked in a mocked phone-sized preview; Kotlin compiles only in CI. **Next:** device check of the update progress and snooze overlay; Windows update check on focus.
+
 - **Oct 17, 2026 (garden on wide windows)** — Home landscape on desktop/tablet: `Doodle.vue` is a size container; wider than 440 px the drawing keeps its 360:220 proportions sized to the height left (whole sky, no crop), and its hill ends fade out at the sides. The garden now sits on the New task bar (no gap) on every width. README desktop shot retaken with the garden. Checked 390/600/900/1280, light and dark, list and All clear. **Next:** device check of the snooze overlay; Windows update check on focus.
 
 - **Oct 17, 2026 (README)** — README with what Befikr is, five phone screenshots (dark first, rendered from the real UI with sample data in headless Brave at 3×, saved at 2× in `docs/screenshots/`), features, the three platforms, privacy, build steps. License: GPL-3.0-or-later (`LICENSE`, PKGBUILD). Fixed the New task hint vanishing with reduced motion. Session log moved here from PLAN.md. **Next:** device check of the snooze overlay; Windows update check on focus.

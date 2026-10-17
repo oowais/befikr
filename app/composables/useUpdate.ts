@@ -4,7 +4,7 @@
 // installer (same signing key required); Windows uses the signed Tauri
 // updater; Linux only says a new version is out (packages update it).
 import { getVersion } from '@tauri-apps/api/app'
-import { invoke } from '@tauri-apps/api/core'
+import { addPluginListener, Channel, invoke } from '@tauri-apps/api/core'
 
 const LATEST_URL = 'https://api.github.com/repos/oowais/befikr/releases/latest'
 const DAY_MS = 86_400_000
@@ -17,6 +17,13 @@ const current = ref('')
 const latest = ref<Latest | null>(load())
 const checking = ref(false)
 const installing = ref(false)
+/** Download progress while installing: 0–1, or null when the size is unknown. */
+const progress = ref<number | null>(null)
+const online = ref(typeof navigator === 'undefined' || navigator.onLine)
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => (online.value = true))
+  window.addEventListener('offline', () => (online.value = false))
+}
 
 function load(): Latest | null {
   try {
@@ -43,7 +50,7 @@ export function useUpdate() {
   /** Fetches the latest release; without `force`, at most once a day. */
   async function check(force = false) {
     current.value ||= await getVersion().catch(() => '')
-    if (!current.value || checking.value) return
+    if (!current.value || checking.value || (!force && !online.value)) return
     if (!force && latest.value && Date.now() - latest.value.checkedAt < DAY_MS) return
     checking.value = true
     try {
@@ -67,14 +74,28 @@ export function useUpdate() {
   async function install(): Promise<{ needsPermission?: boolean }> {
     if (!canInstall.value || installing.value) return {}
     installing.value = true
+    progress.value = null
+    const onProgress = (p: { done: number; total: number }) => {
+      progress.value = p.total > 0 ? Math.min(p.done / p.total, 1) : null
+    }
     try {
-      if (isAndroid) return await invoke('plugin:reminders|install_update', { url: latest.value!.apkUrl })
-      await invoke<boolean>('install_update')
+      if (isAndroid) {
+        const listener = await addPluginListener('reminders', 'updateProgress', onProgress)
+        try {
+          return await invoke('plugin:reminders|install_update', { url: latest.value!.apkUrl })
+        } finally {
+          listener.unregister()
+        }
+      }
+      const ch = new Channel<{ done: number; total: number }>()
+      ch.onmessage = onProgress
+      await invoke<boolean>('install_update', { onProgress: ch })
       return {}
     } finally {
       installing.value = false
+      progress.value = null
     }
   }
 
-  return { current, available, canInstall, checking, installing, check, install }
+  return { current, available, canInstall, checking, installing, progress, online, check, install }
 }
