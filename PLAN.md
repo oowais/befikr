@@ -237,7 +237,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
-| 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
+| 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; Android background sync with the CachyOS PC confirmed Oct 17 (phone app closed); conflicts not yet device-tested |
 
 **Next:** Windows update check on focus; Arch Update button runs the install script.
 
@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 17, 2026 (background sync confirmed)** — User saw a Pixel 9 ↔ CachyOS sync 16 min earlier with the phone app never opened (PC app open): WorkManager background sync works. **Next:** Windows update check on focus; Arch Update button runs the install script.
 
 - **Oct 17, 2026 (bar hints)** — The "New task" bar shows one faint example phrase after its label (`EXAMPLES` in the parser, each tested to parse and to fit a phone at ≤28 chars); it fades to the next every 9 s, pauses while the app is hidden, stays put with reduced motion. Quick add's placeholder is the hint shown when it opened. Checked in mocked Chromium. **Next:** Windows update check on focus; Arch Update button runs the install script.
 
