@@ -394,6 +394,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 17, 2026 (cold start)** — Home no longer flashes the empty "All clear" scene before tasks load: nothing below the header until the first `list_open` (garden numbers fetched alongside), then list and landscape rise in (0.42 s) and trees/flowers sprout one after another. Checked with a slowed first load in mocked Chromium (DOM log: empty → list + landscape, never the empty scene). **Next:** habit streaks or weekly recap; encrypted backups.
+
 - **Oct 17, 2026 (pinned headers)** — Every page (Stats, Shopping, Settings, Sync, Times, Backup, Conflicts) uses `Screen.vue`: back button, title and `#actions` pinned at the top, fixed between the system bars like home; only the body scrolls. A component rather than a Nuxt layout, since each page has its own title and actions. Checked in mocked Chromium. **Next:** habit streaks or weekly recap; encrypted backups.
 
 - **Oct 17, 2026 (seasons)** — Garden follows the season (`seasonNow` in `app/utils/garden.ts`; trees defined with crown / bare / per-season extras): blossom and butterflies in spring, fruit in summer, coloured crowns, falling leaves and mushrooms in autumn, bare branches, snow and holly in winter. Checked all four (and winter night, dark) in mocked Chromium. **Next:** habit streaks or weekly recap; encrypted backups.

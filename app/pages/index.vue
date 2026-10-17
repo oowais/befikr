@@ -16,16 +16,21 @@ const completing = ref(new Set<string>())
 const adding = ref(false)
 const now = ref(Date.now())
 const error = ref('')
+// Nothing below the header until the first load: otherwise the empty
+// "All clear" scene flashes for a moment on a cold start.
+const loaded = ref(false)
 
 async function refresh() {
   now.value = Date.now()
   try {
-    rows.value = await api.listOpen()
+    // Garden numbers with the list, so trees and tasks arrive together.
+    const [list] = await Promise.all([api.listOpen(), carefree.refresh()])
+    rows.value = list
     error.value = ''
-    carefree.refresh()
   } catch (e) {
     error.value = String(e)
   }
+  loaded.value = true
 }
 
 // Optimistic: the box ticks at once, the row slides out a beat later.
@@ -171,8 +176,8 @@ onUnmounted(() => {
     <p v-if="error" class="muted">{{ error }}</p>
 
     <div class="stage">
-      <template v-if="rows.length">
-        <div class="scroll">
+      <template v-if="loaded && rows.length">
+        <div class="scroll ease">
           <section v-for="s in sections" :key="s.id" class="section">
             <h2 class="section-title" :class="s.id">{{ sectionTitles[s.id] }}</h2>
             <TransitionGroup tag="ul" name="list" class="list pane rows">
@@ -192,8 +197,9 @@ onUnmounted(() => {
           </section>
         </div>
       </template>
-      <Doodle v-else-if="!error" class="scene" clear :garden="garden" />
-      <Doodle v-if="rows.length" class="below" :garden="garden" />
+      <Doodle v-else-if="loaded && !error" class="scene ease" clear :garden="garden" />
+      <Doodle v-if="loaded && rows.length" class="below ease" :garden="garden" />
+      <div v-if="!loaded" class="scene" />
       <!-- Adding lives at thumb height: tap to open quick add. -->
       <div class="dock">
         <button class="composer field" @click="adding = true"><Plus :size="22" /> <span>New task</span></button>
@@ -239,6 +245,10 @@ onUnmounted(() => {
 .below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
 .dock { flex: none; padding: 10px 0 14px; }
 .scene { flex: 1; min-height: 0; }
+/* First appearance: list and landscape rise in gently (the garden then grows, see Doodle). */
+.ease { animation: ease-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.below.ease { animation-delay: 0.08s; }
+@keyframes ease-in { from { opacity: 0; transform: translateY(10px); } }
 .composer {
   flex: none; display: flex; align-items: center; gap: 12px; min-height: 60px; text-align: left;
   font-size: 1.05rem; color: var(--muted); border-radius: 18px; cursor: text;

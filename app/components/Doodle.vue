@@ -92,11 +92,11 @@ const line = computed(() =>
       </g>
       <!-- garden: grows with on-time completions and the streak (see utils/garden.ts) -->
       <g v-if="garden" class="garden" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">
-        <g v-for="t in trees" :key="`t${t.x}`" :transform="`translate(${t.x} ${t.y}) scale(${t.k})`">
-          <g class="sprout"><path v-for="(p, i) in t.parts" :key="i" :d="p.d" :class="p.f && `f-${p.f}`" /></g>
+        <g v-for="(t, i) in trees" :key="`t${t.x}`" :transform="`translate(${t.x} ${t.y}) scale(${t.k})`">
+          <g class="sprout" :style="{ animationDelay: `${0.15 + i * 0.04}s` }"><path v-for="(p, i) in t.parts" :key="i" :d="p.d" :class="p.f && `f-${p.f}`" /></g>
         </g>
-        <g v-for="f in flowers" :key="`f${f.x}`" :transform="`translate(${f.x} ${f.y}) scale(${GROW})`">
-          <g class="sprout"><path v-for="(p, i) in f.parts" :key="i" :d="p.d" :class="p.f && `f-${p.f}`" /></g>
+        <g v-for="(f, i) in flowers" :key="`f${f.x}`" :transform="`translate(${f.x} ${f.y}) scale(${GROW})`">
+          <g class="sprout" :style="{ animationDelay: `${0.3 + i * 0.03}s` }"><path v-for="(p, i) in f.parts" :key="i" :d="p.d" :class="p.f && `f-${p.f}`" /></g>
         </g>
         <template v-if="season === 'winter'">
           <path v-for="([x, y], i) in FLAKES" :key="`s${i}`" class="flake" :d="`M${x} ${y - 3} v6 M${x - 2.6} ${y - 1.5} l5.2 3 M${x - 2.6} ${y + 1.5} l5.2 -3`" />
