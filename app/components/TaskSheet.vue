@@ -247,7 +247,7 @@ async function remove() {
       <template v-else-if="task">
         <button v-if="task.dueAt" class="btn" @click="openSnooze(id)"><AlarmClock :size="18" /> Snooze</button>
         <button v-if="task.rrule && !task.parentId" class="btn" @click="skip"><SkipForward :size="18" /> Skip</button>
-        <button class="btn primary" @click="complete"><Check :size="18" /> Done</button>
+        <button class="btn primary" @click="complete"><Check :size="18" /> Complete</button>
       </template>
     </header>
 
