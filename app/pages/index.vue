@@ -241,6 +241,7 @@ onUnmounted(() => {
         <button class="composer field" title="New task (N)" @click="adding = true">
           <Plus :size="22" /> <span>New task</span>
           <Transition name="hint" mode="out-in"><span :key="hint" class="hint" aria-hidden="true">{{ hint }}</span></Transition>
+          <kbd class="key" aria-hidden="true">N</kbd>
         </button>
       </div>
     </div>
@@ -300,6 +301,13 @@ onUnmounted(() => {
   flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   font-size: 0.9rem; font-style: italic; opacity: 0.5; text-align: right;
 }
+/* Keyboard shortcut (app.vue): shown where there's a mouse and keyboard. */
+.key {
+  display: none; flex: none; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px;
+  place-items: center; font: 500 0.78rem/1 inherit; font-style: normal; color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 -1.5px 0 var(--line);
+}
+@media (hover: hover) and (pointer: fine) { .key { display: inline-grid; } }
 .hint-enter-active, .hint-leave-active { transition: opacity 0.6s ease; }
 .hint-enter-from, .hint-leave-to { opacity: 0; }
 </style>
