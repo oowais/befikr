@@ -8,6 +8,7 @@ mod calendar;
 mod carefree;
 mod conflicts;
 mod digest;
+mod ics;
 mod model;
 mod past;
 mod peers;

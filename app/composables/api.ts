@@ -121,6 +121,8 @@ export const deviceTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 export const api = {
   listOpen: () => invoke<Row[]>('list_open', { tz: deviceTz() }),
   calendar: (from: number, to: number) => invoke<CalendarItem[]>('calendar', { from, to, tz: deviceTz() }),
+  /** Desktop: save open dated tasks as an .ics file (save dialog). */
+  exportIcs: () => invoke<{ saved: boolean }>('export_ics', { tz: deviceTz() }),
   getTask: (id: string) => invoke<Task>('get_task', { id }),
   listSubtasks: (id: string) => invoke<Task[]>('list_subtasks', { id }),
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),

@@ -358,6 +358,23 @@ async fn export_backup(app: AppHandle) -> Res<serde_json::Value> {
     Ok(serde_json::json!({ "saved": desktop::backup::export(&app)? }))
 }
 
+/// Save open dated tasks as an `.ics` file the user names. `false` when cancelled.
+#[cfg(desktop)]
+#[tauri::command]
+async fn export_ics(app: AppHandle, tz: String) -> Res<serde_json::Value> {
+    use tauri_plugin_dialog::DialogExt;
+    let text = app.state::<Db>().store.lock().map_err(err)?.export_ics(&tz).map_err(err)?;
+    let mut dialog = app.dialog().file().set_title("Export to a calendar").set_file_name("befikr.ics").add_filter("Calendar", &["ics"]);
+    if let Ok(docs) = app.path().document_dir() {
+        dialog = dialog.set_directory(docs);
+    }
+    let Some(out) = dialog.blocking_save_file() else {
+        return Ok(serde_json::json!({ "saved": false }));
+    };
+    std::fs::write(out.into_path().map_err(err)?, text).map_err(err)?;
+    Ok(serde_json::json!({ "saved": true }))
+}
+
 #[cfg(desktop)]
 #[tauri::command]
 async fn pick_import_file(app: AppHandle) -> Res<serde_json::Value> {
@@ -458,6 +475,12 @@ fn pick_import_file() -> Res<()> {
     Err(DESKTOP_ONLY.into())
 }
 
+#[cfg(mobile)]
+#[tauri::command]
+fn export_ics() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Wayland app id / X11 class `com.befikr.app` (matches StartupWMClass in
@@ -544,6 +567,7 @@ pub fn run() {
             backup_now,
             export_backup,
             pick_import_file,
+            export_ics,
             install_update,
             sync::sync_status,
             sync::set_sync_mode,

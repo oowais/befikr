@@ -6,7 +6,7 @@
 // Drag from "No date" to give a task a day (09:00). Tap a task to open it,
 // empty space in a day to add one there. Pointer events, not HTML drag and
 // drop: the webview's file drop takes that over on Windows.
-import { CalendarDays, ChevronLeft, ChevronRight, Repeat } from 'lucide-vue-next'
+import { CalendarArrowUp, CalendarDays, ChevronLeft, ChevronRight, Repeat } from 'lucide-vue-next'
 import type { CalendarItem, Row } from '~/composables/api'
 
 type View = 'week' | 'month'
@@ -18,6 +18,7 @@ const DAY_MS = 86_400_000
 const MONTH_CHIPS = 3
 
 const { open: openTask } = useTaskSheet()
+const { show } = useToast()
 const view = ref<View>(loadView())
 const anchor = ref(dayStart(Date.now()))
 const items = ref<CalendarItem[]>([])
@@ -25,6 +26,12 @@ const undated = ref<Row[]>([])
 const now = ref(Date.now())
 const error = ref('')
 const adding = ref(false)
+
+/** Open dated tasks to an .ics file, for another calendar app. */
+async function exportIcs() {
+  const r = await api.exportIcs().catch((e) => ((error.value = String(e)), null))
+  if (r?.saved) show({ message: 'Calendar file saved' })
+}
 
 function loadView(): View {
   try {
@@ -215,6 +222,7 @@ const ghost = computed(() => (drag.card && drag.moved ? drag.card : null))
   <Screen title="Calendar" class="calendar" @pointermove="move" @pointerup="up" @pointercancel="cancelDrag">
     <template #actions>
       <span class="grow" />
+      <button class="icon-btn" aria-label="Export to a calendar file (.ics)" title="Export to a calendar file (.ics)" @click="exportIcs"><CalendarArrowUp :size="20" /></button>
       <div class="seg" role="radiogroup" aria-label="View">
         <button v-for="v in (['week', 'month'] as const)" :key="v" type="button" role="radio" class="opt" :class="{ chosen: view === v }" :aria-checked="view === v" @click="setView(v)">
           {{ v === 'week' ? 'Week' : 'Month' }}
