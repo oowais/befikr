@@ -44,6 +44,7 @@ pub(crate) fn apply(app: &AppHandle, db: &Db, alarm: &AlarmChange) {
                 scheduler.cancel(task_id);
             }
         }
+        desktop::refresh_tray();
     }
     #[cfg(mobile)]
     apply_mobile(app, db, alarm);

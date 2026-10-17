@@ -60,6 +60,7 @@ impl Scheduler {
                 for a in due {
                     self.fire(app, a);
                 }
+                super::refresh_tray();
                 alarms = self.alarms();
                 continue;
             }

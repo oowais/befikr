@@ -5,15 +5,10 @@ use befikr_core::{Alarm, Digest, DIGEST_ID};
 use notify_rust::{Notification, NotificationResponse, Timeout};
 use tauri::{AppHandle, Manager};
 
-/// This computer's IANA zone ("today" for the digest).
-fn local_tz() -> String {
-    iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
-}
-
 /// Arm the next digest from the current setting, or cancel it when off.
 pub fn schedule(app: &AppHandle) {
     let next = match app.state::<crate::Db>().store.lock() {
-        Ok(s) => s.next_digest_at(&local_tz()),
+        Ok(s) => s.next_digest_at(&super::local_tz()),
         Err(_) => return,
     };
     let scheduler = app.state::<super::Scheduler>();
@@ -27,7 +22,7 @@ pub fn schedule(app: &AppHandle) {
 /// Digest time: show today's summary (if anything is due), arm tomorrow's.
 pub fn fire(app: &AppHandle) {
     let digest = match app.state::<crate::Db>().store.lock() {
-        Ok(s) => s.digest(&local_tz()),
+        Ok(s) => s.digest(&super::local_tz()),
         Err(_) => return,
     };
     match digest {

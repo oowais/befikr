@@ -11,11 +11,17 @@ mod scheduler;
 mod tray;
 
 pub use notify::close as close_notification;
+pub use tray::refresh as refresh_tray;
 pub use scheduler::Scheduler;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+
+/// This computer's IANA zone ("today" for the digest and the tray).
+pub fn local_tz() -> String {
+    iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
+}
 
 /// Show, unminimize and focus the main window.
 pub fn show_main(app: &AppHandle) {
