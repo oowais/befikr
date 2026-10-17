@@ -31,6 +31,10 @@ enum Msg {
         name: String,
         #[serde(default)]
         addrs: Vec<String>,
+        /// "phone" or "computer", for the icon in the other's device list
+        /// (missing from versions before 0.27).
+        #[serde(default)]
+        kind: String,
     },
     Pair { code: String },
     Paired,
@@ -43,9 +47,23 @@ enum Msg {
     Done,
 }
 
-fn remember<H: Host>(host: &H, endpoint: &str, addrs: &[String]) {
-    if !addrs.is_empty() {
-        let _ = host.store(|s| s.set_peer_addrs(endpoint, addrs));
+/// What this build runs on, told to the other device.
+const KIND: &str = if cfg!(any(target_os = "android", target_os = "ios")) { "phone" } else { "computer" };
+
+/// What the other side told us in its Hello.
+struct Theirs {
+    device: String,
+    name: String,
+    addrs: Vec<String>,
+    kind: String,
+}
+
+fn remember<H: Host>(host: &H, endpoint: &str, theirs: &Theirs) {
+    if !theirs.addrs.is_empty() {
+        let _ = host.store(|s| s.set_peer_addrs(endpoint, &theirs.addrs));
+    }
+    if !theirs.kind.is_empty() {
+        let _ = host.store(|s| s.set_peer_kind(endpoint, &theirs.kind));
     }
 }
 
@@ -79,6 +97,7 @@ fn hello<H: Host>(host: &H, me: &Me) -> Result<Msg> {
         device: host.store(|s| s.device_id())?,
         name: me.name.clone(),
         addrs: me.addrs.clone(),
+        kind: KIND.into(),
     })
 }
 
@@ -88,9 +107,9 @@ pub struct Me {
     pub addrs: Vec<String>,
 }
 
-fn expect_hello(msg: Msg) -> Result<(String, String, Vec<String>)> {
+fn expect_hello(msg: Msg) -> Result<Theirs> {
     match msg {
-        Msg::Hello { version, device, name, addrs } if version == VERSION => Ok((device, name, addrs)),
+        Msg::Hello { version, device, name, addrs, kind } if version == VERSION => Ok(Theirs { device, name, addrs, kind }),
         Msg::Hello { .. } => Err("other device runs a different Befikr version; update both".into()),
         Msg::Denied { reason } => Err(reason),
         _ => Err("unexpected message".into()),
@@ -138,10 +157,10 @@ pub async fn sync_as_client<H: Host>(host: &H, conn: &Connection, me: &Me) -> Re
     let (mut tx, mut rx) = conn.open_bi().await.map_err(|e| e.to_string())?;
     send(&mut tx, &hello(host, me)?).await?;
     send(&mut tx, &Msg::Want { after: peer.their_seq }).await?;
-    let (_, their_name, addrs) = expect_hello(recv(&mut rx).await?)?;
-    remember(host, &remote, &addrs);
+    let theirs = expect_hello(recv(&mut rx).await?)?;
+    remember(host, &remote, &theirs);
     let Msg::Want { after } = recv(&mut rx).await? else { return Err("unexpected message".into()) };
-    exchange(host, &mut tx, &mut rx, &peer, after, &their_name).await
+    exchange(host, &mut tx, &mut rx, &peer, after, &theirs.name).await
 }
 
 pub async fn pair<H: Host>(host: &H, conn: &Connection, me: &Me, code: &str) -> Result<Peer> {
@@ -149,15 +168,15 @@ pub async fn pair<H: Host>(host: &H, conn: &Connection, me: &Me, code: &str) -> 
     let (mut tx, mut rx) = conn.open_bi().await.map_err(|e| e.to_string())?;
     send(&mut tx, &hello(host, me)?).await?;
     send(&mut tx, &Msg::Pair { code: code.to_string() }).await?;
-    let (device, their_name, addrs) = expect_hello(recv(&mut rx).await?)?;
+    let theirs = expect_hello(recv(&mut rx).await?)?;
     match recv(&mut rx).await? {
         Msg::Paired => {}
         Msg::Denied { reason } => return Err(reason),
         _ => return Err("unexpected message".into()),
     }
     let _ = tx.finish();
-    host.store(|s| s.add_peer(&remote, &device, &their_name))?;
-    remember(host, &remote, &addrs);
+    host.store(|s| s.add_peer(&remote, &theirs.device, &theirs.name))?;
+    remember(host, &remote, &theirs);
     host.store(|s| s.peer(&remote))?.ok_or_else(|| "pairing not saved".into())
 }
 
@@ -171,7 +190,7 @@ pub async fn serve<H: Host>(
 ) -> Result<Served> {
     let remote = conn.remote_id().to_string();
     let (mut tx, mut rx) = conn.accept_bi().await.map_err(|e| e.to_string())?;
-    let (device, their_name, addrs) = expect_hello(recv(&mut rx).await?)?;
+    let theirs = expect_hello(recv(&mut rx).await?)?;
     match recv(&mut rx).await? {
         Msg::Pair { code } => {
             if !check_code(&code) {
@@ -179,8 +198,8 @@ pub async fn serve<H: Host>(
                 let _ = tx.finish();
                 return Err("pairing refused".into());
             }
-            host.store(|s| s.add_peer(&remote, &device, &their_name))?;
-            remember(host, &remote, &addrs);
+            host.store(|s| s.add_peer(&remote, &theirs.device, &theirs.name))?;
+            remember(host, &remote, &theirs);
             send(&mut tx, &hello(host, me)?).await?;
             send(&mut tx, &Msg::Paired).await?;
             let _ = tx.finish();
@@ -192,10 +211,10 @@ pub async fn serve<H: Host>(
                 let _ = tx.finish();
                 return Err("not paired".into());
             };
-            remember(host, &remote, &addrs);
+            remember(host, &remote, &theirs);
             send(&mut tx, &hello(host, me)?).await?;
             send(&mut tx, &Msg::Want { after: peer.their_seq }).await?;
-            exchange(host, &mut tx, &mut rx, &peer, after, &their_name).await?;
+            exchange(host, &mut tx, &mut rx, &peer, after, &theirs.name).await?;
             Ok(Served::Synced)
         }
         _ => Err("unexpected message".into()),

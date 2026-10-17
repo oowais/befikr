@@ -177,6 +177,13 @@ pub fn migrations() -> Migrations<'static> {
         CREATE INDEX conflicts_open ON conflicts(resolution, at);
         ",
         ),
+        M::up(
+            "
+        -- What a paired device is, as it says in its Hello: 'phone',
+        -- 'computer', or '' (older version, not told yet).
+        ALTER TABLE peers ADD COLUMN kind TEXT NOT NULL DEFAULT '';
+        ",
+        ),
     ])
 }
 

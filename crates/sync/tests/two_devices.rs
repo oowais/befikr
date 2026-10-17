@@ -72,6 +72,8 @@ async fn pair_from_link_then_sync_both_ways() {
     // Both remember where the other was.
     assert!(!phone.store(|s| s.peers()).unwrap()[0].addrs.is_empty());
     assert!(!pc.store(|s| s.peers()).unwrap()[0].addrs.is_empty());
+    // ...and what it is (tests run on a computer).
+    assert_eq!(pc.store(|s| s.peers()).unwrap()[0].kind, "computer");
 
     // Complete on the phone → gone on the desktop.
     let id = phone.store(|s| s.list_open()).unwrap()[0].task.id.clone();

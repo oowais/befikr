@@ -51,6 +51,8 @@ pub struct Peer {
     pub last_sync_at: Option<i64>,
     /// Last known addresses ("ip:port"), newest report wins.
     pub addrs: Vec<String>,
+    /// "phone", "computer", or "" when not known yet.
+    pub kind: String,
 }
 
 fn row_peer(r: &Row) -> rusqlite::Result<Peer> {
@@ -62,10 +64,11 @@ fn row_peer(r: &Row) -> rusqlite::Result<Peer> {
         paired_at: r.get(4)?,
         last_sync_at: r.get(5)?,
         addrs: serde_json::from_str(&r.get::<_, String>(6)?).unwrap_or_default(),
+        kind: r.get(7)?,
     })
 }
 
-const PEER_COLS: &str = "endpoint, device, name, their_seq, paired_at, last_sync_at, addrs";
+const PEER_COLS: &str = "endpoint, device, name, their_seq, paired_at, last_sync_at, addrs, kind";
 
 impl Store {
     pub fn sync_settings(&self) -> Result<SyncSettings> {
@@ -130,6 +133,12 @@ impl Store {
     pub fn set_peer_addrs(&mut self, endpoint: &str, addrs: &[String]) -> Result<()> {
         let json = serde_json::to_string(addrs).map_err(|e| Error::Invalid(e.to_string()))?;
         self.conn.execute("UPDATE peers SET addrs = ?2 WHERE endpoint = ?1", params![endpoint, json])?;
+        Ok(())
+    }
+
+    /// What the device is (sent in each Hello): "phone" or "computer".
+    pub fn set_peer_kind(&mut self, endpoint: &str, kind: &str) -> Result<()> {
+        self.conn.execute("UPDATE peers SET kind = ?2 WHERE endpoint = ?1", params![endpoint, kind])?;
         Ok(())
     }
 

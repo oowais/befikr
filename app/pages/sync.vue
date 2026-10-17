@@ -4,7 +4,7 @@
 // code (a pairing link: id, one-time code, addresses, relay), the other
 // scans it, or on a computer pastes the link.
 import { listen } from '@tauri-apps/api/event'
-import { ChevronRight, ClipboardPaste, Copy, GitMerge, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
+import { ChevronRight, ClipboardPaste, Copy, GitMerge, Laptop, Link2, RefreshCw, ScanLine, Smartphone, X } from 'lucide-vue-next'
 import { renderSVG } from 'uqr'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
@@ -185,7 +185,7 @@ function pairPasted() {
         <h2 class="section-title">Paired devices<span v-if="st.syncing" class="syncing"> · Syncing…</span></h2>
         <div v-if="st.peers.length" class="pane rows">
           <div v-for="p in st.peers" :key="p.endpoint" class="item">
-            <Laptop :size="20" class="muted" />
+            <component :is="p.kind === 'phone' ? Smartphone : Laptop" :size="20" class="muted" />
             <span class="flex stack">
               <span>{{ p.name }}</span>
               <span class="muted small when" :class="freshness(p.lastSyncAt)">

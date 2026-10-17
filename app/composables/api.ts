@@ -51,7 +51,16 @@ export type Staple = { id: string; name: string }
 export type ShoppingList = { items: ShoppingItem[]; staples: Staple[] }
 export type PastTask = { title: string; count: number; lastAdded: number; usualTime: string | null; notes: string; openId: string | null }
 export type SyncMode = 'off' | 'relay'
-export type Peer = { endpoint: string; device: string; name: string; theirSeq: number; pairedAt: number; lastSyncAt: number | null }
+export type Peer = {
+  endpoint: string
+  device: string
+  name: string
+  theirSeq: number
+  pairedAt: number
+  lastSyncAt: number | null
+  /** 'phone' | 'computer', '' until that device has told us (older version). */
+  kind: string
+}
 export type SyncStatus = {
   mode: SyncMode
   name: string
