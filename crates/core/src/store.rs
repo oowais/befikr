@@ -9,7 +9,7 @@ use crate::recurrence::{self, parse_tz};
 use crate::{schema, sync, Error, Result};
 
 
-const DEFAULT_REREMIND: &[i64] = &[5, 15, 30, 60];
+const DEFAULT_REREMIND: &[i64] = &[15, 30, 60];
 /// Alarms that should have fired already are re-armed this far in the future.
 const CATCH_UP_MS: i64 = 5_000;
 

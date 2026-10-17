@@ -181,7 +181,7 @@ fn rereminds_escalate_until_acted_on() {
         gaps.push((o.next_at_ms.unwrap() - now) / MIN);
         clock.store(o.next_at_ms.unwrap(), Ordering::SeqCst);
     }
-    assert_eq!(gaps, [5, 15, 30, 60, 60, 60]);
+    assert_eq!(gaps, [15, 30, 60, 60, 60, 60]);
 
     // A title edit doesn't restart escalation; completion stops it.
     s.update_task(&id, TaskPatch { title: Some("y".into()), ..Default::default() }).unwrap();
@@ -266,7 +266,7 @@ fn restore_undoes_delete() {
 fn settings_and_time_words() {
     let (mut s, _) = store();
     let st = s.settings().unwrap();
-    assert_eq!(st.reremind_minutes, [5, 15, 30, 60]);
+    assert_eq!(st.reremind_minutes, [15, 30, 60]);
     assert_eq!(st.time_words["evening"], "18:00");
     s.set_time_word("Dawn", "05:30").unwrap();
     s.set_time_word("evening", "19:00").unwrap();

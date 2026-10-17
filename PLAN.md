@@ -88,7 +88,7 @@ A private, local-first Todoist replacement: type a task in plain English, get a 
 - Fire at due time. One notification per task, never grouped (Android may visually stack 4+, each keeps its own actions).
 - Actions: **Complete** (no app open) and **Snooze**.
 - Snooze opens the app straight to a snooze bottom sheet: quick picks (tonight, tomorrow morning, …), custom date/time, or typed natural language. Sheet closes after picking. No fixed snooze duration.
-- **Re-remind until acted on**: escalating 5 → 15 → 30 min, then hourly. Swipe-dismiss triggers the next re-fire. Intervals editable.
+- **Re-remind until acted on**: escalating 15 → 30 min, then hourly (5 min step dropped Oct 17). Swipe-dismiss triggers the next re-fire. Intervals editable.
 - No quiet hours.
 
 ### Completion and history
@@ -384,7 +384,7 @@ Decisions:
 - Fixed recurrence: next occurrence after max(due, now) — missed occurrences skipped. Done late → also skips the rest of today. Each skipped past occurrence is logged as a `missed` task event (`due_at_then` = that occurrence, `at` = the completion) for stats; not shown in the UI. `Store::missed_occurrences` ignores those of undone completions. Adaptive tasks log none. Adaptive: counted from completion day, keeping time of day.
 - Recurring completion: `completions` row + due advances + subtasks unchecked. Undo restores previous due.
 - Parent completion auto-checks open subtasks with the same timestamp; undo reopens exactly those.
-- Re-remind state is device-local (`alarm_state`, not synced). Fires escalate per `reremind_minutes` (default 5/15/30/60). Title edits keep escalation; date/snooze changes restart it.
+- Re-remind state is device-local (`alarm_state`, not synced). Fires escalate per `reremind_minutes` (default 15/30/60). Title edits keep escalation; date/snooze changes restart it.
 - Time words live in DB (`time_words`), seeded with defaults; parser gets them from `settings()`.
 - Backup primitive: `export_to(path)` = `VACUUM INTO`. Rotation/scheduling in step 4.
 
