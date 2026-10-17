@@ -35,7 +35,8 @@ async function checkUpdate() {
   updateFailed.value = false
   try {
     await update.check(true)
-    if (!update.available.value) updateNote.value = 'Up to date'
+    if (update.pending.value) updateNote.value = `Befikr ${update.pending.value} is still being built. Try again in a few minutes.`
+    else if (!update.available.value) updateNote.value = 'Up to date'
   } catch (e) {
     updateNote.value = `Couldn't check: ${e}`
     updateFailed.value = true

@@ -252,7 +252,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications (+ morning digest), tray (red dot + tooltip when overdue) (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater, download progress, off when offline; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; Android background sync with the CachyOS PC confirmed Oct 17 (phone app closed); conflicts not yet device-tested |
 
-**Next:** device check of the morning digest, widget and voice button (Kotlin first compiles in CI). Calendar built; try it on the desktop. Ideas list is done except .ics export. Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
+**Next:** device check of the morning digest, widget and voice button (Kotlin first compiles in CI). Calendar built; try it on the desktop. Ideas list is done except .ics export. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
 
 ### Step 0 — spike checklist
 

@@ -12,6 +12,8 @@ onMounted(async () => {
   document.addEventListener('contextmenu', suppressDefaultMenu)
   loadTimeWords()
   useUpdate().check().catch(() => {})
+  // Long-running desktop windows: the check's own limits keep this cheap.
+  window.addEventListener('focus', () => useUpdate().check().catch(() => {}))
   handleBackButton().catch(() => {})
   // Each step on its own: one failing (desktop/browser has no reminders
   // plugin) must not skip the others.

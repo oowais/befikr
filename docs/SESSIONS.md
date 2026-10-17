@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (update race)** — The release goes out with the APK before the Windows/Linux files are attached, so Windows offered 0.26.0 and the updater failed (no `latest.json`). `useUpdate` now counts an update only when this platform's file is in the release (APK / `latest.json` / `.deb`); until then Settings says "still being built" and it re-checks after 5 min, also on window focus (the old "update check on focus" item).
+
 - **Oct 17, 2026 (shortcut)** — N or Ctrl+N opens quick add (app.vue `quickAddKey`; not while typing or with a sheet open), same path as the tray's Quick add; the calendar opens its own. Tooltip "New task (N)" on the bar. No system-wide hotkey (idea 3 was declined).
 
 - **Oct 17, 2026 (sheets)** — Escape closes the top sheet on computers (same stack as Android back, `useBackClose`; a context menu's Escape is preventDefault'ed so the sheet under it stays). Task sheet buttons sit lower, clear of the drag handle.
