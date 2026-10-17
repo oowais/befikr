@@ -4,6 +4,7 @@
 //! change events later. No Tauri or platform code here: the app calls it
 //! from Tauri commands, Android calls it via JNI when no webview runs.
 
+mod calendar;
 mod carefree;
 mod conflicts;
 mod digest;
@@ -19,6 +20,7 @@ mod sync;
 
 pub use model::*;
 pub use peers::{Peer, SyncMode, SyncSettings};
+pub use calendar::CalendarItem;
 pub use digest::{Digest, TodayTask, DEFAULT_DIGEST_TIME, DIGEST_ID};
 pub use snooze::{snooze_picks, SnoozePick};
 pub use store::Store;

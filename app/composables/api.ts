@@ -18,6 +18,9 @@ export type Task = {
   deletedAt: number | null
 }
 
+/** Calendar: a task, or a later repeat of one (`upcoming`), placed at `at`. */
+export type CalendarItem = Task & { at: number; upcoming: boolean }
+
 export type Urgency = 'red' | 'orange' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
 export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
@@ -108,6 +111,7 @@ export const deviceTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const api = {
   listOpen: () => invoke<Row[]>('list_open', { tz: deviceTz() }),
+  calendar: (from: number, to: number) => invoke<CalendarItem[]>('calendar', { from, to, tz: deviceTz() }),
   getTask: (id: string) => invoke<Task>('get_task', { id }),
   listSubtasks: (id: string) => invoke<Task[]>('list_subtasks', { id }),
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),

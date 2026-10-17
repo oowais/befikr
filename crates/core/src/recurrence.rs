@@ -65,6 +65,20 @@ pub fn missed(rrule: &str, tz: Tz, due_at: i64, now: i64) -> Result<Vec<i64>> {
     Ok(res.dates.into_iter().map(|d| to_utc_ms(d.with_timezone(&tz))).collect())
 }
 
+/// Occurrences of a series anchored at `due_at` that fall strictly after
+/// `after` and before `to` (calendar: the repeats still to come).
+pub fn upcoming(rrule: &str, tz: Tz, due_at: i64, after: i64, to: i64, cap: u16) -> Result<Vec<i64>> {
+    if to <= after {
+        return Ok(vec![]);
+    }
+    let rtz: rrule::Tz = tz.into();
+    let res = set(rrule, from_ms(due_at, tz))?
+        .after((from_ms(after, tz) + Duration::seconds(1)).with_timezone(&rtz))
+        .before((from_ms(to, tz) - Duration::seconds(1)).with_timezone(&rtz))
+        .all(cap);
+    Ok(res.dates.into_iter().map(|d| to_utc_ms(d.with_timezone(&tz))).collect())
+}
+
 /// Next due after completing an occurrence.
 ///
 /// * fixed: next scheduled occurrence after both the current due and now

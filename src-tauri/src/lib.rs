@@ -78,6 +78,12 @@ struct Row {
     urgency: Urgency,
 }
 
+/// Calendar views: open tasks and later repeats in `[from, to)`.
+#[tauri::command]
+fn calendar(db: State<Db>, from: i64, to: i64, tz: String) -> Res<Vec<befikr_core::CalendarItem>> {
+    db.store.lock().map_err(err)?.calendar(from, to, &tz).map_err(err)
+}
+
 /// Main list. `tz` is the device zone, for "today".
 #[tauri::command]
 fn list_open(db: State<Db>, tz: String) -> Res<Vec<Row>> {
@@ -468,6 +474,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             list_open,
+            calendar,
             get_task,
             list_subtasks,
             list_completed,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -200,6 +200,7 @@ onUnmounted(() => {
         <Sprout :size="17" /> {{ garden.streak }}
       </NuxtLink>
       <span class="grow" />
+      <NuxtLink to="/calendar" class="icon-btn wide-only" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
       <NuxtLink to="/settings" class="icon-btn gear" :aria-label="update.available.value ? 'Settings (update available)' : 'Settings'">
@@ -249,6 +250,9 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Calendar: on wide windows only (computers, tablets in landscape). */
+.wide-only { display: none; }
+@media (min-width: 900px) { .wide-only { display: inline-flex; } }
 /* Title doesn't stretch, so the sync dot sits right next to it. */
 .topbar h1.brand { flex: none; }
 .gear { position: relative; }
