@@ -20,14 +20,14 @@ useBackClose(() => emit('close'))
         <section class="mode">
           <h3><CalendarDays :size="18" /> Static</h3>
           <p>Stays on its dates. The next one comes from the schedule, however early or late you finish this one. Missed ones are skipped, not stacked up.</p>
-          <p class="example">Every Monday, done on Wednesday → next is still Monday.</p>
+          <p class="example">Every 10 days, due on the 1st, done on the 3rd → next is still the 11th.</p>
           <p class="muted small">For things tied to the calendar: bins, rent, a weekly call.</p>
         </section>
 
         <section class="mode">
           <h3><RotateCcw :size="18" /> Adaptive</h3>
           <p>Counts from when you finish. The next one is the repeat's gap after the day you tick it off, at the same time of day.</p>
-          <p class="example">Every 7 days, done on Wednesday → next is the Wednesday after.</p>
+          <p class="example">Every 10 days, due on the 1st, done on the 3rd → next is the 13th.</p>
           <p class="muted small">For things that need a gap between them: watering plants, a haircut, changing sheets.</p>
         </section>
 
