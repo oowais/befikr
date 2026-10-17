@@ -18,7 +18,7 @@
 
 ---
 
-*Befikr* means "carefree". It replaces Todoist for people who want their reminders to work and their list to stay private. Write `call mom fri 5pm` or `water plants every 3 days`. Befikr works out the date, the time and the repeat, then reminds you on time, again and again until you deal with it.
+*Befikr* means "carefree": a to-do list for people who want their reminders to work and their tasks to stay private. Write `call mom fri 5pm` or `water plants every 3 days`. Befikr works out the date, the time and the repeat, then reminds you on time, again and again until you deal with it.
 
 <table>
   <tr>
@@ -56,6 +56,10 @@
 | **Linux** | `.deb` from the [latest release](https://github.com/oowais/befikr/releases/latest). Arch / CachyOS: [`scripts/install-arch.sh`](scripts/install-arch.sh) builds and installs a pacman package | Your package manager (Arch: run the script again) |
 
 All three run the same app with the same Rust core, and sync with each other. On computers Befikr lives in the tray, can start with the system (hidden), and shows native notifications with Complete and Snooze.
+
+<p align="center">
+  <img src="docs/screenshots/desktop-dark.png" width="640" alt="Befikr on a computer: the same list in a desktop window">
+</p>
 
 ## Privacy
 
