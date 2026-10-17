@@ -24,6 +24,8 @@ const milestones = useMilestones()
 let overduePeak = 0
 // The last task was just completed: the empty scene greets it (see Doodle).
 const celebrate = ref(false)
+const hint = useHint()
+useHintRotation()
 
 async function refresh() {
   now.value = Date.now()
@@ -224,7 +226,10 @@ onUnmounted(() => {
       <div v-if="!loaded" class="scene" />
       <!-- Adding lives at thumb height: tap to open quick add. -->
       <div class="dock">
-        <button class="composer field" @click="adding = true"><Plus :size="22" /> <span>New task</span></button>
+        <button class="composer field" @click="adding = true">
+          <Plus :size="22" /> <span>New task</span>
+          <Transition name="hint" mode="out-in"><span :key="hint" class="hint" aria-hidden="true">{{ hint }}</span></Transition>
+        </button>
       </div>
     </div>
 
@@ -275,4 +280,11 @@ onUnmounted(() => {
   flex: none; display: flex; align-items: center; gap: 12px; min-height: 60px; text-align: left;
   font-size: 1.05rem; color: var(--muted); border-radius: 18px; cursor: text;
 }
+/* Example phrase after "New task": faint, one line, cut off rather than wrapped. */
+.hint {
+  flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 0.9rem; font-style: italic; opacity: 0.5; text-align: right;
+}
+.hint-enter-active, .hint-leave-active { transition: opacity 0.6s ease; }
+.hint-enter-from, .hint-leave-to { opacity: 0; }
 </style>

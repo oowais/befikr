@@ -231,7 +231,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | # | Step | Status | Notes |
 | --- | --- | --- | --- |
 | 0 | **Notification spike** on a real Android phone (throwaway) | ✅ | Verdict: custom Kotlin plugin + `setExactAndAllowWhileIdle`. Doze/reboot/cold-snooze tests skipped by choice; revisit if reminders arrive late |
-| 1 | **Parser** (`packages/parser`), test table first | ✅ | 66 tests (run in any time zone); day-of-month, ordinals, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
+| 1 | **Parser** (`packages/parser`), test table first | ✅ | 78 tests (run in any time zone); day-of-month, ordinals, monthly nth weekday, yearly dates, fortnight/quarter, repeat adverbs; repeat builder UI for the rest |
 | 2 | **Rust storage layer**: rusqlite + migrations, sync-ready schema, repository commands | ✅ | `crates/core` (no Tauri dep), 56 tests; migrations 1–6 (6: `changes.prev_hlc`, `conflicts`) |
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
@@ -239,7 +239,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; background sync, conflicts and phone↔PC not yet device-tested |
 
-**Next:** encrypted backups (passphrase) or example phrases in the "New task" bar.
+**Next:** Windows update check on focus; Arch Update button runs the install script.
 
 ### Step 0 — spike checklist
 
@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 17, 2026 (bar hints)** — The "New task" bar shows one faint example phrase after its label (`EXAMPLES` in the parser, each tested to parse and to fit a phone at ≤28 chars); it fades to the next every 9 s, pauses while the app is hidden, stays put with reduced motion. Quick add's placeholder is the hint shown when it opened. Checked in mocked Chromium. **Next:** Windows update check on focus; Arch Update button runs the install script.
 
 - **Oct 17, 2026 (milestones + all clear)** — Quiet milestone toasts (new tree, carefree streaks, backlog cleared) and an all-clear moment (chord, buzz, rising sun) when the last task is done. Encrypted backups dropped. Checked in mocked Chromium. **Next:** Windows update-on-focus check; Arch Update button runs the install script.
 

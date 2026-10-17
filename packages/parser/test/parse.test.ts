@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, firstDue, parse, type ParseResult } from '../src/index'
+import { DEFAULT_SETTINGS, EXAMPLES, firstDue, parse, type ParseResult } from '../src/index'
 
 // Thursday 2026-10-15 10:00 local (tests run with TZ=UTC).
 const NOW = new Date(2026, 9, 15, 10, 0)
@@ -104,6 +104,17 @@ describe('parse', () => {
         due: c.due ?? null,
         rrule: c.rrule ?? null,
       })
+    })
+  }
+})
+
+describe('hint examples', () => {
+  for (const e of EXAMPLES) {
+    it(e.text, () => {
+      const r = parse(e.text, NOW)
+      expect(r.title).toBe(e.title)
+      expect(r.due).not.toBeNull()
+      expect(e.text.length).toBeLessThanOrEqual(28)
     })
   }
 })

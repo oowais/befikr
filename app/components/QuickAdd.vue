@@ -12,6 +12,8 @@ const emit = defineEmits<{ close: []; saved: [] }>()
 
 const { text, ignored, adaptive, expanded, manualDue, manualRule, description, chosenTime } = toRefs(useQuickAddDraft())
 const DEFAULT_TIME = '09:00'
+// The bar's hint at the moment quick add opened (it doesn't rotate in here).
+const hint = useHint().value
 const fallbackTime = computed(() => chosenTime.value ?? known.value?.usualTime ?? DEFAULT_TIME)
 const picking = ref(false)
 const pickingRepeat = ref(false)
@@ -190,7 +192,7 @@ async function save() {
         :value="text"
         class="main-input"
         rows="1"
-        placeholder="buy milk tomorrow evening"
+        :placeholder="hint"
         enterkeyhint="done"
         autocapitalize="sentences" autocorrect="on" spellcheck="true"
         @input="text = typed($event)"

@@ -366,3 +366,5 @@ function buildTitle(text: string, spans: Span[]): string {
     .replace(/\s+/g, ' ')
     .replace(/^[\s,:;–-]+|[\s,:;–-]+$/g, '')
 }
+
+export { EXAMPLES } from './examples'
