@@ -20,18 +20,25 @@
 
 *Befikr* means "carefree": a to-do list for people who want their reminders to work and their tasks to stay private. Write `call mom fri 5pm` or `water plants every 3 days`. Befikr works out the date, the time and the repeat, then reminds you on time, again and again until you deal with it.
 
-<table>
+<table align="center">
   <tr>
-    <td width="20%"><img src="docs/screenshots/home-dark.png" alt="Home: tasks by day, and a garden that grows as you keep up"></td>
-    <td width="20%"><img src="docs/screenshots/quickadd-light.png" alt="Quick add: plain English parsed into a date and a repeat"></td>
-    <td width="20%"><img src="docs/screenshots/snooze-dark.png" alt="Snooze sheet with quick picks"></td>
-    <td width="20%"><img src="docs/screenshots/stats-light.png" alt="Stats: on-time rate, snoozes, eight-week chart"></td>
-    <td width="20%"><img src="docs/screenshots/sync-dark.png" alt="Sync: pair a device with a QR code"></td>
+    <td align="center" width="270"><img src="docs/screenshots/home-dark.png" width="260" alt="Home: tasks by day, and a garden that grows as you keep up"></td>
+    <td align="center" width="270"><img src="docs/screenshots/quickadd-light.png" width="260" alt="Quick add: plain English parsed into a date and a repeat"></td>
+    <td align="center" width="270"><img src="docs/screenshots/snooze-dark.png" width="260" alt="Snooze sheet with quick picks"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Your day at a glance</b><br>The garden grows as you keep up</sub></td>
     <td align="center"><sub><b>Just type it</b><br>Dates and repeats picked out as you write</sub></td>
     <td align="center"><sub><b>Snooze in one tap</b><br>Also straight from the notification</sub></td>
+  </tr>
+</table>
+
+<table align="center">
+  <tr>
+    <td align="center" width="270"><img src="docs/screenshots/stats-light.png" width="260" alt="Stats: on-time rate, snoozes, eight-week chart"></td>
+    <td align="center" width="270"><img src="docs/screenshots/sync-dark.png" width="260" alt="Sync: pair a device with a QR code"></td>
+  </tr>
+  <tr>
     <td align="center"><sub><b>See how you're doing</b><br>On time, late, snoozed</sub></td>
     <td align="center"><sub><b>Sync your devices</b><br>Pair with a QR code, no server</sub></td>
   </tr>
