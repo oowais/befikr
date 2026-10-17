@@ -10,6 +10,8 @@ on:
       - README.md
       - docs/screenshots/**
       - src-tauri/android/icon/icon-dark.svg
+      - src-tauri/icons/32x32.png
+      - src-tauri/icons/128x128@2x.png
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -37,6 +39,16 @@ jobs:
             printf -- '---\nlayout: default\ntitle: Befikr\n---\n\n'
             sed -E "s#\]\(([^h#)][^)]*)\)#]($blob/\1)#g; s#href=\"([^h#\"][^\"]*)\"#href=\"$blob/\1\"#g" README.md
           } > site/index.md
+          # Favicon: the app icon (the theme's layout includes head-custom.html).
+          cp src-tauri/android/icon/icon-dark.svg site/favicon.svg
+          cp src-tauri/icons/32x32.png site/favicon.png
+          cp src-tauri/icons/128x128@2x.png site/apple-touch-icon.png
+          mkdir -p site/_includes
+          cat > site/_includes/head-custom.html <<'EOF'
+          <link rel="icon" href="{{ '/favicon.svg' | relative_url }}" type="image/svg+xml">
+          <link rel="icon" href="{{ '/favicon.png' | relative_url }}" type="image/png" sizes="32x32">
+          <link rel="apple-touch-icon" href="{{ '/apple-touch-icon.png' | relative_url }}">
+          EOF
           cat > site/_config.yml <<'EOF'
           title: Befikr
           description: A private to-do list that reminds you, reliably.
