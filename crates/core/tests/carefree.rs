@@ -94,3 +94,43 @@ fn moved_or_deleted_tasks_dont_count_and_on_time_counts() {
     assert_eq!(c.streak, 3, "12th to 14th");
     assert_eq!((c.on_time_total, c.on_time_week), (1, 1));
 }
+
+fn daily(s: &mut Store, title: &str, first: i64) -> String {
+    s.add_task(NewTask {
+        title: title.into(),
+        due_at: Some(first),
+        tz: Some(TZ.into()),
+        rrule: Some("FREQ=DAILY".into()),
+        ..Default::default()
+    })
+    .unwrap()
+    .task
+    .id
+}
+
+#[test]
+fn habit_streak_counts_on_time_skips_are_neutral_late_resets() {
+    let (mut s, clock) = setup(at(1, 8));
+    let one_off = add(&mut s, "once", at(2, 9));
+    assert_eq!(s.habit_streak(&one_off, TZ).unwrap(), None);
+
+    let gym = daily(&mut s, "gym", at(1, 18));
+    done_at(&mut s, &clock, &gym, at(1, 19)); // 1st on time
+    done_at(&mut s, &clock, &gym, at(3, 10)); // 2nd: next morning, fine
+    clock.store(at(3, 12), Ordering::SeqCst);
+    s.skip_task(&gym, Source::App).unwrap(); // 3rd skipped
+    done_at(&mut s, &clock, &gym, at(4, 18)); // 4th
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap(), Some(HabitStreak { current: 3, best: 3 }));
+
+    // 5th done on the 7th: late (5th) and the 6th passed meanwhile.
+    done_at(&mut s, &clock, &gym, at(7, 20));
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap(), Some(HabitStreak { current: 0, best: 3 }));
+    // Now due the 8th; on time again.
+    done_at(&mut s, &clock, &gym, at(8, 19));
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 1);
+    // The 9th goes by undone: broken once its grace (noon on the 10th) passes.
+    clock.store(at(10, 11), Ordering::SeqCst);
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 1);
+    clock.store(at(10, 13), Ordering::SeqCst);
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 0);
+}

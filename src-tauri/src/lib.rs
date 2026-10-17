@@ -6,7 +6,7 @@ mod sync;
 use std::sync::Mutex;
 
 use befikr_core::{
-    urgency, AlarmChange, Carefree, Change, CompletedGroup, Completion, ListItem, NewTask, Settings, PastTask, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
+    urgency, AlarmChange, Carefree, Change, CompletedGroup, Completion, HabitStreak, ListItem, NewTask, Settings, PastTask, ShoppingItem, ShoppingList, Source, Staple, Stats, Store, Task, TaskPatch, Urgency,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
@@ -123,6 +123,11 @@ fn stats(db: State<Db>, since: Option<i64>, week_starts: Vec<i64>) -> Res<Stats>
 #[tauri::command]
 fn carefree(db: State<Db>, tz: String) -> Res<Carefree> {
     db.store.lock().map_err(err)?.carefree(&tz).map_err(err)
+}
+
+#[tauri::command]
+fn habit_streak(db: State<Db>, id: String, tz: String) -> Res<Option<HabitStreak>> {
+    db.store.lock().map_err(err)?.habit_streak(&id, &tz).map_err(err)
 }
 
 #[tauri::command]
@@ -432,6 +437,7 @@ pub fn run() {
             list_completed,
             stats,
             carefree,
+            habit_streak,
             add_task,
             update_task,
             complete_task,

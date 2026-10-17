@@ -3,9 +3,9 @@
 // mounted in RouteSheets). Edit title, date, repeat, notes, subtasks; done,
 // snooze, skip, retire, delete. Closes by dragging its top down, tapping
 // outside, Back, or after done / skip / retire / delete.
-import { AlarmClock, CalendarDays, Check, CheckCircle2, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, Check, CheckCircle2, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
-import type { Completion, Task } from '~/composables/api'
+import type { Completion, HabitStreak, Task } from '~/composables/api'
 
 const props = defineProps<{ taskId: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -21,6 +21,18 @@ const task = ref<Task | null>(null)
 const subtasks = ref<Task[]>([])
 const history = ref<Completion[]>([])
 const allHistory = ref(false)
+// Repeating tasks: on-time occurrences in a row (Carefree days switch).
+const streak = ref<HabitStreak | null>(null)
+const carefree = useCarefree()
+const loadStreak = async () => (streak.value = await api.habitStreak(id.value).catch(() => null))
+/** "days" for a daily repeat, "weeks" for weekly...; "times" otherwise. */
+const streakUnit = computed(() => {
+  const r = task.value?.rrule ?? ''
+  const plain = !/INTERVAL=(?!1\b)\d+/.test(r) && !/BYDAY=[^;]*,/.test(r)
+  const f = /FREQ=(\w+)/.exec(r)?.[1]
+  const unit = (plain && { DAILY: 'day', WEEKLY: 'week', MONTHLY: 'month', YEARLY: 'year' }[f ?? '']) || 'time'
+  return streak.value?.current === 1 ? unit : `${unit}s`
+})
 const title = ref('')
 const description = ref('')
 const newSub = ref('')
@@ -36,6 +48,7 @@ async function load() {
     task.value = await api.getTask(id.value)
     subtasks.value = await api.listSubtasks(id.value)
     history.value = await api.taskHistory(id.value).catch(() => [])
+    loadStreak()
     title.value = task.value.title
     description.value = task.value.description
     showNotes.value = !!task.value.description
@@ -52,6 +65,7 @@ watch(listVersion, async () => {
   task.value = t
   subtasks.value = await api.listSubtasks(id.value).catch(() => subtasks.value)
   history.value = await api.taskHistory(id.value).catch(() => history.value)
+  loadStreak()
 })
 
 async function patch(p: Parameters<typeof api.updateTask>[1]) {
@@ -295,7 +309,12 @@ async function remove() {
       </div>
 
       <template v-if="history.length && task.rrule">
-        <h2 class="section-title">Done {{ history.length }}×</h2>
+        <h2 class="section-title">
+          Done {{ history.length }}×
+          <span v-if="carefree.enabled.value && streak?.current" class="streak">
+            · <Flame :size="13" /> {{ streak.current }} {{ streakUnit }} in a row<template v-if="streak.best > streak.current"> (best {{ streak.best }})</template>
+          </span>
+        </h2>
         <div class="pane rows">
           <div v-for="c in shownHistory" :key="c.id" class="sub">
             <History :size="18" class="muted" />
@@ -329,6 +348,7 @@ async function remove() {
 </template>
 
 <style scoped>
+.section-title .streak { display: inline-flex; align-items: center; gap: 3px; }
 .backdrop {
   position: fixed; inset: 0; z-index: 50; background: oklch(0 0 0 / 22%);
   display: flex; align-items: flex-end; animation: fade-in 0.15s;

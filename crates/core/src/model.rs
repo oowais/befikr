@@ -311,3 +311,12 @@ pub struct Carefree {
     /// The same since Monday (the landscape's flowers).
     pub on_time_week: u32,
 }
+
+/// Occurrences of a repeating task done on time in a row (done by noon the
+/// day after). Skips don't count either way; late or missed ones reset it.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HabitStreak {
+    pub current: u32,
+    pub best: u32,
+}

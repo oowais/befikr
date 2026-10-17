@@ -176,6 +176,7 @@ onUnmounted(() => {
     <p v-if="error" class="muted">{{ error }}</p>
 
     <div class="stage">
+      <WeekRecap v-if="loaded" class="ease" />
       <template v-if="loaded && rows.length">
         <div class="scroll ease">
           <section v-for="s in sections" :key="s.id" class="section">

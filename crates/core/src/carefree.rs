@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 
 use chrono::{Datelike, Duration, NaiveDate, NaiveTime};
 
-use crate::model::Carefree;
+use crate::model::{Carefree, HabitStreak};
 use crate::recurrence::{from_ms, parse_tz};
 use crate::store::Store;
 use crate::Result;
@@ -99,6 +99,61 @@ impl Store {
             }
         }
         Ok((total, week))
+    }
+}
+
+impl Store {
+    /// Streak of a repeating task, `None` for one-off tasks.
+    pub fn habit_streak(&self, task_id: &str, tz: &str) -> Result<Option<HabitStreak>> {
+        let tz = parse_tz(tz)?;
+        let now = self.now();
+        let task = self.get_task(task_id)?;
+        if task.rrule.is_none() {
+            return Ok(None);
+        }
+        // Done by noon the day after its due day.
+        let in_time = |due: i64, at: i64| {
+            let cutoff = (from_ms(due, tz).date_naive() + Duration::days(1)).and_time(noon());
+            from_ms(at, tz).naive_local() <= cutoff
+        };
+        // (due, Some(on time)) for completions, (due, Some(false)) for missed
+        // occurrences, (due, None) for skips.
+        let mut st = self.conn.prepare(
+            "SELECT due_at_then, completed_at, 'done' FROM completions
+             WHERE task_id = ?1 AND deleted_at IS NULL AND due_at_then IS NOT NULL
+             UNION ALL
+             SELECT e.due_at_then, e.at, e.kind FROM task_events e
+             WHERE e.task_id = ?1 AND e.kind IN ('missed', 'skipped') AND e.due_at_then IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM completions c
+                 WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)",
+        )?;
+        let mut occ: Vec<(i64, Option<bool>)> = st
+            .query_map([task_id], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, String>(2)?)))?
+            .map(|r| {
+                r.map(|(due, at, kind)| match kind.as_str() {
+                    "done" => (due, Some(in_time(due, at))),
+                    "missed" => (due, Some(false)),
+                    _ => (due, None),
+                })
+            })
+            .collect::<rusqlite::Result<_>>()?;
+        // The current one, once its grace has passed undone.
+        if let (true, Some(due)) = (task.is_open(), task.due_at) {
+            if !in_time(due, now) {
+                occ.push((due, Some(false)));
+            }
+        }
+        occ.sort_by_key(|o| o.0);
+        let (mut current, mut best) = (0u32, 0u32);
+        for (_, ok) in occ {
+            match ok {
+                Some(true) => current += 1,
+                Some(false) => current = 0,
+                None => {}
+            }
+            best = best.max(current);
+        }
+        Ok(Some(HabitStreak { current, best }))
     }
 }
 
