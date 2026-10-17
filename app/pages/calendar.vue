@@ -222,7 +222,7 @@ const ghost = computed(() => (drag.card && drag.moved ? drag.card : null))
   <Screen title="Calendar" class="calendar" @pointermove="move" @pointerup="up" @pointercancel="cancelDrag">
     <template #actions>
       <span class="grow" />
-      <button class="icon-btn" aria-label="Export to a calendar file (.ics)" title="Export to a calendar file (.ics)" @click="exportIcs"><CalendarArrowUp :size="20" /></button>
+      <button class="btn" title="Save your dated tasks as an .ics file for another calendar app" @click="exportIcs"><CalendarArrowUp :size="18" /> Export .ics</button>
       <div class="seg" role="radiogroup" aria-label="View">
         <button v-for="v in (['week', 'month'] as const)" :key="v" type="button" role="radio" class="opt" :class="{ chosen: view === v }" :aria-checked="view === v" @click="setView(v)">
           {{ v === 'week' ? 'Week' : 'Month' }}
