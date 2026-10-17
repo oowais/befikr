@@ -62,8 +62,13 @@ internal object Scheduler {
         ctx.getSystemService(AlarmManager::class.java).cancel(firePendingIntent(ctx, id, ""))
     }
 
-    /** Apply a core `AlarmChange` (`{"op":"schedule",...}` / `{"op":"cancel",...}`). */
+    /** Apply a core `AlarmChange` (`{"op":"schedule",...}` / `{"op":"cancel",...}`); the widget follows. */
     fun apply(ctx: Context, change: JSONObject) {
+        applyAlarm(ctx, change)
+        TasksWidget.refresh(ctx)
+    }
+
+    private fun applyAlarm(ctx: Context, change: JSONObject) {
         when (change.optString("op")) {
             "schedule" -> {
                 val id = change.getString("taskId")
@@ -92,6 +97,7 @@ internal object Scheduler {
             schedule(ctx, a.getString("taskId"), a.getString("title"), a.getLong("atMs"))
         }
         Log.i(TAG, "restored ${alarms.length()} alarms")
+        TasksWidget.refresh(ctx)
     }
 
     private fun firePendingIntent(ctx: Context, id: String, title: String): PendingIntent {

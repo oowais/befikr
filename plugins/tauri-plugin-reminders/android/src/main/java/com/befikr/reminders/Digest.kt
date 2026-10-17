@@ -89,5 +89,6 @@ class DigestReceiver : BroadcastReceiver() {
         val out = parseOutcome(Native.digest(dbPath, TimeZone.getDefault().id))
         out?.optJSONObject("digest")?.let { Digest.show(ctx, it) }
         Digest.scheduleNext(ctx)
+        TasksWidget.refresh(ctx)
     }
 }

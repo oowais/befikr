@@ -31,6 +31,9 @@ object Native {
     /** Next morning digest in [tz]. → `{"atMs": Long | null}` (null = off) */
     external fun nextDigestAt(dbPath: String, tz: String): String
 
+    /** Widget: today's open tasks in [tz]. → `{"tasks": [{"id","title","when","overdue"}]}` */
+    external fun today(dbPath: String, tz: String): String
+
     /** Consistent snapshot of the database to [outPath]. → `{}` */
     external fun exportTo(dbPath: String, outPath: String): String
 

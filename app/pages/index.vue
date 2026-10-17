@@ -156,6 +156,17 @@ watch(
   { immediate: true },
 )
 
+// Widget "New task" (Android) opens the list with ?add=1.
+watch(
+  () => route.query.add,
+  (add) => {
+    if (add == null) return
+    adding.value = true
+    router.replace('/')
+  },
+  { immediate: true },
+)
+
 // Also when the list mounts after the request (opened from another page).
 watch(
   quickAddPending,

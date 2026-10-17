@@ -208,10 +208,10 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 
 Suggestions to pick from later; none is decided. Same rules apply (local only, no third party).
 
-1. **Home-screen widget** (Android, wanted) — today's tasks with a tick box each and a "New task" button. Completes through the same JNI path as the notification action; refreshes after every write and at midnight.
-2. **Location reminders** (undecided) — "when I get home", "at the supermarket": a saved place per task, Android geofence, evaluated on the phone only (no maps service; places picked on an offline map or from the current location). Needs background location permission, so opt-in per task.
+1. ✅ **Home-screen widget** (Android) — built Oct 17: today's tasks (overdue first) with tick boxes, New task, tap a title to open it; refreshed after every change and every 30 min.
+2. ~~Location reminders~~ — not doing it: no location permission or geofence checks (Oct 17).
 3. ~~Quick add from anywhere~~ — not wanted (Oct 17).
-4. **Voice quick add** (wanted, Android) — one mic button in quick add that opens the system speech recogniser (`RecognizerIntent`), then the normal parser. Only worth it as a single tap; the keyboard mic already works otherwise.
+4. ✅ **Voice quick add** (Android) — built Oct 17: mic button in quick add opens the phone's speech input app (`RecognizerIntent`); hidden when none is installed (GrapheneOS has none by default, e.g. FUTO Voice Input provides one, offline).
 5. ✅ **Morning digest** — built Oct 17 (see session log).
 6. ~~Templates~~ — not wanted (Oct 17).
 7. ~~Edit by typing~~ — already there: a date typed into a task's title offers "Set …?" in the task sheet.
@@ -252,7 +252,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications (+ morning digest), tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater, download progress, off when offline; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; Android background sync with the CachyOS PC confirmed Oct 17 (phone app closed); conflicts not yet device-tested |
 
-**Next:** device check of the morning digest (Android + Windows). Then pick from the ideas list: voice button, widget, desktop calendar. Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
+**Next:** device check of the morning digest, widget and voice button (Kotlin first compiles in CI). Then talk about the desktop calendar (idea 8). Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
 
 ### Step 0 — spike checklist
 

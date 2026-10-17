@@ -14,6 +14,8 @@ const COMMANDS: &[&str] = &[
     "export_backup",
     "pick_import_file",
     "install_update",
+    "speech_available",
+    "recognize_speech",
     // addPluginListener (launch route from a notification while the app is open)
     "register_listener",
     "remove_listener",

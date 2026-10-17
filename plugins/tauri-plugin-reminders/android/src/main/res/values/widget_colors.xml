@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home-screen widget, matching the app's Glass look (light). -->
+<resources>
+    <color name="widget_bg">#F2F4F7FA</color>
+    <color name="widget_text">#1C1E22</color>
+    <color name="widget_muted">#6B7079</color>
+    <color name="widget_line">#1A1C1E22</color>
+    <color name="widget_overdue">#C2412D</color>
+</resources>

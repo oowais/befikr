@@ -29,6 +29,7 @@ class ActionReceiver : BroadcastReceiver() {
                 val change = parseOutcome(Native.onAction(dbPath, id, op))
                 Notifier.cancel(ctx, id)
                 if (change != null) Scheduler.apply(ctx, change) else Scheduler.cancel(ctx, id)
+                TasksWidget.refresh(ctx)
             }
             ACTION_DISMISS -> parseOutcome(Native.onAction(dbPath, id, "dismiss"))
             else -> Log.w(TAG, "unknown action ${intent.action}")

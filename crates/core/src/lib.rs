@@ -19,7 +19,7 @@ mod sync;
 
 pub use model::*;
 pub use peers::{Peer, SyncMode, SyncSettings};
-pub use digest::{Digest, DEFAULT_DIGEST_TIME, DIGEST_ID};
+pub use digest::{Digest, TodayTask, DEFAULT_DIGEST_TIME, DIGEST_ID};
 pub use snooze::{snooze_picks, SnoozePick};
 pub use store::Store;
 pub use conflicts::Conflict;

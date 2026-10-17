@@ -6,7 +6,7 @@
 // keyboard to commit a word, so swipe/predictive typing lagged a word behind.
 // Past tasks: at most one suggestion while typing; a known title brings its usual time.
 import { firstDue } from '@befikr/parser'
-import { CalendarDays, ChevronDown, ChevronUp, Clock, History, ListChecks, Repeat, Trash2, X } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, ChevronUp, Clock, History, ListChecks, Mic, Repeat, Trash2, X } from 'lucide-vue-next'
 import type { PastTask } from '~/composables/api'
 const emit = defineEmits<{ close: []; saved: [] }>()
 
@@ -27,6 +27,20 @@ onMounted(() => {
   nextTick(grow)
   api.pastTasks().then((p) => (past.value = p)).catch(() => {})
 })
+
+// Voice: one tap opens the phone's own speech input (Android, when an app provides it).
+const canSpeak = ref(false)
+onMounted(() => reminders.speechAvailable().then((ok) => (canSpeak.value = ok)))
+async function speak() {
+  try {
+    const said = await reminders.recognizeSpeech()
+    if (said) text.value = text.value.trim() ? `${text.value.trim()} ${said}` : said
+    nextTick(grow)
+  } catch (e) {
+    error.value = String(e)
+  }
+  input.value?.focus()
+}
 
 const hasDraft = computed(() => !!(text.value || description.value || manualDue.value != null || manualRule.value !== undefined))
 function clearDraft() {
@@ -266,6 +280,7 @@ async function save() {
         </button>
         <button v-if="hasDraft" type="button" class="btn danger" @click="clearDraft"><Trash2 :size="18" /> Clear</button>
         <span class="flex" />
+        <button v-if="canSpeak" type="button" class="icon-btn" aria-label="Say a task" @click="speak"><Mic :size="22" /></button>
         <button type="submit" class="btn primary" :disabled="!title || saving">Add</button>
       </div>
     </form>

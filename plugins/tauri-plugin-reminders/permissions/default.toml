@@ -16,6 +16,8 @@ permissions = [
   "allow-export-backup",
   "allow-pick-import-file",
   "allow-install-update",
+  "allow-speech-available",
+  "allow-recognize-speech",
   "allow-register-listener",
   "allow-remove-listener",
 ]

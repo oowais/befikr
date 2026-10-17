@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
+import android.speech.RecognizerIntent
 import android.webkit.WebView
 import androidx.activity.result.ActivityResult
 import androidx.core.app.ActivityCompat
@@ -19,6 +20,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import java.util.Locale
 
 @InvokeArg
 class ScheduleArgs {
@@ -65,6 +67,7 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         Prefs.setDbPath(activity, args.dbPath)
         Notifier.cancel(activity, args.id)
         Scheduler.schedule(activity, args.id, args.title, args.atMs)
+        TasksWidget.refresh(activity)
         invoke.resolve()
     }
 
@@ -73,6 +76,7 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         val args = invoke.parseArgs(CancelArgs::class.java)
         Scheduler.cancel(activity, args.id)
         Notifier.cancel(activity, args.id)
+        TasksWidget.refresh(activity)
         invoke.resolve()
     }
 
@@ -122,6 +126,7 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         Backup.scheduleDaily(activity)
         SyncWorker.schedule(activity)
         Digest.scheduleNext(activity)
+        TasksWidget.refresh(activity)
         Thread { Backup.runIfDue(activity.applicationContext) }.start()
         invoke.resolve()
     }
@@ -131,6 +136,37 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     fun scheduleDigest(invoke: Invoke) {
         Digest.scheduleNext(activity)
         invoke.resolve()
+    }
+
+    // ---- Voice quick add ----
+
+    /** The phone's own speech recogniser (whatever app provides it), English for the parser. */
+    private fun speechIntent() = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (Locale.getDefault().language == "en") Locale.getDefault().toLanguageTag() else "en-US")
+        .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+        .putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a task")
+
+    /** Whether any app can take speech input; the mic button shows only then. */
+    @Command
+    fun speechAvailable(invoke: Invoke) {
+        val ok = speechIntent().resolveActivity(activity.packageManager) != null
+        invoke.resolve(JSObject().apply { put("available", ok) })
+    }
+
+    /** Open the recogniser; resolves `{ text }` (null when cancelled). */
+    @Command
+    fun recognizeSpeech(invoke: Invoke) {
+        val intent = speechIntent()
+        if (intent.resolveActivity(activity.packageManager) == null) return invoke.reject("No speech input app on this phone")
+        startActivityForResult(invoke, intent, "onSpeech")
+    }
+
+    @ActivityCallback
+    fun onSpeech(invoke: Invoke, result: ActivityResult) {
+        val text = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            ?.takeIf { result.resultCode == Activity.RESULT_OK }
+        invoke.resolve(JSObject().apply { put("text", text) })
     }
 
     // ---- Update ----

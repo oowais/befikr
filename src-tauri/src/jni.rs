@@ -125,6 +125,21 @@ pub extern "system" fn Java_com_befikr_reminders_Native_digest<'l>(
     })
 }
 
+/// Home-screen widget: today's open tasks in `tz`. → `{"tasks": [TodayTask]}`
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_today<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    tz: JString<'l>,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (path, tz) = (arg(env, &db_path)?, arg(env, &tz)?);
+        let tasks = store(&path)?.today(&tz).map_err(|e| e.to_string())?;
+        Ok(json!({ "tasks": tasks }))
+    })
+}
+
 /// When the next morning digest fires in `tz`. → `{"atMs": i64 | null}`
 #[no_mangle]
 pub extern "system" fn Java_com_befikr_reminders_Native_nextDigestAt<'l>(

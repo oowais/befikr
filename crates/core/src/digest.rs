@@ -1,6 +1,7 @@
-//! Morning digest: one quiet notification at a chosen local time listing
-//! what's overdue and what's due later today. Worked out when it fires,
-//! nothing stored; days are local to the caller's time zone.
+//! "Today": what's overdue and what's due later today, for the morning
+//! digest (one quiet notification at a chosen local time) and the Android
+//! home-screen widget. Worked out on request, nothing stored; days are local
+//! to the caller's time zone.
 
 use chrono::{DateTime, Duration, LocalResult, NaiveTime, TimeZone};
 use chrono_tz::Tz;
@@ -18,6 +19,17 @@ pub const DEFAULT_DIGEST_TIME: &str = "08:00";
 const MAX_LINES: usize = 6;
 /// Titles named in the collapsed one-line text.
 const MAX_NAMED: usize = 2;
+
+/// One open task for today: overdue first, then by time.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TodayTask {
+    pub id: String,
+    pub title: String,
+    /// "Overdue" or local "HH:MM".
+    pub when: String,
+    pub overdue: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,42 +49,51 @@ impl Store {
         Ok(Some(next_at(from_ms(self.now(), parse_tz(tz)?), &time)))
     }
 
-    /// The digest for now; `None` when nothing is overdue or due today.
-    pub fn digest(&self, tz: &str) -> Result<Option<Digest>> {
+    /// Open tasks that are overdue or due before local midnight.
+    pub fn today(&self, tz: &str) -> Result<Vec<TodayTask>> {
         let tz = parse_tz(tz)?;
         let now = self.now();
         let end_of_day = local_ms(from_ms(now, tz) + Duration::days(1), 0, 0);
         let mut st = self.conn.prepare(
-            "SELECT title, COALESCE(snoozed_until, due_at) AS due FROM tasks
+            "SELECT id, title, COALESCE(snoozed_until, due_at) AS due FROM tasks
              WHERE parent_id IS NULL AND completed_at IS NULL AND deleted_at IS NULL
                AND COALESCE(snoozed_until, due_at) < ?1
              ORDER BY due, id",
         )?;
-        let tasks: Vec<(String, i64)> =
-            st.query_map([end_of_day], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
-        Ok(summarize(&tasks, now, tz))
+        let rows = st.query_map([end_of_day], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)?)))?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (id, title, due) = row?;
+            out.push(today_task(id, title, due, now, tz));
+        }
+        Ok(out)
+    }
+
+    /// The digest for now; `None` when nothing is overdue or due today.
+    pub fn digest(&self, tz: &str) -> Result<Option<Digest>> {
+        Ok(summarize(&self.today(tz)?))
     }
 }
 
-fn summarize(tasks: &[(String, i64)], now: i64, tz: Tz) -> Option<Digest> {
+fn today_task(id: String, title: String, due: i64, now: i64, tz: Tz) -> TodayTask {
+    let overdue = due < now;
+    let when = if overdue { "Overdue".to_string() } else { from_ms(due, tz).format("%H:%M").to_string() };
+    TodayTask { id, title, when, overdue }
+}
+
+fn summarize(tasks: &[TodayTask]) -> Option<Digest> {
     if tasks.is_empty() {
         return None;
     }
     let n = tasks.len();
-    let overdue = tasks.iter().filter(|(_, due)| *due < now).count();
-    let mut lines: Vec<String> = tasks
-        .iter()
-        .map(|(title, due)| {
-            let when = if *due < now { "Overdue".to_string() } else { from_ms(*due, tz).format("%H:%M").to_string() };
-            format!("{when} · {title}")
-        })
-        .collect();
+    let overdue = tasks.iter().filter(|t| t.overdue).count();
+    let mut lines: Vec<String> = tasks.iter().map(|t| format!("{} · {}", t.when, t.title)).collect();
     if lines.len() > MAX_LINES {
         let more = lines.len() - (MAX_LINES - 1);
         lines.truncate(MAX_LINES - 1);
         lines.push(format!("+{more} more"));
     }
-    let mut named: Vec<&str> = tasks.iter().take(MAX_NAMED).map(|(t, _)| t.as_str()).collect();
+    let mut named: Vec<&str> = tasks.iter().take(MAX_NAMED).map(|t| t.title.as_str()).collect();
     let rest = format!("+{}", n.saturating_sub(MAX_NAMED));
     if n > MAX_NAMED {
         named.push(&rest);
@@ -132,20 +153,21 @@ mod tests {
         assert_eq!(next_at(from_ms(before, TZ), "02:30"), expected);
     }
 
+    fn tasks(list: &[(&str, i64)], now: i64) -> Vec<TodayTask> {
+        list.iter().map(|(t, due)| today_task(t.to_string(), t.to_string(), *due, now, TZ)).collect()
+    }
+
     #[test]
     fn nothing_due_is_no_digest() {
-        assert_eq!(summarize(&[], at(17, 8, 0), TZ), None);
+        assert_eq!(summarize(&[]), None);
     }
 
     #[test]
     fn overdue_first_then_times() {
         let now = at(17, 8, 0);
-        let tasks = vec![
-            ("Pay bill".to_string(), at(16, 18, 0)),
-            ("Call mum".to_string(), at(17, 10, 0)),
-            ("Dentist".to_string(), at(17, 14, 30)),
-        ];
-        let d = summarize(&tasks, now, TZ).unwrap();
+        let list = tasks(&[("Pay bill", at(16, 18, 0)), ("Call mum", at(17, 10, 0)), ("Dentist", at(17, 14, 30))], now);
+        assert_eq!((list[0].when.as_str(), list[0].overdue), ("Overdue", true));
+        let d = summarize(&list).unwrap();
         assert_eq!(d.title, "Today: 3 tasks");
         assert_eq!(d.text, "1 overdue · Pay bill, Call mum, +1");
         assert_eq!(d.lines, ["Overdue · Pay bill", "10:00 · Call mum", "14:30 · Dentist"]);
@@ -154,11 +176,12 @@ mod tests {
     #[test]
     fn one_task_and_long_lists() {
         let now = at(17, 8, 0);
-        let d = summarize(&[("Call mum".to_string(), at(17, 10, 0))], now, TZ).unwrap();
+        let d = summarize(&tasks(&[("Call mum", at(17, 10, 0))], now)).unwrap();
         assert_eq!((d.title.as_str(), d.text.as_str()), ("Today: 1 task", "Call mum"));
 
-        let many: Vec<_> = (0..9).map(|i| (format!("T{i}"), at(17, 9 + i, 0))).collect();
-        let d = summarize(&many, now, TZ).unwrap();
+        let titles: Vec<String> = (0..9).map(|i| format!("T{i}")).collect();
+        let many: Vec<(&str, i64)> = titles.iter().enumerate().map(|(i, t)| (t.as_str(), at(17, 9 + i as u32, 0))).collect();
+        let d = summarize(&tasks(&many, now)).unwrap();
         assert_eq!(d.lines.len(), MAX_LINES);
         assert_eq!(d.lines.last().unwrap(), "+4 more");
     }

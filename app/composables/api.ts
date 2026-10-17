@@ -177,4 +177,11 @@ export const reminders = {
   backupNow: () => invoke<BackupStatus>(backupCmd('backup_now')),
   exportBackup: () => invoke<{ saved: boolean }>(backupCmd('export_backup')),
   pickImportFile: () => invoke<{ path?: string }>(backupCmd('pick_import_file')),
+  /** Android: is there an app that takes speech input? (false elsewhere) */
+  speechAvailable: () =>
+    isAndroid
+      ? invoke<{ available: boolean }>('plugin:reminders|speech_available').then((r) => r.available, () => false)
+      : Promise.resolve(false),
+  /** Android: the phone's speech recogniser; null when cancelled. */
+  recognizeSpeech: () => invoke<{ text: string | null }>('plugin:reminders|recognize_speech').then((r) => r.text),
 }

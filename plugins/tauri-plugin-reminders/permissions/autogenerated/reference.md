@@ -19,6 +19,8 @@ Allows all reminders and backup commands.
 - `allow-export-backup`
 - `allow-pick-import-file`
 - `allow-install-update`
+- `allow-speech-available`
+- `allow-recognize-speech`
 - `allow-register-listener`
 - `allow-remove-listener`
 
@@ -320,6 +322,32 @@ Denies the pick_import_file command without any pre-configured scope.
 <tr>
 <td>
 
+`reminders:allow-recognize-speech`
+
+</td>
+<td>
+
+Enables the recognize_speech command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-recognize-speech`
+
+</td>
+<td>
+
+Denies the recognize_speech command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `reminders:allow-register-listener`
 
 </td>
@@ -417,6 +445,32 @@ Enables the schedule command without any pre-configured scope.
 <td>
 
 Denies the schedule command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-speech-available`
+
+</td>
+<td>
+
+Enables the speech_available command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-speech-available`
+
+</td>
+<td>
+
+Denies the speech_available command without any pre-configured scope.
 
 </td>
 </tr>

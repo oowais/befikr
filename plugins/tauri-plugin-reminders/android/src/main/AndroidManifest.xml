@@ -13,6 +13,13 @@
     <!-- In-app update: install a newer Befikr APK (system asks to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Voice quick add: see whether a speech recogniser app is installed (Android 11+ visibility). -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application>
         <!-- "Share → Befikr" from other apps: merged into the app's main activity;
              RemindersPlugin turns the shared text into a quick add route. -->
@@ -35,6 +42,14 @@
         <receiver android:name="com.befikr.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.ActionReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.DigestReceiver" android:exported="false" />
+        <!-- Home-screen widget; exported for the launcher's update broadcasts.
+             Its tick boxes go to ActionReceiver (not exported). -->
+        <receiver android:name="com.befikr.reminders.TasksWidget" android:exported="true" android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/befikr_widget_info" />
+        </receiver>
         <receiver android:name="com.befikr.reminders.BackupReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.UpdateReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.RestoreReceiver" android:exported="false">
