@@ -204,6 +204,19 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
    - Design notes (decide when building): separate from the main task list and its reminders; own tables (`staples`, `shopping_items`) following the sync-ready rules; later, suggest chips from what gets added most often.
    - ✅ Oct 16: `/shopping` (cart button on the main screen). Migration 2 adds `shopping_items` (`bought_at` = ticked) + `staples`; core in `crates/core/src/shopping.rs`. Add field on top, tap to tick (Undo toast), chips already on the list show ✓ and don't duplicate; pencil → ✕ on chips + field for new ones. Suggestions from history + common groceries ✅ Oct 16.
 
+## Ideas (not planned)
+
+Suggestions to pick from later; none is decided. Same rules apply (local only, no third party).
+
+1. **Home-screen widget** (Android) — today's tasks with a tick box each and a "New task" button. Completes through the same JNI path as the notification action; refreshes after every write and at midnight.
+2. **Location reminders** — "when I get home", "at the supermarket": a saved place per task, Android geofence, evaluated on the phone only (no maps service; places picked on an offline map or from the current location). Needs background location permission, so opt-in per task.
+3. **Quick add from anywhere** — Android: app shortcut (long-press the icon) and a Quick Settings tile that open quick add; desktop: a global hotkey (e.g. Super+Shift+Space) that opens quick add from the tray.
+4. **Voice quick add** — dictate into quick add with Android's on-device speech recognition (offline only), then the normal parser.
+5. **Morning digest** — one quiet notification at a chosen time listing today's tasks (and anything overdue), so the day starts with one look instead of several reminders.
+6. **Templates** — save a task with its subtasks as a template ("packing list", "monthly bills") and add it again with one tap; dates shift with it.
+7. **Edit by typing** — in the task sheet, type "fri 3pm" or "every 2 weeks" to change the date or repeat, reusing the parser (snooze already does this).
+8. **Calendar view on desktop** — a week view of dated tasks for wide windows, drag to reschedule; read-only `.ics` export of dated tasks for other calendars.
+
 ## Risks and open items
 
 - ~~Exact alarms / re-remind on swipe / notification actions~~: settled by the step 0 spike (custom Kotlin plugin, `setExactAndAllowWhileIdle`, Complete runs via JNI without the app).
