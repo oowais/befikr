@@ -59,7 +59,7 @@ function text(key: string, v: unknown): string {
     case 'tasks.rrule':
       return typeof v === 'string' && v ? rruleText(v) : 'Doesn’t repeat'
     case 'tasks.adaptive':
-      return v ? 'From when done' : 'On schedule'
+      return v ? 'Adaptive' : 'Static'
     case 'tasks.completed_at':
       return empty ? 'Open' : 'Done'
     case 'tasks.deleted_at':
