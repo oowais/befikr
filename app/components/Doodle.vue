@@ -53,7 +53,7 @@ const line = computed(() =>
 
 <template>
   <div class="doodle" :class="{ clear }" aria-hidden="true">
-    <!-- Under the list: full width; when short the sky is cut, the hills stay. -->
+    <!-- Under the list: full width on a phone; when short the sky is cut, the hills stay (wider: see the style). -->
     <svg viewBox="0 0 360 220" :preserveAspectRatio="clear ? 'xMidYMax meet' : 'xMidYMax slice'">
       <!-- winter: snow on the ground, under everything, fading out at the bottom -->
       <defs v-if="garden && season === 'winter'">
@@ -119,13 +119,27 @@ const line = computed(() =>
 </template>
 
 <style scoped>
-.doodle { position: relative; display: flex; flex-direction: column; color: var(--muted); overflow: hidden; }
+.doodle {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+  color: var(--muted); overflow: hidden; container-type: size;
+}
 .base { opacity: 0.55; }
 .clear .base { opacity: 0.85; }
 .garden { opacity: 0.95; }
 .doodle svg { width: 100%; flex: 1; min-height: 0; max-height: 240px; }
 .clear { justify-content: center; }
 .clear svg { flex: none; height: auto; max-height: 320px; }
+/* Wider than a phone (desktop, tablet): full width would crop the sky, so
+   the landscape keeps its own proportions, as large as the height allows,
+   sits on the bottom, and its hills fade out at the sides. */
+@container (min-width: 440px) {
+  .doodle svg {
+    flex: none; width: min(100%, 100cqh * 360 / 220); height: auto; aspect-ratio: 360 / 220;
+    max-height: none; margin: 0 auto;
+    mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  }
+  .clear svg { width: min(100%, 520px, 70cqh * 360 / 220); }
+}
 /* Garden fills: fixed natural colours, toned slightly toward the background. */
 .snowfield { stroke: none; }
 .snow-stop { stop-color: color-mix(in oklch, white 30%, var(--bg)); }
