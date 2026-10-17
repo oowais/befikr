@@ -19,6 +19,7 @@ const error = ref('')
 // Nothing below the header until the first load: otherwise the empty
 // "All clear" scene flashes for a moment on a cold start.
 const loaded = ref(false)
+const releaseSplash = holdSplash()
 const milestones = useMilestones()
 // Most overdue tasks seen at once since the list was last clear of them.
 let overduePeak = 0
@@ -44,6 +45,7 @@ async function refresh() {
     error.value = String(e)
   }
   loaded.value = true
+  releaseSplash()
 }
 
 // Optimistic: the box ticks at once, the row slides out a beat later.

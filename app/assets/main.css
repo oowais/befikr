@@ -348,6 +348,13 @@ svg.lucide { flex: none; }
 @media (prefers-reduced-transparency: reduce) {
   * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
+/* Cold start (useSplash): nothing plays behind the splash; as it fades, the
+   page rises in and its own entrances (list, garden) play from the start. */
+.booting #__nuxt * { animation-play-state: paused !important; }
+/* On the page itself: a transform on #__nuxt would hold its fixed children (the home page). */
+.revealing #__nuxt > * { animation: app-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes app-in { from { opacity: 0; transform: translateY(12px) scale(0.985); } }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }

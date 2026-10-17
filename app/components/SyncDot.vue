@@ -10,8 +10,11 @@ const st = ref<SyncStatus | null>(null)
 const load = async () => (st.value = await api.syncStatus().catch(() => null))
 
 let unlisten: (() => void) | undefined
+// In the header from the first frame, not popping in after the splash.
+const releaseSplash = holdSplash()
 onMounted(async () => {
   await load()
+  releaseSplash()
   unlisten = await listen('sync-changed', load).catch(() => undefined)
 })
 onUnmounted(() => unlisten?.())

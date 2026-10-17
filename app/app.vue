@@ -6,6 +6,8 @@ const router = useRouter()
 const route = useRoute()
 const { current: toast, dismiss } = useToast()
 rememberHistoryStart()
+// The splash stays until we know which screen opens (see useSplash).
+const releaseSplash = holdSplash()
 
 onMounted(async () => {
   // Desktop: our own right-click menus only (see useContextMenu).
@@ -25,11 +27,16 @@ onMounted(async () => {
   listen('tasks-changed', () => listChanged()).catch(() => {})
   listen('quick-add', openQuickAdd).catch(() => {})
   window.addEventListener('keydown', quickAddKey)
+  await openingScreen().catch(() => {})
+  releaseSplash()
+})
+
+async function openingScreen() {
   const launch = await reminders.takeLaunchRoute().then((r) => r?.route, () => undefined)
   if (launch && launch !== '/') return router.push(launch)
   // First launch, or a permission revoked: the setup tour.
-  if (route.path === '/' && (await needsSetup().catch(() => false))) router.replace('/welcome')
-})
+  if (route.path === '/' && (await needsSetup().catch(() => false))) await router.replace('/welcome')
+}
 
 // Quick add from the tray menu or the keyboard: the list (or the calendar,
 // which has its own) opens it.

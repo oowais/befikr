@@ -96,6 +96,17 @@ jobs:
       - name: Apply Android resources
         run: cp -r src-tauri/android/res/. src-tauri/gen/android/app/src/main/res/
 
+      # Window and Android splash in the page background (befikr_window, from
+      # the reminders plugin), so a cold start goes splash → page without a
+      # white flash. Patches the generated theme, whatever its name.
+      - name: Theme the window background
+        run: |
+          for f in src-tauri/gen/android/app/src/main/res/values{,-night}/themes.xml; do
+            grep -q 'Customize your theme here' "$f" || { echo "::error::$f changed shape"; exit 1; }
+            sed -i 's|<!-- Customize your theme here. -->|<item name="android:windowBackground">@color/befikr_window</item><item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/befikr_window</item>|' "$f"
+            cat "$f"
+          done
+
       - run: pnpm tauri android build --apk --target aarch64 --ci
 
       # Same key every build so updates install over the previous version.

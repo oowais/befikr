@@ -1,21 +1,6 @@
-<!-- Shown until the app mounts (Nuxt spaLoadingTemplate). Icon: src-tauri/android/icon. -->
-<style>
-  #splash { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px;
-    background: #e2e5ea; color: #111; font: 600 22px/1 system-ui, Roboto, sans-serif; letter-spacing: -0.01em; }
-  #splash svg { width: 96px; height: 96px; border-radius: 24px; box-shadow: 0 8px 28px rgb(0 0 0 / 12%);
-    animation: splash-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  #splash span { animation: splash-in 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
-  #splash .dark { display: none; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) #splash { background: #0e0e0e; color: #fafafa; }
-    :root:not([data-theme="light"]) #splash .light { display: none; }
-    :root:not([data-theme="light"]) #splash .dark { display: block; }
-  }
-  :root[data-theme="dark"] #splash { background: #0e0e0e; color: #fafafa; }
-  :root[data-theme="dark"] #splash .light { display: none; }
-  :root[data-theme="dark"] #splash .dark { display: block; }
-  @keyframes splash-in { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
-</style>
+<!-- Cold-start splash (Nuxt spaLoadingTemplate). plugins/splash.client.ts lifts it out
+     of Nuxt's loader so it stays up until the first screen has its data (useSplash).
+     Background = befikr_window (Android) = --bg. Icon: src-tauri/android/icon. -->
 <script>
   // Saved theme (Settings → Theme) before anything paints.
   try {
@@ -24,6 +9,26 @@
   } catch {}
 </script>
 <div id="splash">
+  <style>
+    #splash { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px;
+      background: #e2e5ea; color: #111; font: 600 22px/1 system-ui, Roboto, sans-serif; letter-spacing: -0.01em; }
+    #splash svg { width: 96px; height: 96px; border-radius: 24px; box-shadow: 0 8px 28px rgb(0 0 0 / 12%);
+      animation: splash-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    #splash span { animation: splash-in 0.5s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
+    #splash .dark { display: none; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) #splash { background: #0e0e0e; color: #fafafa; }
+      :root:not([data-theme="light"]) #splash .light { display: none; }
+      :root:not([data-theme="light"]) #splash .dark { display: block; }
+    }
+    :root[data-theme="dark"] #splash { background: #0e0e0e; color: #fafafa; }
+    :root[data-theme="dark"] #splash .light { display: none; }
+    :root[data-theme="dark"] #splash .dark { display: block; }
+    /* Leaving (composables/useSplash.ts): fades and opens up as the page rises in behind. */
+    #splash { z-index: 1000; transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+    #splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+    @keyframes splash-in { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
+  </style>
   <svg class="light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108"><rect width="108" height="108" rx="26" fill="#E3ECDC"/><g transform="translate(54 54) scale(0.95) translate(-54 -54)"><path d="M26,38 l3.6,3.6 l7.2,-8" fill="none" stroke="#7A9A76" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,38.00 L44.54,38.88 L46.08,39.70 L47.62,40.40 L49.17,40.94 L50.71,41.28 L52.25,41.40 L53.79,41.28 L55.33,40.94 L56.88,40.40 L58.42,39.70 L59.96,38.88 L61.50,38.00 L63.04,37.12 L64.58,36.30 L66.12,35.60 L67.67,35.06 L69.21,34.72 L70.75,34.60 L72.29,34.72 L73.83,35.06 L75.38,35.60 L76.92,36.30 L78.46,37.12 L80.00,38.00" fill="none" stroke="#7A9A76" stroke-width="6.0" stroke-linecap="round" stroke-linejoin="round"/><path d="M26,54 l3.6,3.6 l7.2,-8" fill="none" stroke="#24452A" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,54.00 L44.79,54.98 L46.58,55.90 L48.38,56.69 L50.17,57.29 L51.96,57.67 L53.75,57.80 L55.54,57.67 L57.33,57.29 L59.12,56.69 L60.92,55.90 L62.71,54.98 L64.50,54.00 L66.29,53.02 L68.08,52.10 L69.88,51.31 L71.67,50.71 L73.46,50.33 L75.25,50.20 L77.04,50.33 L78.83,50.71 L80.62,51.31 L82.42,52.10 L84.21,53.02 L86.00,54.00" fill="none" stroke="#24452A" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,70.00 L44.38,70.88 L45.75,71.70 L47.12,72.40 L48.50,72.94 L49.88,73.28 L51.25,73.40 L52.62,73.28 L54.00,72.94 L55.38,72.40 L56.75,71.70 L58.12,70.88 L59.50,70.00 L60.88,69.12 L62.25,68.30 L63.62,67.60 L65.00,67.06 L66.38,66.72 L67.75,66.60 L69.12,66.72 L70.50,67.06 L71.88,67.60 L73.25,68.30 L74.62,69.12 L76.00,70.00" fill="none" stroke="#7A9A76" stroke-width="6.0" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.5" cy="70" r="4.8" fill="none" stroke="#E07A5F" stroke-width="3.6"/></g></svg>
   <svg class="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108"><rect width="108" height="108" rx="26" fill="#23262B"/><g transform="translate(54 54) scale(0.95) translate(-54 -54)"><path d="M26,38 l3.6,3.6 l7.2,-8" fill="none" stroke="#B9F6CA" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,38.00 L44.54,38.88 L46.08,39.70 L47.62,40.40 L49.17,40.94 L50.71,41.28 L52.25,41.40 L53.79,41.28 L55.33,40.94 L56.88,40.40 L58.42,39.70 L59.96,38.88 L61.50,38.00 L63.04,37.12 L64.58,36.30 L66.12,35.60 L67.67,35.06 L69.21,34.72 L70.75,34.60 L72.29,34.72 L73.83,35.06 L75.38,35.60 L76.92,36.30 L78.46,37.12 L80.00,38.00" fill="none" stroke="#B9F6CA" stroke-width="6.0" stroke-linecap="round" stroke-linejoin="round"/><path d="M26,54 l3.6,3.6 l7.2,-8" fill="none" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,54.00 L44.79,54.98 L46.58,55.90 L48.38,56.69 L50.17,57.29 L51.96,57.67 L53.75,57.80 L55.54,57.67 L57.33,57.29 L59.12,56.69 L60.92,55.90 L62.71,54.98 L64.50,54.00 L66.29,53.02 L68.08,52.10 L69.88,51.31 L71.67,50.71 L73.46,50.33 L75.25,50.20 L77.04,50.33 L78.83,50.71 L80.62,51.31 L82.42,52.10 L84.21,53.02 L86.00,54.00" fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M43.00,70.00 L44.38,70.88 L45.75,71.70 L47.12,72.40 L48.50,72.94 L49.88,73.28 L51.25,73.40 L52.62,73.28 L54.00,72.94 L55.38,72.40 L56.75,71.70 L58.12,70.88 L59.50,70.00 L60.88,69.12 L62.25,68.30 L63.62,67.60 L65.00,67.06 L66.38,66.72 L67.75,66.60 L69.12,66.72 L70.50,67.06 L71.88,67.60 L73.25,68.30 L74.62,69.12 L76.00,70.00" fill="none" stroke="#69F0AE" stroke-width="6.0" stroke-linecap="round" stroke-linejoin="round"/><circle cx="31.5" cy="70" r="4.8" fill="none" stroke="#69F0AE" stroke-width="3.6"/></g></svg>
   <span>Befikr</span>

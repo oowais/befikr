@@ -39,8 +39,10 @@ function dismiss() {
   } catch {}
 }
 
+// Arrives with the list rather than pushing it down a moment later.
+const releaseSplash = holdSplash()
 onMounted(async () => {
-  if (start == null || dismissed.value) return
+  if (start == null || dismissed.value) return releaseSplash()
   const d = new Date(start)
   const prevStart = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7).getTime()
   const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7).getTime()
@@ -49,6 +51,7 @@ onMounted(async () => {
   const s = await api.stats(prevStart, starts).catch(() => null)
   prev.value = s?.weeks[0] ?? null
   week.value = s?.weeks[1] ?? null
+  releaseSplash()
 })
 
 const total = (w: WeekStats) => w.onTime + w.late + w.undated

@@ -50,6 +50,8 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
     private var launchRoute: String? = null
 
     override fun load(webView: WebView) {
+        // Page background until the splash paints (no white flash on cold start).
+        webView.setBackgroundColor(activity.getColor(R.color.befikr_window))
         Notifier.ensureChannel(activity)
         launchRoute = routeFor(activity.intent)
     }

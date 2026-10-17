@@ -10,7 +10,7 @@ export default defineNuxtConfig({
     },
   },
   devServer: { host: process.env.TAURI_DEV_HOST || 'localhost' },
-  ignore: ['**/src-tauri/**', '**/plugins/**', '**/crates/**', '**/packages/**'],
+  ignore: ['**/src-tauri/**', 'plugins/**', '**/crates/**', '**/packages/**'],
   vite: {
     clearScreen: false,
     envPrefix: ['VITE_', 'TAURI_'],
