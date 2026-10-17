@@ -23,12 +23,14 @@ export function useHintRotation() {
   const stop = () => timer && (clearInterval(timer), (timer = undefined))
   const onVisible = () => (document.visibilityState === 'visible' ? start() : stop())
   onMounted(() => {
-    next()
     start()
     document.addEventListener('visibilitychange', onVisible)
   })
+  // Next visit opens on a new phrase. Not on mount: a phrase change that
+  // early leaves the hint stuck invisible when transitions are off.
   onUnmounted(() => {
     stop()
     document.removeEventListener('visibilitychange', onVisible)
+    next()
   })
 }
