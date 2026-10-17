@@ -406,6 +406,8 @@ async function remove() {
   position: relative; display: flex; align-items: center; gap: 8px; min-height: 72px; padding-top: 22px;
   touch-action: none; user-select: none; cursor: grab;
 }
+/* Snooze, Skip and Complete side by side on a phone. */
+.bar .btn { padding-inline: 12px; white-space: nowrap; }
 .handle {
   position: absolute; top: 8px; left: 50%; translate: -50% 0;
   width: 36px; height: 4px; border-radius: 2px; background: color-mix(in oklch, var(--muted) 45%, transparent);
