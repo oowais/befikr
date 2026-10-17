@@ -165,6 +165,9 @@ export const api = {
   resolveConflict: (id: string, useMine: boolean) => invoke<void>('resolve_conflict', { id, useMine }),
   /** Desktop only; rejects on Android. */
   desktopPrefs: () => invoke<DesktopPrefs>('desktop_prefs'),
+  /** Windows: a switch that silences every reminder ('windows' = all notifications off, 'app' = Befikr's). */
+  notificationsBlocked: () => invoke<'windows' | 'app' | null>('notifications_blocked').catch(() => null),
+  openNotificationSettings: () => invoke<void>('open_notification_settings'),
   setAutostart: (on: boolean) => invoke<void>('set_autostart', { on }),
   setStartHidden: (on: boolean) => invoke<void>('set_start_hidden', { on }),
 }

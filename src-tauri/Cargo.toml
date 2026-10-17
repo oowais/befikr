@@ -43,3 +43,7 @@ gtk = "0.18"
 # Reminder notifications with Complete / Snooze buttons (D-Bus on Linux, toasts on Windows).
 [target.'cfg(any(target_os = "linux", windows))'.dependencies]
 notify-rust = "4"
+
+# Whether Windows lets our notifications through (desktop/notify_settings.rs).
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.6"

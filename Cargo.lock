@@ -360,6 +360,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tokio",
+ "windows-registry",
 ]
 
 [[package]]

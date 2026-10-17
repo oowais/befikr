@@ -6,6 +6,7 @@
 pub mod backup;
 pub mod digest;
 mod notify;
+pub mod notify_settings;
 pub mod prefs;
 mod scheduler;
 mod tray;

@@ -279,6 +279,32 @@ fn import_backup(app: AppHandle, db: State<Db>, path: String) -> Res<()> {
     Ok(())
 }
 
+// ---- Windows notification switches (null elsewhere).
+
+#[cfg(desktop)]
+#[tauri::command]
+fn notifications_blocked(app: AppHandle) -> Option<desktop::notify_settings::Blocked> {
+    desktop::notify_settings::blocked(&app)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn open_notification_settings() -> Res<()> {
+    desktop::notify_settings::open_settings()
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn notifications_blocked() -> Option<()> {
+    None
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+fn open_notification_settings() -> Res<()> {
+    Err(DESKTOP_ONLY.into())
+}
+
 // ---- This computer's startup settings (desktop; Android has none).
 
 #[cfg(desktop)]
@@ -508,6 +534,8 @@ pub fn run() {
             set_digest_time,
             import_backup,
             desktop_prefs,
+            notifications_blocked,
+            open_notification_settings,
             set_autostart,
             set_start_hidden,
             backup_status,

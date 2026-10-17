@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync, Sunrise, WifiOff } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, BellOff, Download, FolderSync, Sunrise, WifiOff } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -19,6 +19,8 @@ async function setStartHidden(on: boolean) {
   await run(() => api.setStartHidden(on))
 }
 const settings = ref<Settings | null>(null)
+// Windows: notifications switched off there (re-read when the window comes back).
+const blocked = ref<'windows' | 'app' | null>(null)
 const status = ref<Status | null>(null)
 // All permissions granted: one collapsed "set up" row; tap to see them.
 const permsOpen = ref(false)
@@ -75,6 +77,7 @@ async function load() {
     error.value = String(e)
   }
   status.value = await reminders.status().catch(() => null)
+  blocked.value = await api.notificationsBlocked()
   backup.value = await reminders.backupStatus().catch(() => null)
 }
 onMounted(load)
@@ -132,6 +135,14 @@ async function run(f: () => Promise<unknown>) {
 
     <h2 class="section-title">Reminders</h2>
     <div class="pane rows">
+      <div v-if="blocked" class="item warn">
+        <BellOff :size="20" />
+        <span class="flex stack">
+          <span>{{ blocked === 'windows' ? 'Windows notifications are off' : 'Befikr notifications are off in Windows' }}</span>
+          <span class="small">Reminders won't show until you turn them on</span>
+        </span>
+        <button class="btn" @click="run(api.openNotificationSettings)">Turn on</button>
+      </div>
       <template v-if="status">
         <button v-if="allSet" class="item" :aria-expanded="permsOpen" @click="permsOpen = !permsOpen">
           <Check :size="20" class="muted" />
@@ -309,6 +320,8 @@ a.item { color: inherit; text-decoration: none; }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .version p { margin: 0; }
+.warn { color: var(--red); }
+.warn .btn { flex: none; }
 .field.time { width: auto; flex: none; padding: 6px 12px; text-align: center; font-variant-numeric: tabular-nums; }
 .version.tight { margin-top: 12px; }
 .update { margin-top: 40px; }
