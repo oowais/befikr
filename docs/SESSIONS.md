@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (task history)** — Task sheet "Show all" history: grouped by month (latest open, others tap to expand), scrolls inside its card (~8 rows) so Retire/Delete stay close; "Show less" by the heading.
 - **Oct 17, 2026 (cold start)** — Splash now holds until the first screen's data is in (`useSplash`: app.vue route decision, list + garden, week recap, sync dot; 3 s cap), then fades while the page rises; entrance animations wait behind it. Window, Android splash and WebView use the page background (`befikr_window`; CI patches the generated theme). Fixed `ignore: '**/plugins/**'` hiding `app/plugins/` (theme plugin never ran). Not yet on a device.
 - **Oct 17, 2026 (README widget)** — Sixth README screenshot: the home-screen widget (`docs/screenshots/widget-dark.png`), drawn in HTML from `widget_today.xml` + night colours and rendered in headless Edge at 2× (no device here).
 - **Oct 17, 2026 (releases)** — v0.30.1 (Actions bump) and v0.30.2 (windows-registry) went out with empty notes. `next-version.sh` now prints `none` (build, no release) unless a commit since the tag is user-facing (feat/fix/perf/refactor/revert/breaking/`chore(deps)`); `release-notes.sh` has a Dependencies section. Checked against v0.30.0–v0.30.2. Re-remind default is now 15/30/60. Dependabot: jni/typescript/@types/node majors ignored; README screenshots in two rows; page favicon.

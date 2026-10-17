@@ -3,7 +3,7 @@
 // mounted in RouteSheets). Edit title, date, repeat, notes, subtasks; done,
 // snooze, skip, retire, delete. Closes by dragging its top down, tapping
 // outside, Back, or after done / skip / retire / delete.
-import { AlarmClock, CalendarDays, Check, CheckCircle2, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, Check, CheckCircle2, ChevronRight, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
 import type { Completion, HabitStreak, Task } from '~/composables/api'
 
@@ -192,7 +192,30 @@ async function retire() {
 }
 const dayOf = (ms: number) => new Date(ms).toDateString()
 const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen && dayOf(c.completedAt) !== dayOf(c.dueAtThen)
-const shownHistory = computed(() => (allHistory.value ? history.value : history.value.slice(0, 5)))
+// "Show all": by month (newest first, only the latest open), scrolling
+// inside its card so Retire and Delete stay close.
+const months = computed(() => {
+  const out: { key: string; label: string; items: Completion[] }[] = []
+  for (const c of history.value) {
+    const d = new Date(c.completedAt)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    if (out.at(-1)?.key !== key) out.push({ key, label: monthLabel(d), items: [] })
+    out.at(-1)!.items.push(c)
+  }
+  return out
+})
+const monthLabel = (d: Date) =>
+  d.toLocaleDateString(undefined, { month: 'long', ...(d.getFullYear() !== new Date().getFullYear() && { year: 'numeric' }) })
+const openMonths = ref(new Set<string>())
+function showAllHistory() {
+  openMonths.value = new Set(months.value.slice(0, 1).map((m) => m.key))
+  allHistory.value = true
+}
+function toggleMonth(key: string) {
+  const next = new Set(openMonths.value)
+  if (!next.delete(key)) next.add(key)
+  openMonths.value = next
+}
 
 async function reopen() {
   haptic()
@@ -314,14 +337,31 @@ async function remove() {
           <span v-if="carefree.enabled.value && streak?.current" class="streak">
             · <Flame :size="13" /> {{ streak.current }} {{ streakUnit }} in a row<template v-if="streak.best > streak.current"> (best {{ streak.best }})</template>
           </span>
+          <button v-if="allHistory" class="less" @click="allHistory = false">Show less</button>
         </h2>
-        <div class="pane rows">
-          <div v-for="c in shownHistory" :key="c.id" class="sub">
+        <div v-if="!allHistory" class="pane rows">
+          <div v-for="c in history.slice(0, 5)" :key="c.id" class="sub">
             <History :size="18" class="muted" />
             <span class="flex">{{ dayLabel(c.completedAt) }}</span>
             <span v-if="late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
           </div>
-          <button v-if="history.length > 5 && !allHistory" class="sub muted" @click="allHistory = true">Show all {{ history.length }}</button>
+          <button v-if="history.length > 5" class="sub muted" @click="showAllHistory">Show all {{ history.length }}</button>
+        </div>
+        <div v-else class="pane rows all-history">
+          <template v-for="m in months" :key="m.key">
+            <button class="sub month" :aria-expanded="openMonths.has(m.key)" @click="toggleMonth(m.key)">
+              <ChevronRight :size="18" class="muted chev" />
+              <span class="flex">{{ m.label }}</span>
+              <span class="muted small">{{ m.items.length }}</span>
+            </button>
+            <template v-if="openMonths.has(m.key)">
+              <div v-for="c in m.items" :key="c.id" class="sub">
+                <History :size="18" class="muted" />
+                <span class="flex">{{ dayLabel(c.completedAt) }}</span>
+                <span v-if="late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+              </div>
+            </template>
+          </template>
         </div>
       </template>
 
@@ -382,6 +422,12 @@ async function remove() {
 .sub { display: flex; align-items: center; gap: 12px; min-height: 48px; width: 100%; text-align: left; }
 .sub.done span:last-child { text-decoration: line-through; color: var(--muted); }
 .add-icon { margin: 0 2px; }
+/* About eight rows, then it scrolls on its own. */
+.all-history { max-height: min(400px, 50vh); overflow-y: auto; overscroll-behavior: contain; }
+.month { font-weight: 500; }
+.month .chev { transition: transform 0.2s; }
+.month[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.less { float: right; color: var(--muted); font-weight: 400; }
 .bare { flex: 1; border: 0; outline: none; background: none; padding: 12px 0; }
 .end-actions { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; }
 .end-actions p { margin: 0 0 8px; }
