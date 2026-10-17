@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (shortcut)** — N or Ctrl+N opens quick add (app.vue `quickAddKey`; not while typing or with a sheet open), same path as the tray's Quick add; the calendar opens its own. Tooltip "New task (N)" on the bar. No system-wide hotkey (idea 3 was declined).
+
 - **Oct 17, 2026 (sheets)** — Escape closes the top sheet on computers (same stack as Android back, `useBackClose`; a context menu's Escape is preventDefault'ed so the sheet under it stays). Task sheet buttons sit lower, clear of the drag handle.
 
 - **Oct 17, 2026 (settings polish)** — Morning digest is per device now (`DEVICE_SETTINGS` in `sync.rs`: `backup_dir`, `digest_time`; not logged, ignored when merged, old log entries dropped on open); its time sits in the switch row. Re-remind intervals are chips (digits only, sorted, unique, ≤ 24 h, at least one; saved on change) with a plain-English summary instead of a comma field. **Next:** turn the digest back on on the phone after updating (the PC's "off" synced before this); device checks.

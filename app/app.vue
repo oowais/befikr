@@ -21,15 +21,30 @@ onMounted(async () => {
   // and its Complete changes the list.
   listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
   listen('tasks-changed', () => listChanged()).catch(() => {})
-  listen('quick-add', async () => {
-    quickAddPending.value = true
-    if (route.path !== '/') await router.push('/')
-  }).catch(() => {})
+  listen('quick-add', openQuickAdd).catch(() => {})
+  window.addEventListener('keydown', quickAddKey)
   const launch = await reminders.takeLaunchRoute().then((r) => r?.route, () => undefined)
   if (launch && launch !== '/') return router.push(launch)
   // First launch, or a permission revoked: the setup tour.
   if (route.path === '/' && (await needsSetup().catch(() => false))) router.replace('/welcome')
 })
+
+// Quick add from the tray menu or the keyboard: the list (or the calendar,
+// which has its own) opens it.
+async function openQuickAdd() {
+  quickAddPending.value = true
+  const path = route.path.replace(/(.)\/$/, '$1')
+  if (path !== '/' && path !== '/calendar') await router.push('/')
+}
+
+/** N or Ctrl+N (computers), unless typing or a sheet is already open. */
+function quickAddKey(e: KeyboardEvent) {
+  if (e.key.toLowerCase() !== 'n' || e.altKey || e.shiftKey || e.repeat) return
+  const el = e.target as HTMLElement | null
+  if (el?.closest('input, textarea, select, [contenteditable="true"]') || sheetOpen()) return
+  e.preventDefault()
+  openQuickAdd()
+}
 
 function runAction() {
   toast.value?.action?.run()

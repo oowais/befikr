@@ -238,7 +238,7 @@ onUnmounted(() => {
       <div v-if="!loaded" class="scene" />
       <!-- Adding lives at thumb height: tap to open quick add. -->
       <div class="dock">
-        <button class="composer field" @click="adding = true">
+        <button class="composer field" title="New task (N)" @click="adding = true">
           <Plus :size="22" /> <span>New task</span>
           <Transition name="hint" mode="out-in"><span :key="hint" class="hint" aria-hidden="true">{{ hint }}</span></Transition>
         </button>

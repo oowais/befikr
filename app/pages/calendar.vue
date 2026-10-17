@@ -198,6 +198,16 @@ function addOn(day: number) {
   useQuickAddDraft().manualDue = at
   adding.value = true
 }
+// N / Ctrl+N or the tray's Quick add while the calendar is open.
+watch(
+  quickAddPending,
+  (v) => {
+    if (!v) return
+    quickAddPending.value = false
+    adding.value = true
+  },
+  { immediate: true },
+)
 const ghost = computed(() => (drag.card && drag.moved ? drag.card : null))
 </script>
 

@@ -6,6 +6,9 @@ import { exit, onBackButtonPress } from '@tauri-apps/api/app'
 
 const open: (() => void)[] = []
 
+/** Whether any sheet is open (keyboard shortcuts wait until it's closed). */
+export const sheetOpen = () => open.length > 0
+
 /** Call in a sheet component: back closes it while it's mounted. */
 export function useBackClose(close: () => void) {
   onMounted(() => open.push(close))
