@@ -102,9 +102,17 @@ const backupLabel = computed(() => {
   if (b.lastError) return 'Last backup failed'
   return b.lastAt ? `Daily · last: ${dayLabel(b.lastAt)}` : 'Daily · not yet'
 })
+// Back from the system's settings: Android hides the page meanwhile; on a
+// computer the window stays visible and only regains focus.
 const onVisible = () => document.visibilityState === 'visible' && load()
-onMounted(() => document.addEventListener('visibilitychange', onVisible))
-onUnmounted(() => document.removeEventListener('visibilitychange', onVisible))
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisible)
+  window.addEventListener('focus', load)
+})
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onVisible)
+  window.removeEventListener('focus', load)
+})
 
 async function run(f: () => Promise<unknown>) {
   try {
