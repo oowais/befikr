@@ -239,7 +239,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; Android background sync with the CachyOS PC confirmed Oct 17 (phone app closed); conflicts not yet device-tested |
 
-**Next:** Windows update check on focus; Arch Update button runs the install script.
+**Next:** Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.)
 
 ### Step 0 — spike checklist
 
@@ -393,6 +393,8 @@ Known gaps (add test rows when fixing):
 ## Session log
 
 Newest first. One or two lines per session: what changed, what's next.
+
+- **Oct 17, 2026 (no Arch self-update)** — Decided against an in-app Update button on Arch: Linux apps update through the package manager, and an AUR `befikr-bin` will own that later. Linux keeps the "is out" row only. **Next:** Windows update check on focus.
 
 - **Oct 17, 2026 (background sync confirmed)** — User saw a Pixel 9 ↔ CachyOS sync 16 min earlier with the phone app never opened (PC app open): WorkManager background sync works. **Next:** Windows update check on focus; Arch Update button runs the install script.
 
