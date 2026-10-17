@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -45,13 +47,26 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
 
     companion object {
         private const val NAME = "befikr-sync"
+        private const val NOW = "befikr-sync-now"
+        private fun online() = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
         /** Idempotent: keeps an already scheduled run. Survives reboots (WorkManager). */
         fun schedule(ctx: Context) {
             val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
-                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setConstraints(online())
                 .build()
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        }
+
+        /**
+         * One round soon (once there's a network), after a task changed with the
+         * app closed (notification action, snooze sheet, widget): other devices
+         * drop their notification for it now, not at the next 15-minute run.
+         * Several in a row queue up behind each other.
+         */
+        fun now(ctx: Context) {
+            val request = OneTimeWorkRequestBuilder<SyncWorker>().setConstraints(online()).build()
+            WorkManager.getInstance(ctx).enqueueUniqueWork(NOW, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
     }
 }

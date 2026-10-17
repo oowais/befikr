@@ -147,6 +147,7 @@ class SnoozeActivity : Activity() {
                 val change = parseOutcome(call(dbPath))
                 if (change != null) {
                     Scheduler.apply(ctx, change)
+                    SyncWorker.now(ctx)
                     toast(done)
                 } else {
                     toast("Couldn't $what: open Befikr")

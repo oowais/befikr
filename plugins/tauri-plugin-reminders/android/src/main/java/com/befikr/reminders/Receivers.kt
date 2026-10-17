@@ -30,6 +30,7 @@ class ActionReceiver : BroadcastReceiver() {
                 Notifier.cancel(ctx, id)
                 if (change != null) Scheduler.apply(ctx, change) else Scheduler.cancel(ctx, id)
                 TasksWidget.refresh(ctx)
+                SyncWorker.now(ctx)
             }
             ACTION_DISMISS -> parseOutcome(Native.onAction(dbPath, id, "dismiss"))
             else -> Log.w(TAG, "unknown action ${intent.action}")

@@ -4,6 +4,8 @@ Newest first. One or two lines per session: what changed, what's next. Add new e
 
 - **Oct 17, 2026 (update race)** — The release goes out with the APK before the Windows/Linux files are attached, so Windows offered 0.26.0 and the updater failed (no `latest.json`). `useUpdate` now counts an update only when this platform's file is in the release (APK / `latest.json` / `.deb`); until then Settings says "still being built" and it re-checks after 5 min, also on window focus (the old "update check on focus" item).
 
+- **Oct 17, 2026 (sync after actions)** — Complete/Skip from a notification or the widget (`ActionReceiver`) and Snooze/Skip from the snooze sheet now queue a one-off `SyncWorker` run (`SyncWorker.now`, unique, APPEND_OR_REPLACE, needs a network), so other devices hear about it in seconds instead of at the next 15-minute run. Limit: a phone with Befikr closed still only pulls at its own 15-minute run (nothing can reach it while closed).
+
 - **Oct 17, 2026 (paired devices)** — Sync page: a dot before "Synced … ago" (green < 6 h, orange < 2 days, red after or never, "open Befikr there"), and a phone or laptop icon. Hello now carries `kind` ("phone"/"computer" from the build target, `#[serde(default)]` so older versions still talk); stored in `peers.kind` (migration 7), learned on the next sync.
 
 - **Oct 17, 2026 (shortcut)** — N or Ctrl+N opens quick add (app.vue `quickAddKey`; not while typing or with a sheet open), same path as the tray's Quick add; the calendar opens its own. Tooltip "New task (N)" on the bar. No system-wide hotkey (idea 3 was declined).
