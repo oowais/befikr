@@ -5,7 +5,6 @@ import { Plus, X } from 'lucide-vue-next'
 import type { Settings } from '~/composables/api'
 
 const settings = ref<Settings | null>(null)
-const reremind = ref('')
 const newWord = ref('')
 const newTime = ref('')
 const error = ref('')
@@ -13,7 +12,6 @@ const error = ref('')
 async function load() {
   try {
     settings.value = await api.settings()
-    reremind.value = settings.value.reremindMinutes.join(', ')
   } catch (e) {
     error.value = String(e)
   }
@@ -31,8 +29,38 @@ async function run(f: () => Promise<unknown>) {
   }
 }
 
-const saveReremind = () =>
-  run(() => api.setReremindMinutes(reremind.value.split(/[,\s]+/).filter(Boolean).map(Number)))
+// Re-remind intervals as chips: numbers only, kept sorted and unique, saved
+// on every change (at least one stays).
+const MAX_MINUTES = 24 * 60
+const newMinutes = ref('')
+const minutes = computed(() => settings.value?.reremindMinutes ?? [])
+const minLabel = (m: number) => (m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`)
+const reremindSummary = computed(() => {
+  const m = minutes.value
+  if (!m.length) return ''
+  const last = minLabel(m.at(-1)!)
+  if (m.length === 1) return `Comes back every ${last} until you act on it.`
+  return `Comes back after ${m.slice(0, -1).map(minLabel).join(', then ')}, then every ${last}.`
+})
+function saveMinutes(list: number[]) {
+  const sorted = [...new Set(list)].sort((a, b) => a - b)
+  settings.value!.reremindMinutes = sorted
+  run(() => api.setReremindMinutes(sorted))
+}
+function digitsOnly(e: Event) {
+  const el = e.target as HTMLInputElement
+  el.value = el.value.replace(/\D/g, '').slice(0, 4)
+  newMinutes.value = el.value
+}
+const newValid = computed(() => {
+  const n = Number(newMinutes.value)
+  return Number.isInteger(n) && n > 0 && n <= MAX_MINUTES && !minutes.value.includes(n)
+})
+function addMinutes() {
+  if (!newValid.value) return
+  saveMinutes([...minutes.value, Number(newMinutes.value)])
+  newMinutes.value = ''
+}
 const setWord = (w: string, t: string) => run(() => api.setTimeWord(w, t))
 // Time words use our own picker (time mode), never the native one.
 /** Word being edited (null = the new word's time), or nothing open. */
@@ -62,12 +90,32 @@ function addWord() {
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="settings">
-      <h2 class="section-title">Re-remind every (minutes)</h2>
-      <form class="row" @submit.prevent="saveReremind">
-        <input v-model="reremind" class="field" inputmode="numeric" />
-        <button class="btn">Save</button>
-      </form>
-      <p class="muted small">Unacted reminders come back after each interval; the last one repeats.</p>
+      <h2 class="section-title">Re-remind</h2>
+      <div class="chips">
+        <span v-for="m in minutes" :key="m" class="chip split">
+          <span class="part">{{ minLabel(m) }}</span>
+          <button
+            v-if="minutes.length > 1"
+            type="button"
+            class="x"
+            :aria-label="`Remove ${minLabel(m)}`"
+            @click="saveMinutes(minutes.filter((x) => x !== m))"
+          ><X :size="14" /></button>
+        </span>
+        <form class="add" @submit.prevent="addMinutes">
+          <input
+            :value="newMinutes"
+            class="field minutes"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            placeholder="min"
+            aria-label="Add an interval in minutes"
+            @input="digitsOnly"
+          />
+          <button class="icon-btn" aria-label="Add interval" :disabled="!newValid"><Plus :size="20" /></button>
+        </form>
+      </div>
+      <p class="muted small">{{ reremindSummary }}</p>
 
       <h2 class="section-title">Time words</h2>
       <div class="pane rows">
@@ -103,5 +151,11 @@ function addWord() {
 .flex { flex: 1; }
 .word { text-transform: capitalize; }
 .time { width: 136px; flex: none; padding: 8px 10px; text-align: left; }
-.row { display: flex; gap: 8px; }
+.chip.split { padding: 0; gap: 0; display: inline-flex; align-items: center; }
+.chip.split .part { padding: 6px 12px; font-variant-numeric: tabular-nums; }
+.chip.split .part:has(+ .x) { padding-right: 2px; }
+.chip.split .x { display: grid; place-items: center; width: 32px; height: 32px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.add { display: inline-flex; align-items: center; gap: 2px; }
+.field.minutes { width: 72px; padding: 6px 10px; text-align: center; }
 </style>

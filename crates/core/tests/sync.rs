@@ -80,9 +80,14 @@ fn device_local_settings_stay_put() {
     let (mut b, _) = device();
     a.set_reremind_minutes(vec![10, 20]).unwrap();
     a.set_backup_dir(Some("/sdcard/Befikr".into())).unwrap();
+    a.set_digest_time(None).unwrap();
+    b.set_digest_time(Some("07:15")).unwrap();
     sync(&a, &mut b, &mut 0);
+    sync(&b, &mut a, &mut 0);
     let s = b.settings().unwrap();
     assert_eq!((s.reremind_minutes, s.backup_dir), (vec![10, 20], None));
+    assert_eq!(s.digest_time.as_deref(), Some("07:15"), "digest is per device");
+    assert_eq!(a.settings().unwrap().digest_time, None);
 }
 
 #[test]

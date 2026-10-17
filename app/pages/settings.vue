@@ -159,15 +159,21 @@ async function run(f: () => Promise<unknown>) {
         <ChevronRight :size="20" class="muted" />
       </NuxtLink>
       <template v-if="settings">
-        <button class="item" role="switch" :aria-checked="!!settings.digestTime" @click="setDigest(settings.digestTime ? null : '08:00')">
+        <div class="item">
           <Sunrise :size="20" class="muted" />
-          <span class="flex left">Morning digest<span class="muted small hint">One quiet notification with today's tasks</span></span>
-          <span class="switch" :class="{ on: settings.digestTime }"><span class="knob" /></span>
-        </button>
-        <div v-if="settings.digestTime" class="item">
-          <span class="icon-gap" />
-          <span class="flex">At</span>
-          <button type="button" class="field time" @click="pickingDigest = true">{{ timeLabel(todayAt(settings.digestTime)) }}</button>
+          <span class="flex left">Morning digest<span class="muted small hint">Today's tasks, on this device only</span></span>
+          <button v-if="settings.digestTime" type="button" class="field time" aria-label="Digest time" @click="pickingDigest = true">
+            {{ timeLabel(todayAt(settings.digestTime)) }}
+          </button>
+          <button
+            type="button"
+            class="switch"
+            :class="{ on: settings.digestTime }"
+            role="switch"
+            aria-label="Morning digest"
+            :aria-checked="!!settings.digestTime"
+            @click="setDigest(settings.digestTime ? null : '08:00')"
+          ><span class="knob" /></button>
         </div>
       </template>
     </div>
@@ -302,8 +308,7 @@ a.item { color: inherit; text-decoration: none; }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .version p { margin: 0; }
-.icon-gap { width: 20px; flex: none; }
-.field.time { width: auto; min-width: 112px; flex: none; padding: 8px 12px; text-align: center; }
+.field.time { width: auto; flex: none; padding: 6px 12px; text-align: center; font-variant-numeric: tabular-nums; }
 .version.tight { margin-top: 12px; }
 .update { margin-top: 40px; }
 .offline { display: inline-flex; align-items: center; gap: 6px; }

@@ -47,11 +47,16 @@ pub(crate) const SYNCED: &[Synced] = &[
         fields: &["task_id", "kind", "at", "due_at_then", "snoozed_to", "source"],
         only: None,
     },
-    Synced { table: "settings", key: "key", fields: &["value"], only: Some("ROW.key NOT IN ('backup_dir')") },
+    // Keep in step with DEVICE_SETTINGS.
+    Synced { table: "settings", key: "key", fields: &["value"], only: Some("ROW.key NOT IN ('backup_dir', 'digest_time')") },
     Synced { table: "time_words", key: "word", fields: &["time", "deleted_at"], only: None },
     Synced { table: "shopping_items", key: "id", fields: &["name", "bought_at", "created_at", "deleted_at"], only: None },
     Synced { table: "staples", key: "id", fields: &["name", "created_at", "deleted_at"], only: None },
 ];
+
+/// Settings that belong to one device: where its backups go, and whether and
+/// when it shows the morning digest (wanted on the phone, maybe not the PC).
+pub(crate) const DEVICE_SETTINGS: &[&str] = &["backup_dir", "digest_time"];
 
 /// Task fields whose change restarts the reminder (like a local edit would).
 pub(crate) const SCHEDULE_FIELDS: &[&str] = &["due_at", "tz", "rrule", "snoozed_until", "completed_at", "deleted_at"];
@@ -126,6 +131,10 @@ pub(crate) fn install(c: &Connection) -> Result<()> {
             body(arms(false)),
             body(arms(true)),
         ))?;
+    }
+    // Device settings logged before they became device-only (digest, 0.25).
+    for key in DEVICE_SETTINGS {
+        c.execute("DELETE FROM changes WHERE tbl = 'settings' AND row_id = ?1", [key])?;
     }
     let backfilled: bool = c.query_row("SELECT backfilled FROM sync_state", [], |r| r.get(0))?;
     if !backfilled {
@@ -205,7 +214,7 @@ impl Store {
                 max_hlc = max_hlc.max(ch.hlc);
                 let Some(t) = SYNCED.iter().find(|t| t.table == ch.table) else { continue };
                 let Some(field) = t.fields.iter().find(|f| **f == ch.field) else { continue };
-                if t.table == "settings" && ch.row_id == "backup_dir" {
+                if t.table == "settings" && DEVICE_SETTINGS.contains(&ch.row_id.as_str()) {
                     continue;
                 }
                 let local: Option<(i64, String, SqlValue)> = c
