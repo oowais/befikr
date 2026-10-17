@@ -74,6 +74,14 @@ const ago = (ms: number | null) => {
   if (s < 60) return 'Synced just now'
   return `Synced ${span(s * 1000)} ago`
 }
+// How fresh a device's copy is: green is normal; orange after a few hours,
+// red after two days (or never), when that device's list may be out of date.
+const HOUR_MS = 3_600_000
+const freshness = (ms: number | null) => {
+  if (ms == null) return 'red'
+  const age = now.value - ms
+  return age < 6 * HOUR_MS ? 'green' : age < 48 * HOUR_MS ? 'orange' : 'red'
+}
 const left = computed(() => {
   const s = Math.max(0, Math.round(((st.value?.pairing?.untilMs ?? 0) - now.value) / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -180,7 +188,9 @@ function pairPasted() {
             <Laptop :size="20" class="muted" />
             <span class="flex stack">
               <span>{{ p.name }}</span>
-              <span class="muted small">{{ ago(p.lastSyncAt) }}</span>
+              <span class="muted small when" :class="freshness(p.lastSyncAt)">
+                <span class="dot" :class="freshness(p.lastSyncAt)" />{{ ago(p.lastSyncAt) }}<template v-if="freshness(p.lastSyncAt) === 'red'"> · open Befikr there</template>
+              </span>
             </span>
             <button v-if="confirmRemove === p.endpoint" class="btn danger" @click="run(() => api.unpair(p.endpoint), 'Removed'); confirmRemove = null">Remove</button>
             <button v-else class="icon-btn" :aria-label="`Remove ${p.name}`" @click="confirmRemove = p.endpoint"><X :size="18" /></button>
@@ -220,6 +230,9 @@ function pairPasted() {
 </template>
 
 <style scoped>
+.when { display: inline-flex; align-items: center; gap: 6px; }
+.when.orange { color: var(--orange); }
+.when.red { color: var(--red); }
 .seg {
   display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; margin-top: 4px;
   box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);
