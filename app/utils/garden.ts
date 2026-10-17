@@ -131,6 +131,14 @@ function treeParts(t: Tree, season: Season): Part[] {
 /** The trees as drawn in `season`, in growth order. */
 export const treesFor = (season: Season): Part[][] => TREE_DEFS.map((t) => treeParts(t, season))
 
+/** On-time completions (all time) at which each tree appears. */
+export const TREE_AT = [3, 8, 15, 25, 40, 60, 85, 115, 150, 200, 260, 330]
+/** For "A birch grew in your garden" (with its article). */
+export const TREE_NAMES = [
+  'A pine', 'A bush', 'A birch', 'A fir', 'An oak', 'A cypress', 'An apple tree', 'A big fir', 'A cherry tree', 'A maple',
+  'Two pines', 'A grand oak',
+]
+
 /** Sizes per slot (the last trees are the biggest). */
 export const TREE_SCALE = [1, 1, 1, 1, 1, 1, 1, 1.25, 1.05, 1.05, 1, 1.35]
 

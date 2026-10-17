@@ -6,8 +6,8 @@
 // Nothing is taken away for missed days; it just stops growing. The garden
 // follows the season: blossom, summer green, autumn colours, snow.
 import type { Carefree } from '~/composables/api'
-import { flowersFor, seasonNow, treesFor, TREE_SCALE } from '~/utils/garden'
-const props = defineProps<{ clear?: boolean; garden?: Carefree | null }>()
+import { flowersFor, seasonNow, treesFor, TREE_AT, TREE_SCALE } from '~/utils/garden'
+const props = defineProps<{ clear?: boolean; garden?: Carefree | null; celebrate?: boolean }>()
 
 // Slots on the hills (y = the hill line there), in the order they fill.
 const SLOTS = [
@@ -16,7 +16,6 @@ const SLOTS = [
 ] as const
 /** Garden pieces are drawn a bit larger than the base landscape. */
 const GROW = 1.25
-const TREE_AT = [3, 8, 15, 25, 40, 60, 85, 115, 150, 200, 260, 330]
 const FLOWERS = [96, 124, 228, 258, 290, 42, 152, 214, 322, 110, 272, 14, 338, 244]
 const FRONT: Record<number, number> = {
   14: 192.4, 42: 187.6, 96: 184.5, 110: 184.5, 124: 184.6, 152: 184.8, 214: 180.2,
@@ -70,7 +69,8 @@ const line = computed(() =>
         d="M0 170 C50 128 92 134 130 152 S210 120 250 140 S320 158 360 132 V220 H0 Z"
       />
       <g class="base" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <!-- sky -->
+        <!-- sky (rises when the list was just cleared) -->
+        <g :class="{ rise: celebrate }">
         <template v-if="night">
           <path d="M278 52 a22 22 0 1 0 22 30 a17 17 0 1 1 -22 -30 z" />
           <path d="M70 40 l0 6 M67 43 l6 0 M130 70 l0 4 M128 72 l4 0 M210 30 l0 5 M207.5 32.5 l5 0" />
@@ -80,6 +80,7 @@ const line = computed(() =>
           <path d="M282 30 v-8 M282 102 v-8 M250 62 h-8 M322 62 h-8 M259 39 l-6 -6 M305 85 l6 6 M305 39 l6 -6 M259 85 l-6 6" />
           <path d="M60 58 q6 -6 12 0 q6 -6 12 0 M110 82 q5 -5 10 0 q5 -5 10 0" />
         </template>
+        </g>
         <!-- hills -->
         <path d="M0 170 C50 128 92 134 130 152 S210 120 250 140 S320 158 360 132" />
         <path d="M0 196 C70 176 140 190 200 182 S300 170 360 186" />
@@ -113,7 +114,7 @@ const line = computed(() =>
         </template>
       </g>
     </svg>
-    <p v-if="clear" class="line">{{ line }}</p>
+    <p v-if="clear" class="line" :class="{ rise: celebrate }">{{ line }}</p>
   </div>
 </template>
 
@@ -150,5 +151,8 @@ const line = computed(() =>
 .f-core { fill: color-mix(in oklch, oklch(0.8 0.16 75) 88%, var(--bg)); stroke: none; }
 .sprout { transform-box: fill-box; transform-origin: 50% 100%; animation: sprout 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes sprout { from { opacity: 0; scale: 1 0.3; } }
+.rise { animation: rise 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+p.rise { animation-duration: 0.8s; animation-delay: 0.7s; }
+@keyframes rise { from { opacity: 0; transform: translateY(46px); } }
 .line { text-align: center; margin: 14px 0 0; font-size: 1.45rem; font-weight: 500; letter-spacing: -0.01em; color: var(--text); opacity: 0.75; }
 </style>

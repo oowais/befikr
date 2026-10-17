@@ -92,6 +92,15 @@ export function localMs(date: string, time: string): number {
   return new Date(y!, m! - 1, d!, h!, mi!).getTime()
 }
 
+/** All clear: a short double buzz. */
+export const hapticCelebrate = () => {
+  try {
+    navigator.vibrate?.([14, 70, 28])
+  } catch {
+    /* not supported */
+  }
+}
+
 export const haptic = () => {
   try {
     navigator.vibrate?.(12)

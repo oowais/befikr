@@ -19,6 +19,11 @@ const error = ref('')
 // Nothing below the header until the first load: otherwise the empty
 // "All clear" scene flashes for a moment on a cold start.
 const loaded = ref(false)
+const milestones = useMilestones()
+// Most overdue tasks seen at once since the list was last clear of them.
+let overduePeak = 0
+// The last task was just completed: the empty scene greets it (see Doodle).
+const celebrate = ref(false)
 
 async function refresh() {
   now.value = Date.now()
@@ -27,6 +32,12 @@ async function refresh() {
     const [list] = await Promise.all([api.listOpen(), carefree.refresh()])
     rows.value = list
     error.value = ''
+    if (carefree.enabled.value) {
+      milestones.check(carefree.data.value)
+      const overdue = list.filter((r) => r.urgency === 'red').length
+      if (!overdue && overduePeak >= 3) milestones.comeback()
+      overduePeak = overdue ? Math.max(overduePeak, overdue) : 0
+    }
   } catch (e) {
     error.value = String(e)
   }
@@ -42,6 +53,7 @@ async function complete(row: Row) {
   const write = api.completeTask(row.id)
   setTimeout(() => {
     rows.value = rows.value.filter((r) => r.id !== row.id)
+    if (!rows.value.length) allClear()
     const next = new Set(completing.value)
     next.delete(row.id)
     completing.value = next
@@ -57,6 +69,15 @@ async function complete(row: Row) {
   }
   setTimeout(refresh, 400)
 }
+
+// The list just emptied by a completion: a chord, a longer buzz, the sun
+// (or moon) rises over the empty landscape.
+function allClear() {
+  celebrate.value = true
+  sound.allClear()
+  hapticCelebrate()
+}
+watch(() => rows.value.length, (n) => n && (celebrate.value = false))
 
 // Desktop right-click on a task.
 function menu(e: MouseEvent, row: Row) {
@@ -198,7 +219,7 @@ onUnmounted(() => {
           </section>
         </div>
       </template>
-      <Doodle v-else-if="loaded && !error" class="scene ease" clear :garden="garden" />
+      <Doodle v-else-if="loaded && !error" class="scene ease" clear :garden="garden" :celebrate="celebrate" />
       <Doodle v-if="loaded && rows.length" class="below ease" :garden="garden" />
       <div v-if="!loaded" class="scene" />
       <!-- Adding lives at thumb height: tap to open quick add. -->

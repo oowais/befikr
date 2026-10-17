@@ -61,6 +61,14 @@ export function useSound() {
         note(ac, 1318.5, t, 0.16, 0.35)
         note(ac, 1760, t + 0.09, 0.14, 0.6)
       }),
+    /** Last task done, list clear: a soft rising arpeggio (C6 E6 G6 C7). */
+    allClear: () =>
+      play((ac, t) => {
+        note(ac, 1046.5, t, 0.11, 0.5)
+        note(ac, 1318.5, t + 0.11, 0.1, 0.5)
+        note(ac, 1568, t + 0.22, 0.09, 0.6)
+        note(ac, 2093, t + 0.36, 0.08, 1)
+      }),
     /** Subtask ticked: one quieter note. */
     tick: () => play((ac, t) => note(ac, 1568, t, 0.09, 0.3)),
   }
