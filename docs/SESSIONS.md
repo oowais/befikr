@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (deps + page)** — Dependabot: monthly PRs for Cargo, pnpm (root + `packages/*`) and Actions, 7-day cooldown, grouped (Tauri alone, majors alone), `chore(deps)` commits. GitHub Pages turned on (source: Actions); `pages.yml` builds the README with the Primer theme to https://oowais.github.io/befikr/. Gradle (Kotlin plugin) not covered: Kotlin only compiles on main. **Next:** push, check the first Pages run.
+
 - **Oct 17, 2026 (.ics export)** — Calendar header button (calendar-arrow-up) saves open dated tasks as `befikr.ics` (desktop save dialog, `export_ics` command). Core `Store::export_ics(tz)` (`ics.rs`, 7 tests): VEVENTs in wall time (`DTSTART;TZID=`, no VTIMEZONE block), 30 min long, UID `<id>@befikr`; repeats as a series from the current occurrence with RRULE, a snoozed occurrence as a RECURRENCE-ID override; adaptive repeats only their next one; lines folded at 75 octets. One-way file, no subscription/live feed. **Next:** import it into the user's calendar app (Google/Outlook/Thunderbird) to check.
 
 - **Oct 17, 2026 (update race)** — The release goes out with the APK before the Windows/Linux files are attached, so Windows offered 0.26.0 and the updater failed (no `latest.json`). `useUpdate` now counts an update only when this platform's file is in the release (APK / `latest.json` / `.deb`); until then Settings says "still being built" and it re-checks after 5 min, also on window focus (the old "update check on focus" item).

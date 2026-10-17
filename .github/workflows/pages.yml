@@ -1,0 +1,60 @@
+# README as the project page (https://oowais.github.io/befikr/). Only the
+# README and the images it shows are published; links to other repo files
+# point at GitHub.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - README.md
+      - docs/screenshots/**
+      - src-tauri/android/icon/icon-dark.svg
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Stage the README
+        run: |
+          mkdir -p site/docs site/src-tauri/android/icon
+          cp -r docs/screenshots site/docs/
+          cp src-tauri/android/icon/icon-dark.svg site/src-tauri/android/icon/
+          blob=https://github.com/${{ github.repository }}/blob/main
+          {
+            printf -- '---\nlayout: default\ntitle: Befikr\n---\n\n'
+            sed -E "s#\]\(([^h#)][^)]*)\)#]($blob/\1)#g; s#href=\"([^h#\"][^\"]*)\"#href=\"$blob/\1\"#g" README.md
+          } > site/index.md
+          cat > site/_config.yml <<'EOF'
+          title: Befikr
+          description: A private to-do list that reminds you, reliably.
+          theme: jekyll-theme-primer
+          EOF
+      - uses: actions/configure-pages@v5
+      - uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./site
+          destination: ./_site
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
