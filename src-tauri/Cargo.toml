@@ -46,4 +46,4 @@ notify-rust = "4"
 
 # Whether Windows lets our notifications through (desktop/notify_settings.rs).
 [target.'cfg(windows)'.dependencies]
-windows-registry = "0.6"
+windows-registry = "0.100"
