@@ -82,4 +82,4 @@ Linux needs `webkit2gtk-4.1`, `gtk3` and `librsvg`. Android builds run in CI (`.
 
 ## License
 
-[GPL-3.0-or-later](LICENSE). The Glass design system in `app/assets/main.css` is adapted from [Solid Glass](https://github.com/deeplethe/solid-glass) (MIT).
+[GPL-3.0-or-later](LICENSE). The Glass design system is adapted from [Solid Glass](https://github.com/deeplethe/solid-glass) (MIT).
