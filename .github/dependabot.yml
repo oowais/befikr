@@ -3,6 +3,7 @@
 # and web.yml; merging one pushes to main, which makes a release.
 # Tauri: the crate and @tauri-apps/* must share major.minor, so merge the
 # Cargo and npm Tauri PRs together.
+# Ignored majors need code or tool changes first; upgrade them by hand.
 version: 2
 updates:
   - package-ecosystem: cargo
@@ -15,6 +16,10 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # 0.22 changed the API (src-tauri/src/jni.rs).
+      - dependency-name: jni
+        update-types: ["version-update:semver-major"]
     groups:
       tauri:
         patterns: ["tauri", "tauri-*"]
@@ -35,6 +40,13 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # vue-tsc has to support it first.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Tracks the Node version in use.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       tauri:
         patterns: ["@tauri-apps/*"]
