@@ -3,7 +3,7 @@
 // one row per task ("Water plants · 58×"). Tap a row to open the task and
 // its history; tap the tick to undo its latest completion (or bring back a
 // retired task).
-import { ArrowLeft, Check, PanelRightOpen, RotateCcw, Sprout, Sunset } from 'lucide-vue-next'
+import { Check, PanelRightOpen, RotateCcw, Sprout, Sunset } from 'lucide-vue-next'
 import type { CompletedGroup, Stats, WeekStats } from '~/composables/api'
 
 const DAY = 86_400_000
@@ -13,7 +13,6 @@ const ranges = [
   { id: 0, label: 'All time' },
 ] as const
 
-const router = useRouter()
 const { open: openTask } = useTaskSheet()
 const { show } = useToast()
 const items = ref<CompletedGroup[]>([])
@@ -71,11 +70,7 @@ async function undo(g: CompletedGroup) {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Stats</h1>
-    </header>
+  <Screen title="Stats">
 
     <div v-if="carefree.enabled.value && carefree.data.value" class="pane carefree">
       <Sprout :size="22" class="muted" />
@@ -166,7 +161,7 @@ async function undo(g: CompletedGroup) {
       </li>
     </ul>
     <p v-else class="muted">Nothing completed yet. Stats show up here once you finish tasks.</p>
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

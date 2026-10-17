@@ -1,10 +1,9 @@
 <script setup lang="ts">
 // Re-remind intervals and time words ("morning" = 09:00), off the main
 // Settings page since they're set once and rarely touched.
-import { ArrowLeft, Plus, X } from 'lucide-vue-next'
+import { Plus, X } from 'lucide-vue-next'
 import type { Settings } from '~/composables/api'
 
-const router = useRouter()
 const settings = ref<Settings | null>(null)
 const reremind = ref('')
 const newWord = ref('')
@@ -59,11 +58,7 @@ function addWord() {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Times</h1>
-    </header>
+  <Screen title="Times">
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="settings">
@@ -100,7 +95,7 @@ function addWord() {
       @update:model-value="pickedTime"
       @close="pickingFor = null"
     />
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

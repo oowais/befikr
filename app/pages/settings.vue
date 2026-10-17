@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeft, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -100,11 +100,7 @@ async function run(f: () => Promise<unknown>) {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Settings</h1>
-    </header>
+  <Screen title="Settings">
     <p v-if="error" class="error">{{ error }}</p>
 
     <div v-if="update.available.value" class="pane rows">
@@ -223,7 +219,7 @@ async function run(f: () => Promise<unknown>) {
       <button class="btn" :disabled="update.checking.value" @click="checkUpdate">{{ update.checking.value ? 'Checking…' : 'Check for updates' }}</button>
       <p v-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
     </div>
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

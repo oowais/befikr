@@ -5,10 +5,9 @@
 // new ones, plus suggestions (bought often + common groceries). An item that
 // isn't a chip yet can be saved as one (bookmark).
 // Desktop: right-click items and chips for the same actions.
-import { ArrowLeft, Bookmark, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
+import { Bookmark, BookmarkPlus, Check, ListPlus, Pencil, Plus, Trash2, X } from 'lucide-vue-next'
 import type { ShoppingItem, Staple } from '~/composables/api'
 
-const router = useRouter()
 const { show } = useToast()
 const sound = useSound()
 const items = ref<ShoppingItem[]>([])
@@ -139,11 +138,7 @@ async function removeStaple(s: Staple) {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Shopping</h1>
-    </header>
+  <Screen title="Shopping">
 
     <form class="add" @submit.prevent="submit">
       <input
@@ -225,7 +220,7 @@ async function removeStaple(s: Staple) {
       />
       <button class="btn" :disabled="!newStaple.trim()" aria-label="Add chip"><Plus :size="18" /></button>
     </form>
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

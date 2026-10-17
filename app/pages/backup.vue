@@ -1,9 +1,8 @@
 <script setup lang="ts">
 // Daily backup to a folder, export a copy, restore from a backup.
-import { ArrowLeft, Check, Download, FolderSync, RefreshCw, Upload } from 'lucide-vue-next'
+import { Check, Download, FolderSync, RefreshCw, Upload } from 'lucide-vue-next'
 import type { BackupStatus } from '~/composables/api'
 
-const router = useRouter()
 const { show } = useToast()
 const error = ref('')
 const backup = ref<BackupStatus | null>(null)
@@ -57,11 +56,7 @@ async function confirmImport() {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Backup</h1>
-    </header>
+  <Screen title="Backup">
     <p v-if="error" class="error">{{ error }}</p>
 
     <template v-if="backup">
@@ -116,7 +111,7 @@ async function confirmImport() {
         </div>
       </div>
     </template>
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

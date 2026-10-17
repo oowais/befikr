@@ -394,6 +394,8 @@ Known gaps (add test rows when fixing):
 
 Newest first. One or two lines per session: what changed, what's next.
 
+- **Oct 17, 2026 (pinned headers)** — Every page (Stats, Shopping, Settings, Sync, Times, Backup, Conflicts) uses `Screen.vue`: back button, title and `#actions` pinned at the top, fixed between the system bars like home; only the body scrolls. A component rather than a Nuxt layout, since each page has its own title and actions. Checked in mocked Chromium. **Next:** habit streaks or weekly recap; encrypted backups.
+
 - **Oct 17, 2026 (seasons)** — Garden follows the season (`seasonNow` in `app/utils/garden.ts`; trees defined with crown / bare / per-season extras): blossom and butterflies in spring, fruit in summer, coloured crowns, falling leaves and mushrooms in autumn, bare branches, snow and holly in winter. Checked all four (and winter night, dark) in mocked Chromium. **Next:** habit streaks or weekly recap; encrypted backups.
 
 - **Oct 17, 2026 (update confirmed)** — In-app update works on Android: 0.19.0 → 0.20.0 from Settings on the phone. Windows not yet tried. **Next:** habit streaks or weekly recap; encrypted backups.

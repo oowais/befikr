@@ -4,11 +4,10 @@
 // code (a pairing link: id, one-time code, addresses, relay), the other
 // scans it, or on a computer pastes the link.
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, ChevronRight, ClipboardPaste, Copy, GitMerge, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
+import { ChevronRight, ClipboardPaste, Copy, GitMerge, Laptop, Link2, RefreshCw, ScanLine, X } from 'lucide-vue-next'
 import { renderSVG } from 'uqr'
 import type { SyncMode, SyncStatus } from '~/composables/api'
 
-const router = useRouter()
 const { show } = useToast()
 const st = ref<SyncStatus | null>(null)
 const error = ref('')
@@ -120,14 +119,12 @@ function pairPasted() {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Sync</h1>
+  <Screen title="Sync">
+    <template #actions>
       <button v-if="on && st?.peers.length" class="icon-btn" aria-label="Sync now" :disabled="busy" @click="run(api.syncNow, 'Synced')">
         <RefreshCw :size="20" :class="{ spin: busy }" />
       </button>
-    </header>
+    </template>
     <p v-if="error" class="error">{{ error }}</p>
     <p v-else-if="st?.lastError" class="error">{{ st.lastError }}</p>
     <p v-if="st && st.mode !== 'off' && !st.running" class="error">Sync isn't running. Switch it off and on again.</p>
@@ -219,7 +216,7 @@ function pairPasted() {
       </template>
     </template>
     <QrScanner v-if="camera" @found="scanned" @error="scanFailed" @close="camera = false" />
-  </main>
+  </Screen>
 </template>
 
 <style scoped>

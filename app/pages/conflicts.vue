@@ -5,10 +5,9 @@
 // the right, differences in red. Tap the side to keep; mine is written back
 // as a new edit, so it then wins everywhere.
 import { listen } from '@tauri-apps/api/event'
-import { ArrowLeft, Check, Smartphone } from 'lucide-vue-next'
+import { Check, Smartphone } from 'lucide-vue-next'
 import type { Conflict, Task } from '~/composables/api'
 
-const router = useRouter()
 const { show } = useToast()
 const list = ref<Conflict[] | null>(null)
 const tasks = ref<Record<string, Task | null>>({})
@@ -165,11 +164,7 @@ const ago = (ms: number) => {
 </script>
 
 <template>
-  <main class="page">
-    <header class="topbar">
-      <button class="icon-btn" aria-label="Back" @click="router.back()"><ArrowLeft :size="22" /></button>
-      <h1>Conflicts</h1>
-    </header>
+  <Screen title="Conflicts">
     <p v-if="error" class="error">{{ error }}</p>
 
     <p v-if="list && !cards.length" class="muted small intro">
@@ -209,7 +204,7 @@ const ago = (ms: number) => {
         </section>
       </TransitionGroup>
     </template>
-  </main>
+  </Screen>
 </template>
 
 <style scoped>
