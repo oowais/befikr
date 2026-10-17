@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (README widget)** — Sixth README screenshot: the home-screen widget (`docs/screenshots/widget-dark.png`), drawn in HTML from `widget_today.xml` + night colours and rendered in headless Edge at 2× (no device here).
 - **Oct 17, 2026 (releases)** — v0.30.1 (Actions bump) and v0.30.2 (windows-registry) went out with empty notes. `next-version.sh` now prints `none` (build, no release) unless a commit since the tag is user-facing (feat/fix/perf/refactor/revert/breaking/`chore(deps)`); `release-notes.sh` has a Dependencies section. Checked against v0.30.0–v0.30.2. Re-remind default is now 15/30/60. Dependabot: jni/typescript/@types/node majors ignored; README screenshots in two rows; page favicon.
 
 - **Oct 17, 2026 (deps + page)** — Dependabot: monthly PRs for Cargo, pnpm (root + `packages/*`) and Actions, 7-day cooldown, grouped (Tauri alone, majors alone), `chore(deps)` commits. GitHub Pages turned on (source: Actions); `pages.yml` builds the README with the Primer theme to https://oowais.github.io/befikr/. Gradle (Kotlin plugin) not covered: Kotlin only compiles on main. **Next:** push, check the first Pages run.

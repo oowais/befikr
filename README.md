@@ -37,10 +37,12 @@
   <tr>
     <td align="center" width="270"><img src="docs/screenshots/stats-light.png" width="260" alt="Stats: on-time rate, snoozes, eight-week chart"></td>
     <td align="center" width="270"><img src="docs/screenshots/sync-dark.png" width="260" alt="Sync: pair a device with a QR code"></td>
+    <td align="center" width="270"><img src="docs/screenshots/widget-dark.png" width="260" alt="Home-screen widget: today's tasks with tick boxes"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>See how you're doing</b><br>On time, late, snoozed</sub></td>
     <td align="center"><sub><b>Sync your devices</b><br>Pair with a QR code, no server</sub></td>
+    <td align="center"><sub><b>Today on your home screen</b><br>Tick tasks off without opening the app</sub></td>
   </tr>
 </table>
 
