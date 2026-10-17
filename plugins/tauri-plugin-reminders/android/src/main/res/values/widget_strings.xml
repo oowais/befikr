@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_label">Befikr today</string>
-    <string name="widget_description">Today's tasks with a tick box each, and New task</string>
+    <string name="widget_description">Tasks for today with a tick box each, and New task</string>
 </resources>
