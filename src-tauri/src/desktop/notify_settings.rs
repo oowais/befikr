@@ -8,6 +8,8 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
+// Only Windows reports a block; elsewhere `blocked` is always None.
+#[cfg_attr(not(windows), allow(dead_code))]
 pub enum Blocked {
     /// All notifications are off in Windows.
     Windows,
