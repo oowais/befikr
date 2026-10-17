@@ -82,12 +82,14 @@ Tauri 2 · Nuxt (SPA) · Rust core (`crates/core`, SQLite via rusqlite) · TypeS
 
 ```bash
 pnpm install
-pnpm tauri dev          # desktop app with hot reload
-pnpm test               # parser tests
-cargo test --workspace  # core, sync and app tests
+pnpm tauri dev                    # desktop app with hot reload
+pnpm tauri build --bundles nsis   # Windows installer
+pnpm tauri build --bundles deb    # Linux .deb
+pnpm test                         # parser tests
+cargo test --workspace            # core, sync and app tests
 ```
 
-Linux needs `webkit2gtk-4.1`, `gtk3` and `librsvg`. Android builds run in CI (`.github/workflows/android.yml`). Design notes and status: [`PLAN.md`](PLAN.md).
+Installers land in `target/release/bundle/`. Linux needs `webkit2gtk-4.1`, `gtk3` and `librsvg`. The Android APK needs the Android SDK and NDK and is built by CI: [`.github/workflows/android.yml`](.github/workflows/android.yml) has every step, from `pnpm tauri android init` to signing. Design notes and status: [`PLAN.md`](PLAN.md).
 
 ## License
 
