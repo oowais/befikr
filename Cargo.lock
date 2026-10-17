@@ -347,6 +347,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "gtk",
+ "iana-time-zone",
  "jni 0.21.1",
  "notify-rust",
  "serde",

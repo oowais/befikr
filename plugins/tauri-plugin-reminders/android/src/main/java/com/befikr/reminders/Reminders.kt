@@ -164,7 +164,7 @@ internal object Notifier {
     fun cancel(ctx: Context, id: String) = NotificationManagerCompat.from(ctx).cancel(notificationId(id))
 
     /** App-provided `ic_stat_befikr` (src-tauri/android/res), else a system bell. */
-    private fun smallIcon(ctx: Context): Int {
+    fun smallIcon(ctx: Context): Int {
         val id = ctx.resources.getIdentifier("ic_stat_befikr", "drawable", ctx.packageName)
         return if (id != 0) id else android.R.drawable.ic_popup_reminder
     }

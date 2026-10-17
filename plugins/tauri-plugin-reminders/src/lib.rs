@@ -66,6 +66,21 @@ impl<R: Runtime> Reminders<R> {
         }
     }
 
+    /// (Re)arm the morning digest from the current setting (cancels it when off).
+    pub fn schedule_digest(&self) -> Result<(), String> {
+        #[cfg(target_os = "android")]
+        {
+            self.0
+                .run_mobile_plugin::<serde_json::Value>("scheduleDigest", serde_json::json!({}))
+                .map(|_| ())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            Err("reminders plugin is Android-only".into())
+        }
+    }
+
     /// Cancel the task's alarm and any notification shown for it.
     pub fn cancel(&self, id: &str) -> Result<(), String> {
         #[cfg(target_os = "android")]

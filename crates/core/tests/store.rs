@@ -281,6 +281,31 @@ fn settings_and_time_words() {
 }
 
 #[test]
+fn morning_digest_setting_and_content() {
+    let (mut s, clock) = store();
+    assert_eq!(s.settings().unwrap().digest_time.as_deref(), Some("08:00"), "on at 8 by default");
+    assert_eq!(s.next_digest_at(TZ).unwrap(), Some(at(16, 8, 0)), "10:00 now: tomorrow");
+    s.set_digest_time(Some("18:30")).unwrap();
+    assert_eq!(s.next_digest_at(TZ).unwrap(), Some(at(15, 18, 30)));
+    assert!(s.set_digest_time(Some("8am")).is_err());
+    s.set_digest_time(None).unwrap();
+    assert_eq!(s.settings().unwrap().digest_time, None);
+    assert_eq!(s.next_digest_at(TZ).unwrap(), None);
+
+    assert_eq!(s.digest(TZ).unwrap(), None, "nothing due");
+    s.add_task(task("undated", None)).unwrap();
+    s.add_task(task("tomorrow", Some(at(16, 9, 0)))).unwrap();
+    s.add_task(task("late", Some(at(14, 9, 0)))).unwrap();
+    s.add_task(task("lunch", Some(at(15, 12, 0)))).unwrap();
+    let done = s.add_task(task("done", Some(at(15, 13, 0)))).unwrap();
+    s.complete_task(&done.task.id, Source::App).unwrap();
+    let d = s.digest(TZ).unwrap().unwrap();
+    assert_eq!(d.lines, ["Overdue · late", "12:00 · lunch"]);
+    clock.store(at(15, 23, 59), Ordering::SeqCst);
+    assert_eq!(s.digest(TZ).unwrap().unwrap().title, "Today: 2 tasks");
+}
+
+#[test]
 fn export_snapshot_is_openable() {
     let (mut s, _) = store();
     s.add_task(task("keep me", None)).unwrap();

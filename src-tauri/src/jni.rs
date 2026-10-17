@@ -110,6 +110,36 @@ pub extern "system" fn Java_com_befikr_reminders_Native_pendingAlarms<'l>(
     })
 }
 
+/// Morning digest for now in `tz`. → `{"digest": Digest | null}`
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_digest<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    tz: JString<'l>,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (path, tz) = (arg(env, &db_path)?, arg(env, &tz)?);
+        let digest = store(&path)?.digest(&tz).map_err(|e| e.to_string())?;
+        Ok(json!({ "digest": digest }))
+    })
+}
+
+/// When the next morning digest fires in `tz`. → `{"atMs": i64 | null}`
+#[no_mangle]
+pub extern "system" fn Java_com_befikr_reminders_Native_nextDigestAt<'l>(
+    mut env: JNIEnv<'l>,
+    _class: JClass<'l>,
+    db_path: JString<'l>,
+    tz: JString<'l>,
+) -> jstring {
+    respond(&mut env, |env| {
+        let (path, tz) = (arg(env, &db_path)?, arg(env, &tz)?);
+        let at = store(&path)?.next_digest_at(&tz).map_err(|e| e.to_string())?;
+        Ok(json!({ "atMs": at }))
+    })
+}
+
 #[no_mangle]
 pub extern "system" fn Java_com_befikr_reminders_Native_exportTo<'l>(
     mut env: JNIEnv<'l>,

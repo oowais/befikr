@@ -72,7 +72,13 @@ export type Conflict = {
   at: number
 }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
-export type Settings = { reremindMinutes: number[]; backupDir: string | null; timeWords: Record<string, string> }
+export type Settings = {
+  reremindMinutes: number[]
+  backupDir: string | null
+  timeWords: Record<string, string>
+  /** Morning digest 'HH:MM'; null = off. */
+  digestTime: string | null
+}
 
 export type NewTask = {
   title: string
@@ -132,6 +138,7 @@ export const api = {
   setTimeWord: (word: string, time: string) => invoke<void>('set_time_word', { word, time }),
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),
   setReremindMinutes: (minutes: number[]) => invoke<void>('set_reremind_minutes', { minutes }),
+  setDigestTime: (time: string | null) => invoke<void>('set_digest_time', { time }),
   importBackup: (path: string) => invoke<void>('import_backup', { path }),
   syncStatus: () => invoke<SyncStatus>('sync_status'),
   setSyncMode: (mode: SyncMode) => invoke<void>('set_sync_mode', { mode }),

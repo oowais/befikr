@@ -121,7 +121,15 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         Prefs.setDbPath(activity, invoke.parseArgs(ConfigureArgs::class.java).dbPath)
         Backup.scheduleDaily(activity)
         SyncWorker.schedule(activity)
+        Digest.scheduleNext(activity)
         Thread { Backup.runIfDue(activity.applicationContext) }.start()
+        invoke.resolve()
+    }
+
+    /** The digest time changed (or was turned off): re-arm it. */
+    @Command
+    fun scheduleDigest(invoke: Invoke) {
+        Digest.scheduleNext(activity)
         invoke.resolve()
     }
 

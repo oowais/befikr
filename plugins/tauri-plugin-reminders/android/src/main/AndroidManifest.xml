@@ -34,6 +34,7 @@
             android:noHistory="true" />
         <receiver android:name="com.befikr.reminders.AlarmReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.ActionReceiver" android:exported="false" />
+        <receiver android:name="com.befikr.reminders.DigestReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.BackupReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.UpdateReceiver" android:exported="false" />
         <receiver android:name="com.befikr.reminders.RestoreReceiver" android:exported="false">

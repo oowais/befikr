@@ -25,6 +25,12 @@ object Native {
     /** Alarms to (re)arm: `[{"taskId","title","atMs"}]` */
     external fun pendingAlarms(dbPath: String): String
 
+    /** Morning digest for now in [tz]. → `{"digest": {"title","text","lines"} | null}` */
+    external fun digest(dbPath: String, tz: String): String
+
+    /** Next morning digest in [tz]. → `{"atMs": Long | null}` (null = off) */
+    external fun nextDigestAt(dbPath: String, tz: String): String
+
     /** Consistent snapshot of the database to [outPath]. → `{}` */
     external fun exportTo(dbPath: String, outPath: String): String
 

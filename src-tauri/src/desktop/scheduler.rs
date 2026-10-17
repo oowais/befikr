@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use befikr_core::{Alarm, Source};
+use befikr_core::{Alarm, Source, DIGEST_ID};
 use tauri::{AppHandle, Manager};
 
 /// Wake at least this often: wall-clock time moves on while the machine
@@ -76,6 +76,9 @@ impl Scheduler {
     /// Same as the Android receiver: the core decides whether to show it and
     /// when to come back if it's ignored.
     fn fire(&self, app: &AppHandle, alarm: Alarm) {
+        if alarm.task_id == DIGEST_ID {
+            return super::digest::fire(app);
+        }
         let db = app.state::<crate::Db>();
         let out = match db.store.lock() {
             Ok(mut s) => s.on_fired(&alarm.task_id, Source::Native),

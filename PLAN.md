@@ -208,14 +208,14 @@ Note: Clear, Fantastical and Linear entries are from general knowledge, not re-c
 
 Suggestions to pick from later; none is decided. Same rules apply (local only, no third party).
 
-1. **Home-screen widget** (Android) — today's tasks with a tick box each and a "New task" button. Completes through the same JNI path as the notification action; refreshes after every write and at midnight.
-2. **Location reminders** — "when I get home", "at the supermarket": a saved place per task, Android geofence, evaluated on the phone only (no maps service; places picked on an offline map or from the current location). Needs background location permission, so opt-in per task.
-3. **Quick add from anywhere** — Android: app shortcut (long-press the icon) and a Quick Settings tile that open quick add; desktop: a global hotkey (e.g. Super+Shift+Space) that opens quick add from the tray.
-4. **Voice quick add** — dictate into quick add with Android's on-device speech recognition (offline only), then the normal parser.
-5. **Morning digest** — one quiet notification at a chosen time listing today's tasks (and anything overdue), so the day starts with one look instead of several reminders.
-6. **Templates** — save a task with its subtasks as a template ("packing list", "monthly bills") and add it again with one tap; dates shift with it.
-7. **Edit by typing** — in the task sheet, type "fri 3pm" or "every 2 weeks" to change the date or repeat, reusing the parser (snooze already does this).
-8. **Calendar view on desktop** — a week view of dated tasks for wide windows, drag to reschedule; read-only `.ics` export of dated tasks for other calendars.
+1. **Home-screen widget** (Android, wanted) — today's tasks with a tick box each and a "New task" button. Completes through the same JNI path as the notification action; refreshes after every write and at midnight.
+2. **Location reminders** (undecided) — "when I get home", "at the supermarket": a saved place per task, Android geofence, evaluated on the phone only (no maps service; places picked on an offline map or from the current location). Needs background location permission, so opt-in per task.
+3. ~~Quick add from anywhere~~ — not wanted (Oct 17).
+4. **Voice quick add** (wanted, Android) — one mic button in quick add that opens the system speech recogniser (`RecognizerIntent`), then the normal parser. Only worth it as a single tap; the keyboard mic already works otherwise.
+5. ✅ **Morning digest** — built Oct 17 (see session log).
+6. ~~Templates~~ — not wanted (Oct 17).
+7. ~~Edit by typing~~ — already there: a date typed into a task's title offers "Set …?" in the task sheet.
+8. **Calendar view on desktop** (wanted) — a week view of dated tasks for wide windows, drag to reschedule; read-only `.ics` export of dated tasks for other calendars.
 
 ## Risks and open items
 
@@ -249,10 +249,10 @@ Status legend: ✅ done · 🟡 in progress · ⬜ not started. **Update this se
 | 3 | **Ugly working MVP**: list + sort/colors, quick add + chips, complete + undo, notifications. Dogfood daily | ✅ | In daily use on Pixel 9 (GrapheneOS) from CI releases `v0.x.y`. Device checklist in step 3 notes still has unticked items |
 | 4 | Re-remind escalation, snooze, subtasks, history, backup (`VACUUM INTO`, keep 7) | 🟡 | All built. Backup still needs an on-device check (folder picker, daily run, restore) |
 | 5 | UX polish after UX research (research runs in parallel, never blocks 0–3) | 🟡 | Pass 1: list sections, time labels. Pass 2: quick add + task view. Pass 3 (Oct 16): task view and snooze as bottom sheets (`?task=` / `?snooze=`), home screen pinned between system bars with a "New task" bar and doodle, urgency colours (red overdue, orange within the hour), sync dot |
-| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications, tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater, download progress, off when offline; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
+| 6 | **Desktop** (Windows, Linux) — Post-MVP 1 | 🟡 | Built: scheduler + notifications (+ morning digest), tray (dark icon), start at login / hidden, backup (export, restore, daily to a folder), packages in every release, in-app update on Windows (signed Tauri updater, download progress, off when offline; needs the signing key in repo secrets + pubkey in `tauri.conf.json`). Windows dev setup works (`pnpm tauri dev`). AUR later |
 | 7 | **P2P sync** — Post-MVP 2 | 🟡 | Built: core change log + per-field LWW (+ restore-safe), iroh with relay fallback, QR/link pairing, Conflicts page, Android background sync. Phone↔phone confirmed on 0.13.1; Android background sync with the CachyOS PC confirmed Oct 17 (phone app closed); conflicts not yet device-tested |
 
-**Next:** Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
+**Next:** device check of the morning digest (Android + Windows). Then pick from the ideas list: voice button, widget, desktop calendar. Windows update check on focus. (Arch in-app update dropped: Linux apps update through the package manager; AUR later.) Snooze overlay (Post-MVP 4) built, not yet on a device.
 
 ### Step 0 — spike checklist
 

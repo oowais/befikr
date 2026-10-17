@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync, WifiOff } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Download, FolderSync, Sunrise, WifiOff } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
@@ -51,6 +51,20 @@ async function installUpdate() {
     updateNote.value = `Update failed: ${e}`
     updateFailed.value = true
   }
+}
+
+// Morning digest: on at 08:00 by default; the time is picked with our sheet.
+const pickingDigest = ref(false)
+const todayAt = (t: string) => {
+  const d = new Date()
+  return localMs(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`, t)
+}
+function setDigest(time: string | null) {
+  settings.value!.digestTime = time
+  run(() => api.setDigestTime(time))
+}
+function pickedDigest(ms: number | null) {
+  if (ms != null) setDigest(new Date(ms).toTimeString().slice(0, 5))
 }
 
 async function load() {
@@ -144,6 +158,18 @@ async function run(f: () => Promise<unknown>) {
         </span>
         <ChevronRight :size="20" class="muted" />
       </NuxtLink>
+      <template v-if="settings">
+        <button class="item" role="switch" :aria-checked="!!settings.digestTime" @click="setDigest(settings.digestTime ? null : '08:00')">
+          <Sunrise :size="20" class="muted" />
+          <span class="flex left">Morning digest<span class="muted small hint">One quiet notification with today's tasks</span></span>
+          <span class="switch" :class="{ on: settings.digestTime }"><span class="knob" /></span>
+        </button>
+        <div v-if="settings.digestTime" class="item">
+          <span class="icon-gap" />
+          <span class="flex">At</span>
+          <button type="button" class="field time" @click="pickingDigest = true">{{ timeLabel(todayAt(settings.digestTime)) }}</button>
+        </div>
+      </template>
     </div>
     <button v-if="status && (!allSet || permsOpen)" class="btn link" @click="router.push('/welcome')">Open setup guide</button>
 
@@ -241,6 +267,14 @@ async function run(f: () => Promise<unknown>) {
         <p v-else-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
       </div>
     </template>
+    <DateTimeSheet
+      v-if="pickingDigest && settings?.digestTime"
+      mode="time"
+      title="Morning digest"
+      :model-value="todayAt(settings.digestTime)"
+      @update:model-value="pickedDigest"
+      @close="pickingDigest = false"
+    />
   </Screen>
 </template>
 
@@ -268,6 +302,8 @@ a.item { color: inherit; text-decoration: none; }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .version p { margin: 0; }
+.icon-gap { width: 20px; flex: none; }
+.field.time { width: auto; min-width: 112px; flex: none; padding: 8px 12px; text-align: center; }
 .version.tight { margin-top: 12px; }
 .update { margin-top: 40px; }
 .offline { display: inline-flex; align-items: center; gap: 6px; }

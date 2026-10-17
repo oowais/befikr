@@ -519,6 +519,10 @@ impl Store {
             reremind_minutes: reremind,
             backup_dir: self.setting::<String>("backup_dir")?,
             time_words,
+            // Never set: on at the default time. Set to null: off.
+            digest_time: self
+                .setting::<Option<String>>("digest_time")?
+                .unwrap_or_else(|| Some(crate::digest::DEFAULT_DIGEST_TIME.into())),
         })
     }
 
@@ -545,6 +549,14 @@ impl Store {
             return Err(Error::Invalid("re-remind intervals must be positive".into()));
         }
         self.set_setting("reremind_minutes", &minutes)
+    }
+
+    /// Morning digest time ('HH:MM'), or `None` to turn it off.
+    pub fn set_digest_time(&mut self, time: Option<&str>) -> Result<()> {
+        if time.is_some_and(|t| !valid_hhmm(t)) {
+            return Err(Error::Invalid("time must be HH:MM".into()));
+        }
+        self.set_setting("digest_time", &time)
     }
 
     pub fn set_backup_dir(&mut self, dir: Option<String>) -> Result<()> {

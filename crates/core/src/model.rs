@@ -190,6 +190,8 @@ pub struct Settings {
     pub backup_dir: Option<String>,
     /// word → 'HH:MM', incl. user-defined words.
     pub time_words: std::collections::BTreeMap<String, String>,
+    /// Morning digest at this local 'HH:MM'; `None` = off.
+    pub digest_time: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

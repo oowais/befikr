@@ -4,6 +4,7 @@
 //! Kotlin plugin instead.
 
 pub mod backup;
+pub mod digest;
 mod notify;
 pub mod prefs;
 mod scheduler;
@@ -41,6 +42,7 @@ pub fn setup(app: &AppHandle) {
         Err(e) => eprintln!("tray unavailable: {e}"),
     }
     backup::start_daily(app.clone());
+    digest::schedule(app);
     let hidden = prefs::launch_hidden(app);
     if !hidden || !TRAY.load(Ordering::Relaxed) {
         show_main(app);

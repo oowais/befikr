@@ -41,6 +41,7 @@ class RestoreReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Log.i(TAG, "restore on ${intent.action}")
         Scheduler.restoreAll(ctx)
+        Digest.scheduleNext(ctx)
         Backup.scheduleDaily(ctx)
     }
 }

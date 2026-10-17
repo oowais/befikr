@@ -236,6 +236,17 @@ fn remove_time_word(db: State<Db>, word: String) -> Res<()> {
     db.store.lock().map_err(err)?.remove_time_word(&word).map_err(err)
 }
 
+/// Morning digest time ('HH:MM'), or `null` to turn it off; re-arms it.
+#[tauri::command]
+fn set_digest_time(app: AppHandle, db: State<Db>, time: Option<String>) -> Res<()> {
+    db.store.lock().map_err(err)?.set_digest_time(time.as_deref()).map_err(err)?;
+    #[cfg(desktop)]
+    desktop::digest::schedule(&app);
+    #[cfg(mobile)]
+    app.reminders().schedule_digest()?;
+    Ok(())
+}
+
 #[tauri::command]
 fn set_reremind_minutes(db: State<Db>, minutes: Vec<i64>) -> Res<()> {
     db.store.lock().map_err(err)?.set_reremind_minutes(minutes).map_err(err)
@@ -486,6 +497,7 @@ pub fn run() {
             set_time_word,
             remove_time_word,
             set_reremind_minutes,
+            set_digest_time,
             import_backup,
             desktop_prefs,
             set_autostart,
