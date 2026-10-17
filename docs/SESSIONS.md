@@ -2,6 +2,8 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 17, 2026 (releases)** — v0.30.1 (Actions bump) and v0.30.2 (windows-registry) went out with empty notes. `next-version.sh` now prints `none` (build, no release) unless a commit since the tag is user-facing (feat/fix/perf/refactor/revert/breaking/`chore(deps)`); `release-notes.sh` has a Dependencies section. Checked against v0.30.0–v0.30.2. Re-remind default is now 15/30/60. Dependabot: jni/typescript/@types/node majors ignored; README screenshots in two rows; page favicon.
+
 - **Oct 17, 2026 (deps + page)** — Dependabot: monthly PRs for Cargo, pnpm (root + `packages/*`) and Actions, 7-day cooldown, grouped (Tauri alone, majors alone), `chore(deps)` commits. GitHub Pages turned on (source: Actions); `pages.yml` builds the README with the Primer theme to https://oowais.github.io/befikr/. Gradle (Kotlin plugin) not covered: Kotlin only compiles on main. **Next:** push, check the first Pages run.
 
 - **Oct 17, 2026 (.ics export)** — Calendar header button (calendar-arrow-up) saves open dated tasks as `befikr.ics` (desktop save dialog, `export_ics` command). Core `Store::export_ics(tz)` (`ics.rs`, 7 tests): VEVENTs in wall time (`DTSTART;TZID=`, no VTIMEZONE block), 30 min long, UID `<id>@befikr`; repeats as a series from the current occurrence with RRULE, a snoozed occurrence as a RECURRENCE-ID override; adaptive repeats only their next one; lines folded at 75 octets. One-way file, no subscription/live feed. **Next:** import it into the user's calendar app (Google/Outlook/Thunderbird) to check.

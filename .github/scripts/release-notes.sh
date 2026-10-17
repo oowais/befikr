@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Markdown release notes from Conventional Commits since the last v0.* tag.
 # Reads squash-merge bodies too ("* feat: ..."), so each branch commit counts.
-# Skips merge commits, docs/chore/ci/test noise and co-author trailers.
+# Skips merge commits, docs/ci/test/other chore noise and co-author trailers.
 set -euo pipefail
 
 last=${LAST_TAG:-$(git describe --tags --abbrev=0 --match 'v0.*' 2>/dev/null || true)} # LAST_TAG: for trying it out
@@ -32,8 +32,9 @@ section() { # title, type regex
 
 {
   section "New" "feat"
-  section "Fixes" "fix"
+  section "Fixes" "fix|revert"
   section "Improvements" "perf|refactor"
+  section "Dependencies" "chore\(deps\)"
   echo "Arm64, Android 8+. Installs over the previous version."
   [ -n "$last" ] && echo "Changes since ${last}."
 }
