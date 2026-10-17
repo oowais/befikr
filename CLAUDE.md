@@ -4,9 +4,9 @@ Befikr: private, local-first Todoist replacement. Type a task in plain English, 
 
 ## Start every session here
 
-1. Read `PLAN.md` → **Build order and status** + **Session log**. That is the source of truth for what's done and what's next.
+1. Read `PLAN.md` → **Build order and status** (table + **Next:** line). That is the source of truth for what's done and what's next. The history is in `docs/SESSIONS.md`; open it only when past decisions matter.
 2. Work on the next unfinished step unless the user says otherwise.
-3. Before ending: update the status table, step checklist, and add one session-log line in `PLAN.md`. Commit it with the work.
+3. Before ending: update the status table, step checklist and **Next:** line in `PLAN.md`, and add one line at the top of `docs/SESSIONS.md` (no need to read the rest). Commit them with the work.
 
 ## Stack
 
