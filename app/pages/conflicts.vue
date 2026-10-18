@@ -3,7 +3,9 @@
 // (both changed the same thing before syncing; the newer one won). One card
 // per task: the whole task twice, mine on the left, theirs (in use now) on
 // the right, differences in red. Tap the side to keep; mine is written back
-// as a new edit, so it then wins everywhere.
+// as a new edit, so it then wins everywhere. A task ticked on both devices
+// before they synced counts once, at the earlier tick; the device whose
+// tick lost gets a "Done twice" card to pick the right time.
 import { listen } from '@tauri-apps/api/event'
 import { Check, Smartphone } from 'lucide-vue-next'
 import type { Conflict, Task } from '~/composables/api'
@@ -62,6 +64,8 @@ function text(key: string, v: unknown): string {
       return v ? 'Adaptive' : 'Static'
     case 'tasks.completed_at':
       return empty ? 'Open' : 'Done'
+    case 'completions.completed_at':
+      return typeof v === 'number' ? dayLabel(v) : '—'
     case 'tasks.deleted_at':
     case 'time_words.deleted_at':
       return empty ? 'Kept' : 'Deleted'
@@ -119,6 +123,9 @@ const cards = computed<Card[]>(() => {
       if (cur.description || by('description')) shown.push('description')
       for (const f of ['completed_at', 'deleted_at']) if (by(f)) shown.push(f)
       lines = shown.map((f) => line(f, cur[f]))
+    } else if (first.table === 'completions') {
+      kind = 'Done twice'
+      lines = cs.map((c) => ({ ...line(c.field, c.wonValue), label: 'Done at' }))
     } else {
       kind = first.table === 'time_words' ? 'Time word' : 'Setting'
       title = first.table === 'settings' ? settingNames[first.label] ?? first.label : first.label

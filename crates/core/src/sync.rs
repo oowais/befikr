@@ -253,6 +253,22 @@ impl Store {
                 }
                 out.applied += 1;
             }
+            // Completions arriving for an occurrence we ticked too: note our
+            // ticks first, to tell later whether one of them lost.
+            let mut comp_tasks: Vec<String> = Vec::new();
+            for (t, id, fields) in &rows {
+                if t.table != "completions" {
+                    continue;
+                }
+                let task = match fields.iter().find(|(f, _)| *f == "task_id") {
+                    Some((_, Value::String(s))) => Some(s.clone()),
+                    _ => c.query_row("SELECT task_id FROM completions WHERE id = ?1", [id], |r| r.get(0)).optional()?,
+                };
+                if let Some(task) = task.filter(|t| !comp_tasks.contains(t)) {
+                    comp_tasks.push(task);
+                }
+            }
+            let mine_before = live_completions_by(c, &comp_tasks, &me)?;
             let mut touched: Vec<(String, bool)> = Vec::new();
             for (t, id, fields) in &rows {
                 write_row(c, t, id, fields, now)?;
@@ -262,12 +278,107 @@ impl Store {
                 }
             }
             c.execute("UPDATE sync_state SET applying = 0, hlc = max(hlc, ?1)", [max_hlc])?;
+            if !comp_tasks.is_empty() {
+                // Local writes from here on: newer than anything merged.
+                bump_clock(c, now)?;
+                for id in merge_double_completions(c, &comp_tasks, now)? {
+                    if !touched.iter().any(|(t, _)| *t == id) {
+                        touched.push((id, false));
+                    }
+                }
+                crate::conflicts::log_lost_completions(c, &mine_before, now)?;
+            }
             for (id, reset) in touched {
                 out.alarms.push(finish(c, &id, reset)?.alarm);
             }
             Ok(out)
         })
     }
+}
+
+const LIVE_COMPLETION: &str = "deleted_at IS NULL AND not_done_at IS NULL";
+
+/// Which device made a completion (wrote its time).
+pub(crate) fn completion_origin(c: &Connection, id: &str) -> Result<Option<String>> {
+    Ok(c
+        .query_row(
+            "SELECT origin FROM changes WHERE tbl = 'completions' AND row_id = ?1 AND field = 'completed_at'",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?)
+}
+
+/// Live completions of these tasks that `device` made.
+fn live_completions_by(c: &Connection, tasks: &[String], device: &str) -> Result<Vec<String>> {
+    let mut st = c.prepare(
+        "SELECT k.id FROM completions k
+         JOIN changes ch ON ch.tbl = 'completions' AND ch.row_id = k.id AND ch.field = 'completed_at'
+         WHERE k.task_id = ?1 AND ch.origin = ?2 AND k.deleted_at IS NULL AND k.not_done_at IS NULL",
+    )?;
+    let mut out = Vec::new();
+    for task in tasks {
+        for id in st.query_map(params![task, device], |r| r.get::<_, String>(0))? {
+            out.push(id?);
+        }
+    }
+    Ok(out)
+}
+
+/// Two devices ticking the same occurrence before they synced leave two
+/// completions for it (each with its own id). Keep the earliest (the first
+/// tick is when it was done) and soft-delete the others, as local writes so
+/// they sync; every device picks the same one. Their "missed" rows drop out
+/// like an undone completion's. The task's (and auto-checked subtasks')
+/// done time follows the kept one. Returns tasks whose done time moved.
+pub(crate) fn merge_double_completions(c: &Connection, tasks: &[String], now: i64) -> Result<Vec<String>> {
+    let mut moved = Vec::new();
+    let mut st = c.prepare(&format!(
+        "SELECT id, completed_at, due_at_then FROM completions WHERE task_id = ?1 AND {LIVE_COMPLETION}
+         ORDER BY completed_at, id"
+    ))?;
+    for task in tasks {
+        let rows = st
+            .query_map([task], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?, r.get::<_, Option<i64>>(2)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        // (occurrence, kept time)
+        let mut kept: Vec<(Option<i64>, i64)> = Vec::new();
+        for (id, at, due) in rows {
+            let Some(&(_, first)) = kept.iter().find(|(d, _)| *d == due) else {
+                kept.push((due, at));
+                continue;
+            };
+            c.execute("UPDATE completions SET deleted_at = ?2, updated_at = ?2 WHERE id = ?1", params![id, now])?;
+            let n = c.execute(
+                "UPDATE tasks SET completed_at = ?2, updated_at = ?3 WHERE (id = ?1 OR parent_id = ?1) AND completed_at = ?4",
+                params![task, first, now, at],
+            )?;
+            if n > 0 && !moved.contains(task) {
+                moved.push(task.clone());
+            }
+        }
+    }
+    Ok(moved)
+}
+
+/// Tasks with two live completions for one occurrence (from before sync
+/// merged them), for a one-time tidy on open.
+pub(crate) fn double_completion_tasks(c: &Connection) -> Result<Vec<String>> {
+    let mut st = c.prepare(&format!(
+        "SELECT DISTINCT task_id FROM completions WHERE {LIVE_COMPLETION}
+         GROUP BY task_id, due_at_then HAVING count(*) > 1"
+    ))?;
+    let rows = st.query_map([], |r| r.get(0))?;
+    Ok(rows.collect::<rusqlite::Result<_>>()?)
+}
+
+/// Merge the doubles [`double_completion_tasks`] found; a tick of ours that
+/// lost goes to the Conflicts page.
+pub(crate) fn tidy_double_completions(c: &Connection, tasks: &[String], now: i64) -> Result<()> {
+    let me: String = c.query_row("SELECT device FROM sync_state", [], |r| r.get(0))?;
+    let mine = live_completions_by(c, tasks, &me)?;
+    merge_double_completions(c, tasks, now)?;
+    crate::conflicts::log_lost_completions(c, &mine, now)
 }
 
 /// One row's winning fields: (table, row id, [(field, value)]).
@@ -318,5 +429,45 @@ pub(crate) fn to_sql(v: &Value) -> SqlValue {
         Value::Number(n) => n.as_i64().map(SqlValue::Integer).unwrap_or_else(|| SqlValue::Real(n.as_f64().unwrap_or(0.0))),
         Value::String(s) => SqlValue::Text(s.clone()),
         other => SqlValue::Text(other.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{NewTask, Source, Store};
+
+    #[test]
+    fn doubles_from_before_are_merged_on_open() {
+        let path = std::env::temp_dir().join(format!("befikr-doubles-{}.db", uuid::Uuid::now_v7()));
+        let p = path.to_str().unwrap();
+        let id;
+        {
+            let mut s = Store::open(p).unwrap();
+            id = s.add_task(NewTask { title: "Do this now".into(), ..Default::default() }).unwrap().task.id;
+            s.complete_task(&id, Source::App).unwrap();
+            let at = s.get_task(&id).unwrap().completed_at.unwrap();
+            // What an older version left after syncing two ticks: one from
+            // another device, a minute later.
+            s.conn
+                .execute(
+                    "INSERT INTO completions (id, task_id, completed_at, due_at_then, updated_at) VALUES ('other', ?1, ?2, NULL, ?2)",
+                    rusqlite::params![id, at + 60_000],
+                )
+                .unwrap();
+            s.conn.execute("UPDATE changes SET origin = 'peer' WHERE row_id = 'other'", []).unwrap();
+            assert_eq!(s.task_history(&id).unwrap().len(), 2);
+        }
+        {
+            let s = Store::open(p).unwrap();
+            let h = s.task_history(&id).unwrap();
+            assert_eq!(h.len(), 1);
+            assert_ne!(h[0].id, "other", "the earlier tick stays");
+            assert!(s.conflicts().unwrap().is_empty(), "the removed tick wasn't ours");
+            // The removal syncs to the device that made it.
+            assert!(s.changes_since(0, 10_000, None).unwrap().iter().any(|c| c.row_id == "other" && c.field == "deleted_at"));
+        }
+        for ext in ["", "-wal", "-shm"] {
+            let _ = std::fs::remove_file(format!("{p}{ext}"));
+        }
     }
 }

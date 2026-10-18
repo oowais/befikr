@@ -250,13 +250,15 @@ fn harmless_concurrent_edits_are_not_conflicts() {
     rename(&mut a, &id, "oat milk");
     cb.store(T0 + 2_000, Ordering::SeqCst);
     b.update_task(&id, TaskPatch { description: Some("2 l".into()), ..Default::default() }).unwrap();
-    // Both complete it, at different times.
+    // Both complete it, at different times: the task's status is no
+    // conflict; only which tick's time is right (asked where it lost).
     a.complete_task(&id, Source::App).unwrap();
     b.complete_task(&id, Source::App).unwrap();
     sync(&b, &mut a, &mut 0);
     sync(&a, &mut b, &mut 0);
     assert!(a.conflicts().unwrap().is_empty(), "{:?}", a.conflicts().unwrap());
-    assert!(b.conflicts().unwrap().is_empty());
+    let c = b.conflicts().unwrap();
+    assert_eq!(c.iter().map(|c| (c.table.as_str(), c.field.as_str())).collect::<Vec<_>>(), [("completions", "completed_at")]);
     assert_eq!(a.get_task(&id).unwrap().title, "oat milk");
     assert_eq!(a.get_task(&id).unwrap().description, "2 l");
 }
@@ -323,4 +325,104 @@ fn marking_a_completion_not_done_syncs() {
     b.set_completion_done(&cid, true).unwrap();
     sync(&b, &mut a, &mut b_seen);
     assert!(!a.task_history(&id).unwrap()[0].not_done);
+}
+
+/// A task on both devices, then each ticks it before they sync again: A at
+/// +1 min, B at +5 min.
+fn ticked_on_both(rrule: Option<&str>) -> (Store, Store, String) {
+    let (mut a, ca) = device();
+    let (mut b, cb) = device();
+    let id = a
+        .add_task(NewTask {
+            title: "Water plants".into(),
+            due_at: Some(T0),
+            rrule: rrule.map(Into::into),
+            tz: Some("Europe/Berlin".into()),
+            ..Default::default()
+        })
+        .unwrap()
+        .task
+        .id;
+    sync(&a, &mut b, &mut 0);
+    ca.store(T0 + 60_000, Ordering::SeqCst);
+    a.complete_task(&id, Source::App).unwrap();
+    cb.store(T0 + 300_000, Ordering::SeqCst);
+    b.complete_task(&id, Source::App).unwrap();
+    (a, b, id)
+}
+
+fn done_times(s: &Store, id: &str) -> Vec<i64> {
+    s.task_history(id).unwrap().into_iter().map(|c| c.completed_at).collect()
+}
+
+#[test]
+fn one_occurrence_ticked_on_two_devices_counts_once() {
+    for a_first in [true, false] {
+        let (mut a, mut b, id) = ticked_on_both(None);
+        // Both directions in one go: each sees the other's tick still live.
+        let (a_changes, b_changes) = (a.changes_since(0, 10_000, None).unwrap(), b.changes_since(0, 10_000, None).unwrap());
+        if a_first {
+            b.merge(&a_changes).unwrap();
+            a.merge(&b_changes).unwrap();
+        } else {
+            a.merge(&b_changes).unwrap();
+            b.merge(&a_changes).unwrap();
+        }
+        sync(&a, &mut b, &mut 0);
+        sync(&b, &mut a, &mut 0);
+        for s in [&a, &b] {
+            assert_eq!(done_times(s, &id), [T0 + 60_000], "the first tick stays");
+            assert_eq!(s.get_task(&id).unwrap().completed_at, Some(T0 + 60_000));
+            assert_eq!(s.completed_groups().unwrap()[0].count, 1);
+        }
+        // B's tick lost: B is asked which time is right; A lost nothing.
+        assert!(a.conflicts().unwrap().is_empty());
+        let c = b.conflicts().unwrap();
+        assert_eq!(c.len(), 1, "a_first = {a_first}");
+        assert_eq!((c[0].table.as_str(), c[0].field.as_str(), c[0].label.as_str()), ("completions", "completed_at", "Water plants"));
+        assert_eq!((c[0].lost_value.as_i64(), c[0].won_value.as_i64()), (Some(T0 + 300_000), Some(T0 + 60_000)));
+    }
+}
+
+#[test]
+fn picking_the_later_tick_moves_the_done_time_everywhere() {
+    let (mut a, mut b, id) = ticked_on_both(None);
+    sync(&a, &mut b, &mut 0);
+    sync(&b, &mut a, &mut 0);
+    let c = b.conflicts().unwrap();
+    b.resolve_conflict(&c[0].id, true).unwrap();
+    sync(&b, &mut a, &mut 0);
+    for s in [&a, &b] {
+        assert_eq!(done_times(s, &id), [T0 + 300_000]);
+        assert_eq!(s.get_task(&id).unwrap().completed_at, Some(T0 + 300_000));
+        assert!(s.conflicts().unwrap().is_empty());
+    }
+}
+
+#[test]
+fn a_repeat_merges_per_occurrence() {
+    let (mut a, mut b, id) = ticked_on_both(Some("FREQ=DAILY;INTERVAL=2"));
+    sync(&a, &mut b, &mut 0);
+    sync(&b, &mut a, &mut 0);
+    assert_eq!(done_times(&a, &id), [T0 + 60_000]);
+    assert_eq!(a.get_task(&id).unwrap().due_at, Some(T0 + 2 * 86_400_000));
+
+    // Ticking again after the sync is the next occurrence (done early): kept.
+    a.complete_task(&id, Source::App).unwrap();
+    sync(&a, &mut b, &mut 0);
+    assert_eq!(b.task_history(&id).unwrap().len(), 2);
+    assert_eq!(b.get_task(&id).unwrap().due_at, Some(T0 + 4 * 86_400_000));
+}
+
+#[test]
+fn undo_elsewhere_is_not_a_conflict() {
+    let (mut a, _) = device();
+    let (mut b, _) = device();
+    let id = a.add_task(NewTask { title: "Call mum".into(), ..Default::default() }).unwrap().task.id;
+    a.complete_task(&id, Source::App).unwrap();
+    sync(&a, &mut b, &mut 0);
+    b.reopen_task(&id).unwrap();
+    sync(&b, &mut a, &mut 0);
+    assert!(a.task_history(&id).unwrap().is_empty());
+    assert!(a.conflicts().unwrap().is_empty());
 }

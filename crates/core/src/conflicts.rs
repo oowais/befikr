@@ -51,16 +51,61 @@ pub(crate) fn worth_logging(table: &str, field: &str, lost: &SqlValue, won: &Val
 /// Record that our `lost` value of `ch`'s field lost to `ch`. One open
 /// conflict per field: a newer one replaces it.
 pub(crate) fn log(c: &Connection, ch: &SyncChange, lost: SqlValue, now: i64) -> Result<()> {
+    record(c, &ch.table, &ch.row_id, &ch.field, lost, to_sql(&ch.value), Some(&ch.origin), now)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn record(
+    c: &Connection,
+    table: &str,
+    row_id: &str,
+    field: &str,
+    lost: SqlValue,
+    won: SqlValue,
+    won_origin: Option<&str>,
+    now: i64,
+) -> Result<()> {
     c.execute(
         "UPDATE conflicts SET deleted_at = ?4, updated_at = ?4
          WHERE tbl = ?1 AND row_id = ?2 AND field = ?3 AND resolution IS NULL AND deleted_at IS NULL",
-        params![ch.table, ch.row_id, ch.field, now],
+        params![table, row_id, field, now],
     )?;
     c.execute(
         "INSERT INTO conflicts (id, tbl, row_id, field, lost_value, won_value, won_origin, at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
-        params![new_id(), ch.table, ch.row_id, ch.field, lost, to_sql(&ch.value), ch.origin, now],
+        params![new_id(), table, row_id, field, lost, won, won_origin, now],
     )?;
+    Ok(())
+}
+
+/// Our ticks (`ids`, live before) that a double-completion merge removed
+/// in favour of another device's earlier tick of the same occurrence: ask
+/// which time is right. Recorded against the kept completion's time, so
+/// "use mine" moves that one to our time.
+pub(crate) fn log_lost_completions(c: &Connection, ids: &[String], now: i64) -> Result<()> {
+    for id in ids {
+        let row: Option<(String, Option<i64>, i64)> = c
+            .query_row(
+                "SELECT task_id, due_at_then, completed_at FROM completions WHERE id = ?1 AND deleted_at IS NOT NULL",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .optional()?;
+        let Some((task, due, mine)) = row else { continue };
+        let kept: Option<(String, i64)> = c
+            .query_row(
+                "SELECT id, completed_at FROM completions
+                 WHERE task_id = ?1 AND due_at_then IS ?2 AND id != ?3 AND deleted_at IS NULL AND not_done_at IS NULL
+                 ORDER BY completed_at, id LIMIT 1",
+                params![task, due, id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()?;
+        // No other tick left: removed by an undo elsewhere, not a merge.
+        let Some((kept_id, theirs)) = kept.filter(|(_, at)| *at != mine) else { continue };
+        let origin = crate::sync::completion_origin(c, &kept_id)?;
+        record(c, "completions", &kept_id, "completed_at", mine.into(), theirs.into(), origin.as_deref(), now)?;
+    }
     Ok(())
 }
 
@@ -70,7 +115,9 @@ impl Store {
         let mut st = self.conn.prepare(
             "SELECT c.id, c.tbl, c.row_id, c.field, c.lost_value, c.won_value, c.at,
                     (SELECT p.name FROM peers p WHERE p.device = c.won_origin AND p.deleted_at IS NULL),
-                    CASE c.tbl WHEN 'tasks' THEN (SELECT t.title FROM tasks t WHERE t.id = c.row_id) ELSE c.row_id END
+                    CASE c.tbl WHEN 'tasks' THEN (SELECT t.title FROM tasks t WHERE t.id = c.row_id)
+                      WHEN 'completions' THEN (SELECT t.title FROM completions k JOIN tasks t ON t.id = k.task_id WHERE k.id = c.row_id)
+                      ELSE c.row_id END
              FROM conflicts c WHERE c.resolution IS NULL AND c.deleted_at IS NULL ORDER BY c.at DESC, c.id DESC",
         )?;
         let rows = st.query_map([], |r| {
@@ -114,6 +161,21 @@ impl Store {
                 .iter()
                 .find(|t| t.table == table && t.fields.contains(&field.as_str()))
                 .ok_or_else(|| Error::Invalid(format!("can't restore {table}.{field}")))?;
+            // A completion's time: the task's (and auto-checked subtasks')
+            // done time follows, as when the doubles were merged.
+            if t.table == "completions" && field == "completed_at" {
+                let (task, old): (String, i64) = c.query_row(
+                    "SELECT task_id, completed_at FROM completions WHERE id = ?1",
+                    [&row_id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )?;
+                c.execute("UPDATE completions SET completed_at = ?1, updated_at = ?2 WHERE id = ?3", params![lost, now, row_id])?;
+                c.execute(
+                    "UPDATE tasks SET completed_at = ?2, updated_at = ?3 WHERE (id = ?1 OR parent_id = ?1) AND completed_at = ?4",
+                    params![task, lost, now, old],
+                )?;
+                return Ok(Some(finish(c, &task, false)?));
+            }
             c.execute(
                 &format!("UPDATE {} SET {field} = ?1, updated_at = ?2 WHERE {} = ?3", t.table, t.key),
                 params![lost, now, row_id],

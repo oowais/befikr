@@ -45,7 +45,12 @@ impl Store {
         conn.pragma_update(None, "foreign_keys", "ON")?;
         schema::migrations().to_latest(&mut conn).map_err(|e| Error::Migration(e.to_string()))?;
         sync::install(&conn)?;
-        Ok(Self { conn, clock: Box::new(system_now) })
+        let doubles = sync::double_completion_tasks(&conn)?;
+        let mut store = Self { conn, clock: Box::new(system_now) };
+        if !doubles.is_empty() {
+            store.write(|c, now| sync::tidy_double_completions(c, &doubles, now))?;
+        }
+        Ok(store)
     }
 
     /// Replace the clock (tests).
