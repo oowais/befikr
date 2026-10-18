@@ -1,8 +1,11 @@
 // Android back button and Escape (computers): close the top open sheet. With
-// none open, back goes back a page, or leaves the app from the first one.
+// none open, back goes back a page, or from the first one sends the app to
+// the background like other apps (not exit: that ended the process, so the
+// next start was cold).
 // (Registering the handler turns off Tauri's default, which closed the app
 // even with a sheet open.)
-import { exit, onBackButtonPress } from '@tauri-apps/api/app'
+import { onBackButtonPress } from '@tauri-apps/api/app'
+import { invoke } from '@tauri-apps/api/core'
 
 const open: (() => void)[] = []
 
@@ -35,5 +38,5 @@ export const handleBackButton = () =>
     const top = open.at(-1)
     if (top) top()
     else if (canGoBack) history.back()
-    else exit(0)
+    else invoke('plugin:reminders|move_to_back').catch(() => {})
   })

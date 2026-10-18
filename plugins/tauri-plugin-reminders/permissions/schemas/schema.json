@@ -379,6 +379,18 @@
           "markdownDescription": "Denies the install_update command without any pre-configured scope."
         },
         {
+          "description": "Enables the move_to_back command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-move-to-back",
+          "markdownDescription": "Enables the move_to_back command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the move_to_back command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-move-to-back",
+          "markdownDescription": "Denies the move_to_back command without any pre-configured scope."
+        },
+        {
           "description": "Enables the open_battery_settings command without any pre-configured scope.",
           "type": "string",
           "const": "allow-open-battery-settings",
@@ -523,10 +535,10 @@
           "markdownDescription": "Denies the take_launch_route command without any pre-configured scope."
         },
         {
-          "description": "Allows all reminders and backup commands.\n#### This default permission set includes:\n\n- `allow-schedule`\n- `allow-cancel`\n- `allow-status`\n- `allow-request-notifications`\n- `allow-open-exact-alarm-settings`\n- `allow-open-battery-settings`\n- `allow-take-launch-route`\n- `allow-configure`\n- `allow-backup-status`\n- `allow-pick-backup-folder`\n- `allow-clear-backup-folder`\n- `allow-backup-now`\n- `allow-export-backup`\n- `allow-pick-import-file`\n- `allow-install-update`\n- `allow-speech-available`\n- `allow-recognize-speech`\n- `allow-register-listener`\n- `allow-remove-listener`",
+          "description": "Allows all reminders and backup commands.\n#### This default permission set includes:\n\n- `allow-schedule`\n- `allow-cancel`\n- `allow-status`\n- `allow-request-notifications`\n- `allow-open-exact-alarm-settings`\n- `allow-open-battery-settings`\n- `allow-take-launch-route`\n- `allow-configure`\n- `allow-backup-status`\n- `allow-pick-backup-folder`\n- `allow-clear-backup-folder`\n- `allow-backup-now`\n- `allow-export-backup`\n- `allow-pick-import-file`\n- `allow-install-update`\n- `allow-speech-available`\n- `allow-recognize-speech`\n- `allow-move-to-back`\n- `allow-register-listener`\n- `allow-remove-listener`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Allows all reminders and backup commands.\n#### This default permission set includes:\n\n- `allow-schedule`\n- `allow-cancel`\n- `allow-status`\n- `allow-request-notifications`\n- `allow-open-exact-alarm-settings`\n- `allow-open-battery-settings`\n- `allow-take-launch-route`\n- `allow-configure`\n- `allow-backup-status`\n- `allow-pick-backup-folder`\n- `allow-clear-backup-folder`\n- `allow-backup-now`\n- `allow-export-backup`\n- `allow-pick-import-file`\n- `allow-install-update`\n- `allow-speech-available`\n- `allow-recognize-speech`\n- `allow-register-listener`\n- `allow-remove-listener`"
+          "markdownDescription": "Allows all reminders and backup commands.\n#### This default permission set includes:\n\n- `allow-schedule`\n- `allow-cancel`\n- `allow-status`\n- `allow-request-notifications`\n- `allow-open-exact-alarm-settings`\n- `allow-open-battery-settings`\n- `allow-take-launch-route`\n- `allow-configure`\n- `allow-backup-status`\n- `allow-pick-backup-folder`\n- `allow-clear-backup-folder`\n- `allow-backup-now`\n- `allow-export-backup`\n- `allow-pick-import-file`\n- `allow-install-update`\n- `allow-speech-available`\n- `allow-recognize-speech`\n- `allow-move-to-back`\n- `allow-register-listener`\n- `allow-remove-listener`"
         }
       ]
     }

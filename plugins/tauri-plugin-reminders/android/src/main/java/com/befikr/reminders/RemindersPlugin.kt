@@ -74,6 +74,13 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         invoke.resolve()
     }
 
+    /** Back on the first page: to the background like other apps (the process stays, so it reopens warm). */
+    @Command
+    fun moveToBack(invoke: Invoke) {
+        activity.moveTaskToBack(true)
+        invoke.resolve()
+    }
+
     @Command
     fun cancel(invoke: Invoke) {
         val args = invoke.parseArgs(CancelArgs::class.java)

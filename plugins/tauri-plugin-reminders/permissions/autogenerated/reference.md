@@ -21,6 +21,7 @@ Allows all reminders and backup commands.
 - `allow-install-update`
 - `allow-speech-available`
 - `allow-recognize-speech`
+- `allow-move-to-back`
 - `allow-register-listener`
 - `allow-remove-listener`
 
@@ -211,6 +212,32 @@ Enables the install_update command without any pre-configured scope.
 <td>
 
 Denies the install_update command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:allow-move-to-back`
+
+</td>
+<td>
+
+Enables the move_to_back command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`reminders:deny-move-to-back`
+
+</td>
+<td>
+
+Denies the move_to_back command without any pre-configured scope.
 
 </td>
 </tr>

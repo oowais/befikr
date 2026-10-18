@@ -18,6 +18,7 @@ permissions = [
   "allow-install-update",
   "allow-speech-available",
   "allow-recognize-speech",
+  "allow-move-to-back",
   "allow-register-listener",
   "allow-remove-listener",
 ]
