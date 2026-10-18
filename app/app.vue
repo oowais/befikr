@@ -8,6 +8,7 @@ const { current: toast, dismiss } = useToast()
 rememberHistoryStart()
 // The splash stays until we know which screen opens (see useSplash).
 const releaseSplash = holdSplash()
+const whatsNew = useWhatsNew()
 
 onMounted(async () => {
   // Desktop: our own right-click menus only (see useContextMenu).
@@ -29,6 +30,8 @@ onMounted(async () => {
   window.addEventListener('keydown', quickAddKey)
   await openingScreen().catch(() => {})
   releaseSplash()
+  // After an update, on the list (not over the setup tour or a notification's screen).
+  if (route.path === '/') whatsNew.checkAfterUpdate()
 })
 
 async function openingScreen() {
@@ -65,6 +68,12 @@ function runAction() {
   <NuxtPage />
   <RouteSheets />
   <ContextMenu />
+  <WhatsNewSheet
+    v-if="whatsNew.shown.value"
+    :releases="whatsNew.shown.value.releases"
+    :since="whatsNew.shown.value.since"
+    @close="whatsNew.close"
+  />
   <Transition name="toast">
     <div v-if="toast" class="toast popover" role="status">
       <span>{{ toast.message }}</span>

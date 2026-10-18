@@ -303,6 +303,7 @@ async function run(f: () => Promise<unknown>) {
         <button class="btn" :disabled="update.checking.value || update.installing.value || !update.online.value" @click="checkUpdate">
           {{ update.checking.value ? 'Checking…' : 'Check for updates' }}
         </button>
+        <button class="whats-new" @click="useWhatsNew().openAll()">What's new</button>
         <p v-if="!update.online.value" class="offline"><WifiOff :size="14" /> No internet connection</p>
         <p v-else-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
       </div>
@@ -319,6 +320,7 @@ async function run(f: () => Promise<unknown>) {
 </template>
 
 <style scoped>
+.whats-new { color: var(--text); text-decoration: underline; text-underline-offset: 3px; font-size: 0.9rem; padding: 4px 8px; }
 .item { display: flex; align-items: center; gap: 12px; min-height: 56px; width: 100%; }
 a.item { color: inherit; text-decoration: none; }
 .flex { flex: 1; }

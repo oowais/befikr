@@ -5,6 +5,8 @@ target/
 dist/
 *.apk
 *.aab
+# Generated in CI (.github/scripts/whats-new.mjs)
+/public/whats-new.json
 .DS_Store
 /target/
 .nuxt/

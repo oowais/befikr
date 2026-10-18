@@ -47,6 +47,6 @@ Tauri 2 · Nuxt (`ssr: false`, SPA) · SQLite via `rusqlite` (bundled) · `chron
 ## Git
 
 - Default branch: `main`. **Commit straight to local `main`** after checks pass; no branches or PRs. **Never push** — the user pushes `main` themselves (a push releases; Discoverium picks it up).
-- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `perf:`; `!` or `BREAKING CHANGE` for breaking). They drive the version.
+- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`, `refactor:`, `test:`, `perf:`; `!` or `BREAKING CHANGE` for breaking). They drive the version. `feat:`/`fix:` subjects are shown to users as written (release notes and the in-app "What's new" sheet, `.github/scripts/whats-new.mjs`): write them as short user-facing sentences.
 - **Versioning:** semver, always `0.x.y` (`.github/scripts/next-version.sh`): `feat` or breaking → minor, anything else → patch. A push releases only if something since the last tag is user-facing (`feat`, `fix`, `perf`, `refactor`, `revert`, breaking, `chore(deps)`); `docs`/`ci`/`test`/other `chore` wait for the next one. Release notes list those, with a Dependencies section. Tags `v0.x.y` are created by the release step; don't tag by hand or edit `version` in `tauri.conf.json` (CI sets it).
 - Don't commit build outputs (`target/`, `.output/`, `node_modules/`, APKs).

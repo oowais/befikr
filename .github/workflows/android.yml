@@ -63,6 +63,7 @@ jobs:
           jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
           .github/scripts/release-notes.sh > release-notes.md
           cat release-notes.md
+          VERSION=$V node .github/scripts/whats-new.mjs
 
       - uses: actions/setup-java@v5
         with:
@@ -145,6 +146,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: .github/scripts/desktop-version.sh
+      - run: node .github/scripts/whats-new.mjs
       - name: Tauri build dependencies
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
       - uses: pnpm/action-setup@v6
@@ -190,6 +192,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: .github/scripts/desktop-version.sh
+      - run: node .github/scripts/whats-new.mjs
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: pnpm install --frozen-lockfile
