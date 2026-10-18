@@ -233,10 +233,11 @@ onUnmounted(() => {
               />
             </TransitionGroup>
           </section>
+          <!-- After the last task: fills the room left on a short list, scrolls into view below a long one. -->
+          <Doodle class="below ease" :garden="garden" />
         </div>
       </template>
       <Doodle v-else-if="loaded && !error" class="scene ease" clear :garden="garden" :celebrate="celebrate" />
-      <Doodle v-if="loaded && rows.length" class="below ease" :garden="garden" />
       <div v-if="!loaded" class="scene" />
       <!-- Adding lives at thumb height: tap to open quick add. -->
       <div class="dock">
@@ -273,9 +274,9 @@ onUnmounted(() => {
 .list-leave-to { opacity: 0; }
 .list-move { transition: transform 0.3s ease; }
 
-/* One screen tall: the list scrolls inside, the doodle takes whatever room
-   is left above the "New task" bar (none once the list needs it), and with
-   nothing to do the doodle is the whole screen. */
+/* One screen tall: the list scrolls inside, the doodle comes after the last
+   task (filling the room left above the "New task" bar, or scrolled to below
+   a long list), and with nothing to do the doodle is the whole screen. */
 /* Pinned between the status and gesture bars: its size comes from the
    window edges (no height arithmetic to round wrong), and a fixed element
    can't make the page taller, so nothing but the list can ever scroll. */
@@ -286,8 +287,14 @@ onUnmounted(() => {
 /* Fade at the bottom of the list says "more below". */
 .scroll { mask-image: linear-gradient(to top, transparent 0, #000 28px); }
 .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 10px; scrollbar-width: none; }
-.below { flex: 1.6 1 0; min-height: 0; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
+.scroll {
+  flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
+  /* Edge to edge, so the doodle spans the window; the tasks keep the page's inset. */
+  margin: 0 -16px; padding: 0 16px;
+  overscroll-behavior: contain; scrollbar-width: none;
+}
+.section { flex: none; }
+.below { flex: 1 0 220px; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
 .dock { flex: none; padding: 10px 0 14px; }
 .scene { flex: 1; min-height: 0; }
 /* First appearance: list and landscape rise in gently (the garden then grows, see Doodle). */

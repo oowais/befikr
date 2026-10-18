@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 18, 2026 (landscape after the list)** — The home landscape now sits after the last task inside the list's scroll (fills the room on a short list, min 220px below a long one) instead of being squeezed out.
 - **Oct 18, 2026 (not done after all)** — A repeat's history rows get ✕ ("Mark not done") / ↺ ("Mark done") with Undo: `completions.not_done_at` (synced; migration), `Store::set_completion_done`. Kept in `task_history`, left out of counts, stats and on-time; counts as missed for the habit streak, stats and carefree days. Next due date unchanged.
 - **Oct 18, 2026 (carefree explainer)** — `CarefreeInfo` modal (how the streak counts, noon cutoff, grace, garden thresholds, your numbers): tap the carefree card on Stats (the sprout beside the title links to Stats) or the info button by Carefree days in Settings.
 - **Oct 18, 2026 (re-remind on swipe)** — Reminders no longer re-fire while on screen; a swipe re-reminds after a set interval (default 1 h, 15 min–2 h, or off; Times page; setting `reremind_after`, old escalation list dropped). `Store::restore_alarms` re-shows unanswered ones after boot/update (Android, skips ones still on screen) and desktop restart. Kotlin compiles in CI.
