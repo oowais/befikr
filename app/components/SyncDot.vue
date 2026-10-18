@@ -44,6 +44,11 @@ const label = computed(() => {
 /* Narrow hit area (still full height); the dot sits at the title's top
    right, like an exponent. */
 .sync-dot { width: 24px; margin-left: -9px; }
+/* The shared pressed glass would be a stretched ellipse on this narrow
+   target: the dot itself answers the press. */
+.sync-dot:active:not(:disabled) { background: none; box-shadow: none; }
+.sync-dot:active .dot { opacity: 0.5; scale: 0.8; }
+.dot { transition: opacity 0.12s, scale 0.12s; }
 .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: -16px; }
 .ok { background: var(--green); }
 .bad { background: var(--red); }
