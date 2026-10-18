@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Re-remind intervals and time words ("morning" = 09:00), off the main
+// Re-remind and time words ("morning" = 09:00), off the main
 // Settings page since they're set once and rarely touched.
 import { Plus, X } from 'lucide-vue-next'
 import type { Settings } from '~/composables/api'
@@ -29,37 +29,17 @@ async function run(f: () => Promise<unknown>) {
   }
 }
 
-// Re-remind intervals as chips: numbers only, kept sorted and unique, saved
-// on every change (at least one stays).
-const MAX_MINUTES = 24 * 60
-const newMinutes = ref('')
-const minutes = computed(() => settings.value?.reremindMinutes ?? [])
+// Re-remind after a swipe: on (1 h) by default, interval from a few presets.
+const PRESETS = [15, 30, 60, 120]
 const minLabel = (m: number) => (m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`)
-const reremindSummary = computed(() => {
-  const m = minutes.value
-  if (!m.length) return ''
-  const last = minLabel(m.at(-1)!)
-  if (m.length === 1) return `Comes back every ${last} until you act on it.`
-  return `Comes back after ${m.slice(0, -1).map(minLabel).join(', then ')}, then every ${last}.`
+const reremind = computed(() => settings.value?.reremindMinutes ?? null)
+const choices = computed(() => {
+  const m = reremind.value
+  return m == null || PRESETS.includes(m) ? PRESETS : [...PRESETS, m].sort((a, b) => a - b)
 })
-function saveMinutes(list: number[]) {
-  const sorted = [...new Set(list)].sort((a, b) => a - b)
-  settings.value!.reremindMinutes = sorted
-  run(() => api.setReremindMinutes(sorted))
-}
-function digitsOnly(e: Event) {
-  const el = e.target as HTMLInputElement
-  el.value = el.value.replace(/\D/g, '').slice(0, 4)
-  newMinutes.value = el.value
-}
-const newValid = computed(() => {
-  const n = Number(newMinutes.value)
-  return Number.isInteger(n) && n > 0 && n <= MAX_MINUTES && !minutes.value.includes(n)
-})
-function addMinutes() {
-  if (!newValid.value) return
-  saveMinutes([...minutes.value, Number(newMinutes.value)])
-  newMinutes.value = ''
+function setReremind(m: number | null) {
+  settings.value!.reremindMinutes = m
+  run(() => api.setReremindMinutes(m))
 }
 const setWord = (w: string, t: string) => run(() => api.setTimeWord(w, t))
 // Time words use our own picker (time mode), never the native one.
@@ -91,31 +71,39 @@ function addWord() {
 
     <template v-if="settings">
       <h2 class="section-title">Re-remind</h2>
-      <div class="chips">
-        <span v-for="m in minutes" :key="m" class="chip split">
-          <span class="part">{{ minLabel(m) }}</span>
+      <div class="pane rows">
+        <div class="item">
+          <span class="flex">Remind again after a swipe</span>
           <button
-            v-if="minutes.length > 1"
             type="button"
-            class="x"
-            :aria-label="`Remove ${minLabel(m)}`"
-            @click="saveMinutes(minutes.filter((x) => x !== m))"
-          ><X :size="14" /></button>
-        </span>
-        <form class="add" @submit.prevent="addMinutes">
-          <input
-            :value="newMinutes"
-            class="field minutes"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            placeholder="min"
-            aria-label="Add an interval in minutes"
-            @input="digitsOnly"
-          />
-          <button class="icon-btn" aria-label="Add interval" :disabled="!newValid"><Plus :size="20" /></button>
-        </form>
+            class="switch"
+            :class="{ on: reremind != null }"
+            role="switch"
+            aria-label="Remind again after a swipe"
+            :aria-checked="reremind != null"
+            @click="setReremind(reremind == null ? 60 : null)"
+          ><span class="knob" /></button>
+        </div>
+        <div v-if="reremind != null" class="item">
+          <div class="seg" role="radiogroup" aria-label="Remind again after">
+            <button
+              v-for="m in choices"
+              :key="m"
+              type="button"
+              role="radio"
+              class="opt"
+              :class="{ chosen: reremind === m }"
+              :aria-checked="reremind === m"
+              @click="setReremind(m)"
+            >{{ minLabel(m) }}</button>
+          </div>
+        </div>
       </div>
-      <p class="muted small">{{ reremindSummary }}</p>
+      <p class="muted small">
+        {{ reremind == null
+          ? 'A reminder stays until you act on it; swiped away, it’s gone.'
+          : `A reminder stays until you act on it; swiped away, it comes back every ${minLabel(reremind)}.` }}
+      </p>
 
       <h2 class="section-title">Time words</h2>
       <div class="pane rows">
@@ -151,11 +139,25 @@ function addWord() {
 .flex { flex: 1; }
 .word { text-transform: capitalize; }
 .time { width: 136px; flex: none; padding: 8px 10px; text-align: left; }
-.chip.split { padding: 0; gap: 0; display: inline-flex; align-items: center; }
-.chip.split .part { padding: 6px 12px; font-variant-numeric: tabular-nums; }
-.chip.split .part:has(+ .x) { padding-right: 2px; }
-.chip.split .x { display: grid; place-items: center; width: 32px; height: 32px; color: var(--muted); }
-.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.add { display: inline-flex; align-items: center; gap: 2px; }
-.field.minutes { width: 72px; padding: 6px 10px; text-align: center; }
+.switch {
+  width: 46px; height: 28px; border-radius: 999px; position: relative; flex: none;
+  box-shadow: inset 0 1.5px 2px var(--well-shade), inset 0 -1px 0 var(--well-rim), inset 0 0 0 1px var(--glass-edge);
+  transition: background-color 0.2s;
+}
+.switch.on {
+  background: color-mix(in oklch, var(--accent) var(--primary-solid), transparent);
+  box-shadow: inset 0 1px 0 var(--primary-rim), inset 0 -1px 0 color-mix(in oklch, var(--primary-under) 45%, transparent);
+}
+.knob {
+  position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 90%), inset 0 -1px 0 oklch(0 0 0 / 14%), 0 1px 3px oklch(0 0 0 / 30%);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.switch.on .knob { transform: translateX(18px); }
+.seg {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 999px;
+  box-shadow: inset 0 1px 0 var(--glass-control-rim), inset 0 0 0 1px var(--line);
+}
+.opt { padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.opt.chosen { color: var(--text); }
 </style>

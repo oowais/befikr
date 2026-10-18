@@ -88,7 +88,7 @@ A private, local-first Todoist replacement: type a task in plain English, get a 
 - Fire at due time. One notification per task, never grouped (Android may visually stack 4+, each keeps its own actions).
 - Actions: **Complete** (no app open) and **Snooze**.
 - Snooze opens the app straight to a snooze bottom sheet: quick picks (tonight, tomorrow morning, …), custom date/time, or typed natural language. Sheet closes after picking. No fixed snooze duration.
-- **Re-remind until acted on**: escalating 15 → 30 min, then hourly (5 min step dropped Oct 17). Swipe-dismiss triggers the next re-fire. Intervals editable.
+- **Reminder stays until acted on**: the notification stays until Complete / Snooze / Skip or a swipe; nothing re-fires while it's on screen (Oct 18). Swiped away, it comes back after 1 h (15 min / 30 min / 1 h / 2 h, or off; Times page). Unanswered reminders are shown again after a reboot / app update (Android) or restart (desktop).
 - No quiet hours.
 
 ### Completion and history
@@ -126,7 +126,7 @@ Draft tables:
 | `tasks` | id, parent\_id (subtasks), title, description, due\_at, rrule, adaptive, completed\_at, snoozed\_until, sort hint |
 | `completions` | id, task\_id, completed\_at, due\_at\_then (history for recurring tasks) |
 | `task_events` | id, task\_id, type (created, snoozed, completed, reopened), at, due\_at\_then, snoozed\_to — log from MVP so stats work later |
-| `settings` | time words (incl. custom), re-remind intervals, backup folder |
+| `settings` | time words (incl. custom), re-remind after a swipe, backup folder |
 | `conflicts` | id, task\_id, field, losing value, winning value, device, timestamp (post-MVP) |
 
 Rules from day one, so P2P sync can be added later:

@@ -255,7 +255,7 @@ fn set_digest_time(app: AppHandle, db: State<Db>, time: Option<String>) -> Res<(
 }
 
 #[tauri::command]
-fn set_reremind_minutes(db: State<Db>, minutes: Vec<i64>) -> Res<()> {
+fn set_reremind_minutes(db: State<Db>, minutes: Option<i64>) -> Res<()> {
     db.store.lock().map_err(err)?.set_reremind_minutes(minutes).map_err(err)
 }
 
@@ -512,14 +512,15 @@ pub fn run() {
             app.manage(desktop::Scheduler::start(app.handle().clone()));
             // Re-arm everything on start (same as the boot receiver). Nothing
             // changed, so a reminder still on screen stays until acted on.
+            // Desktop: last run's notifications can't be answered any more,
+            // so unanswered ones show again.
             let db = app.state::<Db>();
-            let pending = db.store.lock().map_err(err)?.pending_alarms()?;
             #[cfg(desktop)]
-            for a in pending {
+            for a in db.store.lock().map_err(err)?.restore_alarms()? {
                 app.state::<desktop::Scheduler>().schedule(a);
             }
             #[cfg(mobile)]
-            for a in pending {
+            for a in db.store.lock().map_err(err)?.pending_alarms()? {
                 let alarm = tauri_plugin_reminders::Alarm { id: a.task_id, title: a.title, at_ms: a.at_ms };
                 if let Err(e) = app.reminders().rearm(&db.path, &alarm) {
                     eprintln!("reminder scheduling skipped: {e}");

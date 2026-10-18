@@ -94,7 +94,8 @@ const timesLabel = computed(() => {
   const s = settings.value
   if (!s) return ''
   const n = Object.keys(s.timeWords).length
-  return `Re-remind after ${s.reremindMinutes.join(', ')} min · ${n} time ${n === 1 ? 'word' : 'words'}`
+  const again = s.reremindMinutes == null ? 'Re-remind off' : `Re-remind after ${s.reremindMinutes % 60 ? `${s.reremindMinutes} min` : `${s.reremindMinutes / 60} h`}`
+  return `${again} · ${n} time ${n === 1 ? 'word' : 'words'}`
 })
 const backupLabel = computed(() => {
   const b = backup.value

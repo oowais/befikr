@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 
-/** Alarm went off: Rust decides whether to show it and when to re-remind. */
+/** Alarm went off: Rust decides whether to show it. */
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         val id = intent.getStringExtra(EXTRA_ID) ?: return
@@ -32,7 +32,8 @@ class ActionReceiver : BroadcastReceiver() {
                 TasksWidget.refresh(ctx)
                 SyncWorker.now(ctx)
             }
-            ACTION_DISMISS -> parseOutcome(Native.onAction(dbPath, id, "dismiss"))
+            // Swiped away: Rust arms the re-remind (or nothing when it's off).
+            ACTION_DISMISS -> parseOutcome(Native.onAction(dbPath, id, "dismiss"))?.let { Scheduler.apply(ctx, it) }
             else -> Log.w(TAG, "unknown action ${intent.action}")
         }
     }

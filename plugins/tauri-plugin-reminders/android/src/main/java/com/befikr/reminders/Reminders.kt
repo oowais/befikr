@@ -83,7 +83,10 @@ internal object Scheduler {
         }
     }
 
-    /** Re-arm everything Rust says is pending (boot, time change, permission granted). */
+    /**
+     * Re-arm everything Rust says is pending (boot, update, time change, permission
+     * granted), incl. reminders shown but unanswered. One still on screen stays as is.
+     */
     fun restoreAll(ctx: Context) {
         val dbPath = Prefs.dbPath(ctx) ?: return
         val raw = Native.pendingAlarms(dbPath)
@@ -92,9 +95,12 @@ internal object Scheduler {
             return
         }
         val alarms = JSONArray(raw)
+        val onScreen = ctx.getSystemService(NotificationManager::class.java).activeNotifications.map { it.id }.toSet()
         for (i in 0 until alarms.length()) {
             val a = alarms.getJSONObject(i)
-            schedule(ctx, a.getString("taskId"), a.getString("title"), a.getLong("atMs"))
+            val id = a.getString("taskId")
+            if (notificationId(id) in onScreen) continue
+            schedule(ctx, id, a.getString("title"), a.getLong("atMs"))
         }
         Log.i(TAG, "restored ${alarms.length()} alarms")
         TasksWidget.refresh(ctx)

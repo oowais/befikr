@@ -49,7 +49,7 @@
 ## Features
 
 - **Plain-English quick add.** "dentist fri 3pm", "rent every month on the 1st", "standup every weekday 9am", "stretch in 2 hours". Highlighted as you type; tap a highlight to keep those words as plain text.
-- **Reminders you can trust.** Exact alarms on Android, re-reminders until you act, and they survive reboots.
+- **Reminders you can trust.** Exact alarms on Android, reminders that stay until you act (swiped away, they come back an hour later), and they survive reboots.
 - **Act from the notification.** Complete, Snooze or Skip without opening the app. Snooze shows a small sheet over whatever you're doing.
 - **Today at a glance.** A home-screen widget with today's tasks to tick off, and a morning digest notification (time of your choice, or off).
 - **Repeating tasks done right.** Static (stays on its dates) or adaptive (counted from when you finish); skip one occurrence; habit streaks and a full history by month.

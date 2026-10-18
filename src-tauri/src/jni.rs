@@ -59,10 +59,10 @@ pub extern "system" fn Java_com_befikr_reminders_Native_onAction<'l>(
                 let change = s.skip_task(&id, Source::Native).map_err(|e| e.to_string())?;
                 serde_json::to_value(change.alarm).map_err(|e| e.to_string())
             }
-            "dismiss" => {
-                s.on_dismissed(&id, Source::Native).map_err(|e| e.to_string())?;
-                Ok(json!({ "op": "none" }))
-            }
+            "dismiss" => match s.on_dismissed(&id, Source::Native).map_err(|e| e.to_string())? {
+                Some(a) => serde_json::to_value(AlarmChange::Schedule(a)).map_err(|e| e.to_string()),
+                None => Ok(json!({ "op": "none" })),
+            },
             other => Err(format!("unknown action: {other}")),
         }
     })
@@ -105,7 +105,7 @@ pub extern "system" fn Java_com_befikr_reminders_Native_pendingAlarms<'l>(
     db_path: JString<'l>,
 ) -> jstring {
     respond(&mut env, |env| {
-        let alarms = store(&arg(env, &db_path)?)?.pending_alarms().map_err(|e| e.to_string())?;
+        let alarms = store(&arg(env, &db_path)?)?.restore_alarms().map_err(|e| e.to_string())?;
         serde_json::to_value(alarms).map_err(|e| e.to_string())
     })
 }

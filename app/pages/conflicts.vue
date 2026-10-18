@@ -49,7 +49,7 @@ const fieldNames: Record<string, string> = {
   time: 'Time',
   value: 'Value',
 }
-const settingNames: Record<string, string> = { reremind_minutes: 'Re-remind minutes' }
+const settingNames: Record<string, string> = { reremind_after: 'Re-remind after a swipe' }
 
 function text(key: string, v: unknown): string {
   const empty = v === null || v === undefined || v === ''

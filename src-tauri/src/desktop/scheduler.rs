@@ -1,5 +1,5 @@
 //! One thread, one timer: sleeps until the earliest alarm, asks the core
-//! whether to show it (re-remind escalation lives there) and re-arms.
+//! whether to show it and re-arms.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
@@ -74,8 +74,7 @@ impl Scheduler {
         }
     }
 
-    /// Same as the Android receiver: the core decides whether to show it and
-    /// when to come back if it's ignored.
+    /// Same as the Android receiver: the core decides whether to show it.
     fn fire(&self, app: &AppHandle, alarm: Alarm) {
         if alarm.task_id == DIGEST_ID {
             return super::digest::fire(app);

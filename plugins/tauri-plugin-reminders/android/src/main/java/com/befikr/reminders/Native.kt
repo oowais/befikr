@@ -22,7 +22,7 @@ object Native {
     /** Snooze until [untilMs]. → AlarmChange JSON */
     external fun snooze(dbPath: String, taskId: String, untilMs: Long): String
 
-    /** Alarms to (re)arm: `[{"taskId","title","atMs"}]` */
+    /** Alarms to (re)arm after boot / update / time change, incl. unanswered shown ones: `[{"taskId","title","atMs"}]` */
     external fun pendingAlarms(dbPath: String): String
 
     /** Morning digest for now in [tz]. → `{"digest": {"title","text","lines"} | null}` */

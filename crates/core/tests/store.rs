@@ -170,35 +170,59 @@ fn snooze_moves_task_and_alarm() {
 }
 
 #[test]
-fn rereminds_escalate_until_acted_on() {
+fn reminder_waits_until_swiped_then_comes_back() {
     let (mut s, clock) = store();
     let id = s.add_task(task("x", Some(at(15, 10, 0)))).unwrap().task.id;
-    let mut gaps = vec![];
-    for _ in 0..6 {
-        let now = s.now();
-        let o = s.on_fired(&id, Source::Native).unwrap();
-        assert!(o.show);
-        gaps.push((o.next_at_ms.unwrap() - now) / MIN);
-        clock.store(o.next_at_ms.unwrap(), Ordering::SeqCst);
-    }
-    assert_eq!(gaps, [15, 30, 60, 60, 60, 60]);
+    let o = s.on_fired(&id, Source::Native).unwrap();
+    assert!(o.show);
+    assert_eq!(o.next_at_ms, None, "nothing armed while it's on screen");
+    assert!(s.pending_alarms().unwrap().is_empty());
 
-    // A title edit doesn't restart escalation; completion stops it.
+    // Each swipe brings it back an hour later.
+    for _ in 0..3 {
+        let now = s.now();
+        let a = s.on_dismissed(&id, Source::Native).unwrap().unwrap();
+        assert_eq!(a.at_ms - now, 60 * MIN);
+        assert_eq!(s.on_dismissed(&id, Source::Native).unwrap(), None, "already armed");
+        clock.store(a.at_ms, Ordering::SeqCst);
+        assert!(s.on_fired(&id, Source::Native).unwrap().show);
+    }
+
+    // A title edit keeps it going; completion stops it.
+    s.on_dismissed(&id, Source::Native).unwrap();
     s.update_task(&id, TaskPatch { title: Some("y".into()), ..Default::default() }).unwrap();
     assert_eq!(s.pending_alarms().unwrap()[0].title, "y");
     s.complete_task(&id, Source::Native).unwrap();
     assert_eq!(s.on_fired(&id, Source::Native).unwrap(), FireOutcome { show: false, next_at_ms: None, repeats: false });
+    assert_eq!(s.on_dismissed(&id, Source::Native).unwrap(), None);
+    assert!(s.restore_alarms().unwrap().is_empty());
+}
+
+#[test]
+fn reremind_interval_and_off() {
+    let (mut s, _) = store();
+    assert!(s.set_reremind_minutes(Some(0)).is_err());
+    s.set_reremind_minutes(Some(15)).unwrap();
+    let id = s.add_task(task("x", Some(at(15, 10, 0)))).unwrap().task.id;
+    s.on_fired(&id, Source::Native).unwrap();
+    assert_eq!(s.on_dismissed(&id, Source::Native).unwrap().unwrap().at_ms - s.now(), 15 * MIN);
+
+    s.set_reremind_minutes(None).unwrap();
+    assert_eq!(s.settings().unwrap().reremind_minutes, None);
+    s.on_fired(&id, Source::Native).unwrap();
+    assert_eq!(s.on_dismissed(&id, Source::Native).unwrap(), None, "off: swiped is gone");
     assert!(s.pending_alarms().unwrap().is_empty());
 }
 
 #[test]
-fn custom_reremind_intervals() {
+fn restore_brings_back_unanswered_reminders() {
     let (mut s, _) = store();
-    s.set_reremind_minutes(vec![1, 2]).unwrap();
-    assert!(s.set_reremind_minutes(vec![]).is_err());
-    let id = s.add_task(task("x", Some(at(15, 10, 0)))).unwrap().task.id;
-    let first = s.on_fired(&id, Source::Native).unwrap().next_at_ms.unwrap();
-    assert_eq!(first - s.now(), MIN);
+    let shown = s.add_task(task("shown", Some(at(15, 9, 0)))).unwrap().task.id;
+    s.add_task(task("later", Some(at(15, 18, 0)))).unwrap();
+    s.on_fired(&shown, Source::Native).unwrap();
+    assert_eq!(s.pending_alarms().unwrap().iter().map(|a| a.title.as_str()).collect::<Vec<_>>(), ["later"]);
+    let r = s.restore_alarms().unwrap();
+    assert_eq!(r.iter().map(|a| (a.title.as_str(), a.at_ms)).collect::<Vec<_>>(), [("later", at(15, 18, 0)), ("shown", s.now() + 5_000)]);
 }
 
 #[test]
@@ -266,7 +290,7 @@ fn restore_undoes_delete() {
 fn settings_and_time_words() {
     let (mut s, _) = store();
     let st = s.settings().unwrap();
-    assert_eq!(st.reremind_minutes, [15, 30, 60]);
+    assert_eq!(st.reremind_minutes, Some(60));
     assert_eq!(st.time_words["evening"], "18:00");
     s.set_time_word("Dawn", "05:30").unwrap();
     s.set_time_word("evening", "19:00").unwrap();

@@ -9,7 +9,8 @@ use crate::recurrence::{self, parse_tz};
 use crate::{schema, sync, Error, Result};
 
 
-const DEFAULT_REREMIND: &[i64] = &[15, 30, 60];
+/// Re-remind this long after a reminder is swiped away (until changed or turned off).
+const DEFAULT_REREMIND_MINUTES: i64 = 60;
 /// Alarms that should have fired already are re-armed this far in the future.
 const CATCH_UP_MS: i64 = 5_000;
 
@@ -460,9 +461,9 @@ impl Store {
 
     // ------------------------------------------------------------ reminders
 
-    /// An alarm went off. Decides whether to show it and when to re-remind.
+    /// An alarm went off. Decides whether to show it. Nothing else is armed:
+    /// the notification stays until it's answered or swiped away.
     pub fn on_fired(&mut self, id: &str, source: Source) -> Result<FireOutcome> {
-        let reremind = self.settings()?.reremind_minutes;
         self.write(|c, now| {
             let none = FireOutcome { show: false, next_at_ms: None, repeats: false };
             let Ok(t) = get(c, id) else { return Ok(none) };
@@ -470,24 +471,47 @@ impl Store {
                 c.query_row("SELECT fires FROM alarm_state WHERE task_id = ?1", [id], |r| r.get(0)).optional()?;
             let (Some(fires), true) = (fires, t.is_open()) else { return Ok(none) };
             log(c, id, "fired", now, t.effective_due(), None, source)?;
-            let idx = (fires as usize).min(reremind.len().saturating_sub(1));
-            let next = now + reremind.get(idx).copied().unwrap_or(60) * 60_000;
+            // Shown and unanswered: `fires > 0` with no alarm armed.
             c.execute(
-                "UPDATE alarm_state SET fires = ?2, next_fire_at = ?3 WHERE task_id = ?1",
-                params![id, fires + 1, next],
+                "UPDATE alarm_state SET fires = ?2, next_fire_at = NULL WHERE task_id = ?1",
+                params![id, fires + 1],
             )?;
-            Ok(FireOutcome { show: true, next_at_ms: Some(next), repeats: t.rrule.is_some() })
+            Ok(FireOutcome { show: true, next_at_ms: None, repeats: t.rrule.is_some() })
         })
     }
 
-    /// Notification swiped away. The next re-remind is already scheduled.
-    pub fn on_dismissed(&mut self, id: &str, source: Source) -> Result<()> {
+    /// Notification swiped away: re-remind after the set interval, or never
+    /// when re-remind is off. `None` when there's nothing to arm.
+    pub fn on_dismissed(&mut self, id: &str, source: Source) -> Result<Option<Alarm>> {
+        let after = self.settings()?.reremind_minutes;
         self.write(|c, now| {
-            if get(c, id).is_ok() {
-                log(c, id, "dismissed", now, None, None, source)?;
-            }
-            Ok(())
+            let Ok(t) = get(c, id) else { return Ok(None) };
+            log(c, id, "dismissed", now, None, None, source)?;
+            let (Some(minutes), true) = (after, t.is_open()) else { return Ok(None) };
+            let at = now + minutes * 60_000;
+            let n = c.execute(
+                "UPDATE alarm_state SET next_fire_at = ?2 WHERE task_id = ?1 AND fires > 0 AND next_fire_at IS NULL",
+                params![id, at],
+            )?;
+            Ok((n > 0).then(|| Alarm { task_id: id.to_string(), title: t.title.clone(), at_ms: at }))
         })
+    }
+
+    /// `pending_alarms` plus reminders shown but never answered, due again
+    /// now: their notification is gone after a reboot or app update (Android)
+    /// or can't be answered after a restart (desktop).
+    pub fn restore_alarms(&self) -> Result<Vec<Alarm>> {
+        let now = self.now();
+        let mut st = self.conn.prepare(
+            "SELECT t.id, t.title FROM alarm_state a JOIN tasks t ON t.id = a.task_id
+             WHERE a.next_fire_at IS NULL AND a.fires > 0 AND t.completed_at IS NULL AND t.deleted_at IS NULL",
+        )?;
+        let shown = st
+            .query_map([], |r| Ok(Alarm { task_id: r.get(0)?, title: r.get(1)?, at_ms: now + CATCH_UP_MS }))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        let mut all = self.pending_alarms()?;
+        all.extend(shown);
+        Ok(all)
     }
 
     /// Every alarm that should exist now (app start, boot, time change).
@@ -507,16 +531,15 @@ impl Store {
     // ------------------------------------------------------------ settings
 
     pub fn settings(&self) -> Result<Settings> {
-        let reremind = self
-            .setting::<Vec<i64>>("reremind_minutes")?
-            .filter(|v| !v.is_empty())
-            .unwrap_or_else(|| DEFAULT_REREMIND.to_vec());
         let mut st = self.conn.prepare("SELECT word, time FROM time_words WHERE deleted_at IS NULL")?;
         let time_words = st
             .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
             .collect::<rusqlite::Result<_>>()?;
         Ok(Settings {
-            reremind_minutes: reremind,
+            // Never set: on at the default interval. Set to null: off.
+            reremind_minutes: self
+                .setting::<Option<i64>>("reremind_after")?
+                .unwrap_or(Some(DEFAULT_REREMIND_MINUTES)),
             backup_dir: self.setting::<String>("backup_dir")?,
             time_words,
             // Never set: on at the default time. Set to null: off.
@@ -544,11 +567,12 @@ impl Store {
         })
     }
 
-    pub fn set_reremind_minutes(&mut self, minutes: Vec<i64>) -> Result<()> {
-        if minutes.is_empty() || minutes.iter().any(|m| *m <= 0) {
-            return Err(Error::Invalid("re-remind intervals must be positive".into()));
+    /// Re-remind this many minutes after a swipe, or `None` to turn it off.
+    pub fn set_reremind_minutes(&mut self, minutes: Option<i64>) -> Result<()> {
+        if minutes.is_some_and(|m| m <= 0) {
+            return Err(Error::Invalid("re-remind interval must be positive".into()));
         }
-        self.set_setting("reremind_minutes", &minutes)
+        self.set_setting("reremind_after", &minutes)
     }
 
     /// Morning digest time ('HH:MM'), or `None` to turn it off.
@@ -789,7 +813,7 @@ fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change
 
 /// Re-read the task and bring its alarm in line with it. `reset` restarts
 /// the reminder at the (effective) due time; otherwise an alarm already
-/// in flight (e.g. mid re-remind escalation) is kept.
+/// in flight (e.g. a re-remind after a swipe) is kept.
 pub(crate) fn finish(c: &Connection, id: &str, reset: bool) -> Result<Change> {
     let task = get_any(c, id)?;
     let due = task.effective_due().filter(|_| task.parent_id.is_none() && task.is_open());

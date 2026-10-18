@@ -185,8 +185,8 @@ pub struct FireOutcome {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
-    /// Re-remind escalation in minutes; the last value repeats.
-    pub reremind_minutes: Vec<i64>,
+    /// Re-remind this many minutes after a reminder is swiped away; `None` = off.
+    pub reremind_minutes: Option<i64>,
     pub backup_dir: Option<String>,
     /// word → 'HH:MM', incl. user-defined words.
     pub time_words: std::collections::BTreeMap<String, String>,

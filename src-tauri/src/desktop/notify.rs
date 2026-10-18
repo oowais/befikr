@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use std::sync::{Mutex, MutexGuard};
 
 use befikr_core::Source;
-use notify_rust::{Notification, NotificationResponse, Timeout, Urgency};
+use notify_rust::{CloseReason, Notification, NotificationResponse, Timeout, Urgency};
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Shown notification per task: (notification id, generation). A re-remind
@@ -71,7 +71,9 @@ pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool) {
                 NotificationResponse::Action(a) if a == "complete" => act(&app, &id, false),
                 NotificationResponse::Action(a) if a == "skip" => act(&app, &id, true),
                 NotificationResponse::Action(a) if a == "snooze" => super::open_route(&app, &format!("/?snooze={id}")),
-                NotificationResponse::Closed(_) => dismissed(&app, &id),
+                // Only the user's own close counts as a swipe (re-remind).
+                NotificationResponse::Closed(CloseReason::Dismissed) => dismissed(&app, &id),
+                NotificationResponse::Closed(_) => {}
                 _ => super::open_route(&app, "/"),
             }
         });
@@ -109,8 +111,12 @@ fn act(app: &AppHandle, id: &str, skip: bool) {
     }
 }
 
+/// Swiped away: arm the re-remind, if it's on.
 fn dismissed(app: &AppHandle, id: &str) {
-    if let Ok(mut s) = app.state::<crate::Db>().store.lock() {
-        let _ = s.on_dismissed(id, Source::Native);
+    let db = app.state::<crate::Db>();
+    let alarm = db.store.lock().ok().and_then(|mut s| s.on_dismissed(id, Source::Native).ok().flatten());
+    if let Some(a) = alarm {
+        app.state::<super::Scheduler>().schedule(a);
+        super::refresh_tray();
     }
 }

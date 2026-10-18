@@ -85,7 +85,8 @@ export type Conflict = {
 }
 export type DesktopPrefs = { autostart: boolean; startHidden: boolean }
 export type Settings = {
-  reremindMinutes: number[]
+  /** Re-remind this long after a swipe; null = off. */
+  reremindMinutes: number | null
   backupDir: string | null
   timeWords: Record<string, string>
   /** Morning digest 'HH:MM'; null = off. */
@@ -152,7 +153,7 @@ export const api = {
   settings: () => invoke<Settings>('get_settings'),
   setTimeWord: (word: string, time: string) => invoke<void>('set_time_word', { word, time }),
   removeTimeWord: (word: string) => invoke<void>('remove_time_word', { word }),
-  setReremindMinutes: (minutes: number[]) => invoke<void>('set_reremind_minutes', { minutes }),
+  setReremindMinutes: (minutes: number | null) => invoke<void>('set_reremind_minutes', { minutes }),
   setDigestTime: (time: string | null) => invoke<void>('set_digest_time', { time }),
   importBackup: (path: string) => invoke<void>('import_backup', { path }),
   syncStatus: () => invoke<SyncStatus>('sync_status'),
