@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { getVersion } from '@tauri-apps/api/app'
-import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, BellOff, Download, FolderSync, Sunrise, WifiOff } from 'lucide-vue-next'
+import { AlarmClock, ArrowLeftRight, BatteryFull, Bell, Check, ChevronDown, ChevronRight, ChevronUp, Clock, BellOff, Download, FolderSync, Info, Sunrise, WifiOff } from 'lucide-vue-next'
 import type { BackupStatus, DesktopPrefs, Settings, Status, SyncStatus } from '~/composables/api'
 
 const router = useRouter()
 const sound = useSound()
 const carefree = useCarefree()
+const explainingCarefree = ref(false)
 // This computer's startup (desktop only; null on Android).
 const desktop = ref<DesktopPrefs | null>(null)
 onMounted(async () => (desktop.value = await api.desktopPrefs().catch(() => null)))
@@ -222,10 +223,20 @@ async function run(f: () => Promise<unknown>) {
         <span class="flex left">Sound when completing</span>
         <span class="switch" :class="{ on: sound.enabled.value }"><span class="knob" /></span>
       </button>
-      <button class="item" role="switch" :aria-checked="carefree.enabled.value" @click="carefree.setEnabled(!carefree.enabled.value)">
+      <div class="item">
         <span class="flex left">Carefree days<span class="muted small hint">Streak beside the title; the landscape grows as you finish on time</span></span>
-        <span class="switch" :class="{ on: carefree.enabled.value }"><span class="knob" /></span>
-      </button>
+        <button type="button" class="icon-btn info" aria-label="How do carefree days work?" @click="explainingCarefree = true"><Info :size="18" /></button>
+        <button
+          type="button"
+          class="switch"
+          :class="{ on: carefree.enabled.value }"
+          role="switch"
+          aria-label="Carefree days"
+          :aria-checked="carefree.enabled.value"
+          @click="carefree.setEnabled(!carefree.enabled.value)"
+        ><span class="knob" /></button>
+      </div>
+      <CarefreeInfo v-if="explainingCarefree" :garden="carefree.enabled.value ? carefree.data.value : null" @close="explainingCarefree = false" />
     </div>
 
     <template v-if="desktop">
@@ -311,6 +322,7 @@ a.item { color: inherit; text-decoration: none; }
 .flex { flex: 1; }
 .left { text-align: left; }
 .hint { display: block; margin-top: 2px; }
+.info { color: var(--muted); margin-right: -4px; }
 .link { margin-top: 10px; width: 100%; }
 .switch {
   width: 46px; height: 28px; border-radius: 999px; position: relative; flex: none;

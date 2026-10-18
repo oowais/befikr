@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 18, 2026 (carefree explainer)** — `CarefreeInfo` modal (how the streak counts, noon cutoff, grace, garden thresholds, your numbers): tap the sprout beside the title (was a link to Stats) or the info button by Carefree days in Settings.
 - **Oct 18, 2026 (re-remind on swipe)** — Reminders no longer re-fire while on screen; a swipe re-reminds after a set interval (default 1 h, 15 min–2 h, or off; Times page; setting `reremind_after`, old escalation list dropped). `Store::restore_alarms` re-shows unanswered ones after boot/update (Android, skips ones still on screen) and desktop restart. Kotlin compiles in CI.
 - **Oct 18, 2026 (sticky reminders)** — Opening the app no longer clears a reminder notification still on screen: start-up re-arm uses `Reminders::rearm` (`keepShown`), not `schedule`. Kotlin compiles in CI.
 - **Oct 17, 2026 (repeat mode)** — Repeat switch renamed "On schedule | From when done" → "Static | Adaptive" (also on Conflicts), with an info button opening `RepeatModeInfo` (what each does, an example, when to use it).
