@@ -510,11 +510,20 @@ pub fn run() {
             app.manage(Db { store: Mutex::new(store), path });
             #[cfg(desktop)]
             app.manage(desktop::Scheduler::start(app.handle().clone()));
-            // Re-arm everything on start (same as the boot receiver).
+            // Re-arm everything on start (same as the boot receiver). Nothing
+            // changed, so a reminder still on screen stays until acted on.
             let db = app.state::<Db>();
             let pending = db.store.lock().map_err(err)?.pending_alarms()?;
+            #[cfg(desktop)]
             for a in pending {
-                apply(app.handle(), &db, &AlarmChange::Schedule(a));
+                app.state::<desktop::Scheduler>().schedule(a);
+            }
+            #[cfg(mobile)]
+            for a in pending {
+                let alarm = tauri_plugin_reminders::Alarm { id: a.task_id, title: a.title, at_ms: a.at_ms };
+                if let Err(e) = app.reminders().rearm(&db.path, &alarm) {
+                    eprintln!("reminder scheduling skipped: {e}");
+                }
             }
             #[cfg(desktop)]
             desktop::setup(app.handle());

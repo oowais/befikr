@@ -28,6 +28,7 @@ class ScheduleArgs {
     lateinit var id: String
     lateinit var title: String
     var atMs: Long = 0
+    var keepShown: Boolean = false
 }
 
 @InvokeArg
@@ -62,12 +63,12 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         trigger("launchRoute", JSObject().apply { put("route", route) })
     }
 
-    /** Sets the task's next reminder; clears any notification currently shown for it. */
+    /** Sets the task's next reminder; clears any notification currently shown for it unless `keepShown` (re-arm). */
     @Command
     fun schedule(invoke: Invoke) {
         val args = invoke.parseArgs(ScheduleArgs::class.java)
         Prefs.setDbPath(activity, args.dbPath)
-        Notifier.cancel(activity, args.id)
+        if (!args.keepShown) Notifier.cancel(activity, args.id)
         Scheduler.schedule(activity, args.id, args.title, args.atMs)
         TasksWidget.refresh(activity)
         invoke.resolve()

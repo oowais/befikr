@@ -23,6 +23,8 @@ struct ScheduleArgs<'a> {
     db_path: &'a str,
     #[serde(flatten)]
     alarm: &'a Alarm,
+    /// Leave a notification already shown for the task (re-arm on app start).
+    keep_shown: bool,
 }
 
 #[cfg(target_os = "android")]
@@ -31,9 +33,17 @@ pub struct Reminders<R: Runtime>(tauri::plugin::PluginHandle<R>);
 pub struct Reminders<R: Runtime>(std::marker::PhantomData<fn() -> R>);
 
 impl<R: Runtime> Reminders<R> {
-    /// Schedule (or replace) the exact alarm for a task.
+    /// Schedule (or replace) the exact alarm for a task; clears its shown notification.
     pub fn schedule(&self, db_path: &str, alarm: &Alarm) -> Result<(), String> {
-        let args = ScheduleArgs { db_path, alarm };
+        self.arm(ScheduleArgs { db_path, alarm, keep_shown: false })
+    }
+
+    /// Re-arm an unchanged alarm (app start, import); a shown notification stays.
+    pub fn rearm(&self, db_path: &str, alarm: &Alarm) -> Result<(), String> {
+        self.arm(ScheduleArgs { db_path, alarm, keep_shown: true })
+    }
+
+    fn arm(&self, args: ScheduleArgs) -> Result<(), String> {
         #[cfg(target_os = "android")]
         {
             self.0
