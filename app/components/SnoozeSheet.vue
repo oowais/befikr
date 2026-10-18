@@ -78,8 +78,9 @@ const drag = useSheetDrag(() => emit('close'))
       aria-label="Snooze"
       :class="{ dragging: drag.dragging.value }"
       :style="drag.style.value"
+      v-on="drag.handlers"
     >
-      <div class="grab" v-on="drag.handlers">
+      <div class="grab">
         <span class="handle" />
         <span class="title">{{ task?.title ?? '' }}</span>
         <span class="muted small">Snooze until…</span>
@@ -137,7 +138,7 @@ const drag = useSheetDrag(() => emit('close'))
   animation: float-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.sheet.dragging { transition: none; }
+.sheet.dragging { transition: none; user-select: none; }
 .grab {
   display: flex; flex-direction: column; gap: 2px; padding: 8px 4px 2px;
   touch-action: none; cursor: grab; user-select: none;
