@@ -89,7 +89,7 @@ async function addStaple(typedName?: string) {
   if (typedName != null) {
     haptic()
     // While editing the new chip shows up right there; no toast per tap.
-    if (!editing.value) show({ message: `${name} added to Usually` })
+    if (!editing.value) show({ message: `${name} added to Usual things` })
   }
   try {
     const s = await api.addStaple(name)
@@ -102,7 +102,7 @@ async function addStaple(typedName?: string) {
 function itemMenu(e: MouseEvent, i: ShoppingItem) {
   openMenu(e, [
     { label: 'Got it', icon: Check, run: () => tick(i) },
-    ...(isStaple.value.has(key(i.name)) ? [] : [{ label: 'Add to Usually', icon: BookmarkPlus, run: () => addStaple(i.name) }]),
+    ...(isStaple.value.has(key(i.name)) ? [] : [{ label: 'Add to Usual things', icon: BookmarkPlus, run: () => addStaple(i.name) }]),
     'separator',
     { label: 'Delete', icon: Trash2, danger: true, run: () => removeItem(i) },
   ])
@@ -123,7 +123,7 @@ async function removeItem(i: ShoppingItem) {
 function stapleMenu(e: MouseEvent, s: Staple) {
   openMenu(e, [
     ...(onList.value.has(key(s.name)) ? [] : [{ label: 'Add to list', icon: ListPlus, run: () => add(s.name) }]),
-    { label: 'Remove from Usually', icon: Trash2, danger: true, run: () => removeStaple(s) },
+    { label: 'Remove from Usual things', icon: Trash2, danger: true, run: () => removeStaple(s) },
   ])
 }
 
@@ -164,8 +164,8 @@ async function removeStaple(s: Staple) {
         <button
           v-if="!isStaple.has(key(i.name)) && !ticked.has(i.id)"
           class="icon-btn save"
-          :aria-label="`Add ${i.name} to Usually`"
-          title="Add to Usually"
+          :aria-label="`Add ${i.name} to Usual things`"
+          title="Add to Usual things"
           @click="addStaple(i.name)"
         >
           <BookmarkPlus :size="18" />
@@ -175,7 +175,7 @@ async function removeStaple(s: Staple) {
     <p v-else class="muted empty">Nothing to buy.</p>
 
     <div class="usual-head">
-      <h2 class="section-title"><Bookmark :size="13" aria-hidden="true" /> Usually</h2>
+      <h2 class="section-title"><Bookmark :size="13" aria-hidden="true" /> Usual things</h2>
       <button v-if="staples.length || editing" class="icon-btn" :aria-label="editing ? 'Done editing' : 'Edit chips'" @click="editing = !editing">
         <Check v-if="editing" :size="18" /><Pencil v-else :size="18" />
       </button>
@@ -204,7 +204,7 @@ async function removeStaple(s: Staple) {
     <template v-if="editing && suggestions.length">
       <p class="muted small sugg-title">Suggestions</p>
       <div class="chips">
-        <button v-for="n in suggestions" :key="n" class="chip off" :aria-label="`Add ${n} to Usually`" @click="addStaple(n)">
+        <button v-for="n in suggestions" :key="n" class="chip off" :aria-label="`Add ${n} to Usual things`" @click="addStaple(n)">
           <Plus :size="14" />{{ n }}
         </button>
       </div>
