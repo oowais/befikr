@@ -19,7 +19,7 @@ onMounted(async () => {
     })
   } catch (e) {
     const denied = e instanceof DOMException && e.name === 'NotAllowedError'
-    emit('error', denied ? 'Camera access is needed to scan. Allow it in Android settings, or enter the address instead.' : `Camera: ${e}`)
+    emit('error', denied ? 'Camera access is needed to scan. Allow it in Android settings, or enter the address instead.' : 'Couldn’t open the camera. Paste the link instead.')
     return
   }
   if (!video.value) return stop()

@@ -77,7 +77,10 @@ export type SyncStatus = {
   endpoint: string
   peers: Peer[]
   pairing: { untilMs: number; link: string } | null
+  /** Worded for the user. */
   lastError: string | null
+  /** The same, raw (network / protocol). */
+  lastErrorDetail: string | null
   conflicts: number
 }
 export type Conflict = {

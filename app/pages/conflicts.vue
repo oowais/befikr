@@ -25,7 +25,7 @@ async function load() {
     tasks.value = Object.fromEntries(ids.map((id, i) => [id, got[i] ?? null]))
     list.value = all
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the conflicts')
     list.value = []
   }
 }
@@ -156,7 +156,7 @@ async function pick(card: Card, side: 'mine' | 'theirs') {
     listChanged()
     show({ message: side === 'mine' ? 'Kept your version' : `Kept ${card.from}’s version` })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'keep that version')
     await load()
   } finally {
     const { [card.key]: _, ...rest } = picked.value

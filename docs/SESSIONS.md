@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 18, 2026 (friendly errors)** — Errors worded for the user: sync/pairing in Rust (`befikr-sync` `errors.rs` `friendly()`, naming the device; raw text kept as `lastErrorDetail`, shown small under the error on the Sync page), everything else via `friendlyError(e, doing)` (`app/composables/errors.ts`: known core messages mapped, sentences pass through, else "Couldn't <doing>. Try again."; raw to console). Backup, update, camera, clipboard lines reworded.
 - **Oct 18, 2026 (scrollbars)** — Desktop (`pointer: fine`): thin rounded themed scrollbars, no arrows (`main.css`, `::-webkit-scrollbar`); touch keeps overlay bars.
 - **Oct 18, 2026 (done twice)** — A task ticked on two devices before they synced showed 2×: each tick was its own completion row. Merge now keeps the earliest per occurrence (task + due then), soft-deletes the rest (also once on open for existing doubles), and the losing device gets a "Done twice" card on the Conflicts page to pick the time. Next: device test.
 - **Oct 18, 2026 (stale sync)** — Sync dot turns orange when no device has synced for 6 h+, with a hint under the top bar ("Not synced for 8h · open Befikr on Pixel 9") until a sync lands; shared `useSyncStatus` composable. No pre-action warning: LWW + Conflicts page cover it.

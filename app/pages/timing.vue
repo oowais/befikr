@@ -13,7 +13,7 @@ async function load() {
   try {
     settings.value = await api.settings()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the settings')
   }
 }
 onMounted(load)
@@ -25,7 +25,7 @@ async function run(f: () => Promise<unknown>) {
     await load()
     await loadTimeWords(true)
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'save the setting')
   }
 }
 

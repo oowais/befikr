@@ -16,6 +16,7 @@
 //!
 //! No Tauri here: the app implements [`Host`] (store access, alarms, events).
 
+mod errors;
 mod link;
 mod proto;
 
@@ -32,6 +33,7 @@ use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
+pub use errors::friendly;
 pub use proto::ALPN;
 
 const PAIRING_WINDOW: Duration = Duration::from_secs(5 * 60);
@@ -70,7 +72,10 @@ pub struct Status {
     pub peers: Vec<Peer>,
     /// Our open pairing window: link and when it closes (UTC ms).
     pub pairing: Option<PairingInfo>,
+    /// The last sync problem, worded for the user ([`friendly`]).
     pub last_error: Option<String>,
+    /// The same, as raw text from the network or protocol (for "Details").
+    pub last_error_detail: Option<String>,
     /// Open conflicts: our edits that lost to concurrent ones.
     pub conflicts: usize,
 }
@@ -105,7 +110,8 @@ struct State {
     syncing: BTreeMap<EndpointId, Arc<tokio::sync::Mutex<()>>>,
     /// Syncs in progress (for the status).
     in_flight: usize,
-    last_error: Option<String>,
+    /// Raw error and the device it was with ("" = none).
+    last_error: Option<(String, String)>,
 }
 
 struct Inner<H> {
@@ -178,7 +184,7 @@ impl<H: Host> SyncService<H> {
         }
         let r = self.start(settings.mode).await;
         if let Err(e) = &r {
-            self.state().last_error = Some(e.clone());
+            self.state().last_error = Some((e.clone(), String::new()));
         }
         self.inner.host.status_changed();
         r
@@ -276,7 +282,8 @@ impl<H: Host> SyncService<H> {
                 until_ms: p.until_ms,
                 link: st.running.as_ref().map(|r| link::encode(&r.ep.addr(), &p.code, &my_name)).unwrap_or_default(),
             }),
-            last_error: st.last_error.clone(),
+            last_error: st.last_error.as_ref().map(|(raw, device)| friendly(raw, device)),
+            last_error_detail: st.last_error.as_ref().map(|(raw, _)| raw.clone()),
             conflicts,
         }
     }
@@ -284,7 +291,7 @@ impl<H: Host> SyncService<H> {
     /// Open a pairing window; its link is in [`Self::status`].
     pub fn start_pairing(&self) -> Result<()> {
         if self.endpoint().is_none() {
-            return Err("turn sync on first".into());
+            return Err("Turn sync on first.".into());
         }
         let code = format!("{:06}", rand::random_range(0..1_000_000u32));
         let now_ms = self.inner.host.store(|s| Ok(s.now()))?;
@@ -305,8 +312,14 @@ impl<H: Host> SyncService<H> {
 
     /// Pair from a pairing link (scanned QR code or pasted): it carries the
     /// device's id, addresses, relay and code. Then sync with it.
+    /// Errors are worded for the user.
     pub async fn pair_with_link(&self, link: &str) -> Result<Peer> {
-        let link = link::decode(link)?;
+        let link = link::decode(link).map_err(|e| friendly(&e, ""))?;
+        let name = link.name.clone();
+        self.pair(link).await.map_err(|e| friendly(&e, &name))
+    }
+
+    async fn pair(&self, link: link::PairLink) -> Result<Peer> {
         let ep = self.endpoint().ok_or("turn sync on first")?;
         let id = link.addr.id;
         self.add_addr(link.addr);
@@ -328,7 +341,7 @@ impl<H: Host> SyncService<H> {
             return Ok(());
         }
         self.sync_now().await;
-        let error = self.state().last_error.clone();
+        let error = self.state().last_error.clone().map(|(raw, _)| raw);
         self.stop().await;
         error.map_or(Ok(()), Err)
     }
@@ -342,9 +355,9 @@ impl<H: Host> SyncService<H> {
     /// Sync with every paired device that can be reached.
     pub async fn sync_now(&self) {
         let peers = self.inner.host.store(|s| s.peers()).unwrap_or_default();
-        let jobs = peers.iter().filter_map(|p| p.endpoint.parse::<EndpointId>().ok()).map(|id| {
+        let jobs = peers.iter().filter_map(|p| Some((p.endpoint.parse::<EndpointId>().ok()?, p.name.clone()))).map(|(id, name)| {
             let me = self.clone();
-            tokio::spawn(async move { (id, me.sync_peer(id).await) })
+            tokio::spawn(async move { (id, name, me.sync_peer(id).await) })
         });
         // An unreachable device, or one that failed but synced lately, is
         // no error.
@@ -356,10 +369,10 @@ impl<H: Host> SyncService<H> {
         };
         let mut error = None;
         for j in jobs.collect::<Vec<_>>() {
-            if let Ok((id, Err(e))) = j.await {
+            if let Ok((id, name, Err(e))) = j.await {
                 eprintln!("sync with {}: {e}", id.fmt_short());
                 if e != UNREACHABLE && !fresh(&id) {
-                    error = Some(e);
+                    error = Some((e, name));
                 }
             }
         }

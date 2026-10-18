@@ -37,7 +37,7 @@ async function speak() {
     if (said) text.value = text.value.trim() ? `${text.value.trim()} ${said}` : said
     nextTick(grow)
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'use voice input')
   }
   input.value?.focus()
 }
@@ -189,7 +189,7 @@ async function save() {
     emit('saved')
     emit('close')
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'save the task')
   } finally {
     saving.value = false
   }

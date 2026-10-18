@@ -25,7 +25,7 @@ const load = async () => {
     items.value = l.items
     staples.value = l.staples
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the list')
   }
 }
 onMounted(load)
@@ -55,7 +55,7 @@ async function add(name: string) {
     const real = await api.addShoppingItem(name)
     items.value = items.value.map((i) => (i.id === temp.id ? real : i))
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'add it')
     load()
   }
 }
@@ -73,7 +73,7 @@ async function tick(item: ShoppingItem) {
   try {
     await api.setShoppingBought(item.id, true)
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'tick it off')
   }
   setTimeout(() => {
     items.value = items.value.filter((i) => i.id !== item.id)
@@ -95,7 +95,7 @@ async function addStaple(typedName?: string) {
     const s = await api.addStaple(name)
     staples.value = [...staples.value, s].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'add the staple')
   }
 }
 
@@ -115,7 +115,7 @@ async function removeItem(i: ShoppingItem) {
     await api.setShoppingDeleted(i.id, true)
     show({ message: `Removed ${i.name}`, action: { label: 'Undo', run: () => api.setShoppingDeleted(i.id, false).then(load) } })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'remove it')
     load()
   }
 }
@@ -131,7 +131,7 @@ async function removeStaple(s: Staple) {
   haptic()
   staples.value = staples.value.filter((x) => x.id !== s.id)
   await api.removeStaple(s.id).catch((e) => {
-    error.value = String(e)
+    error.value = friendlyError(e, 'remove the staple')
     load()
   })
 }

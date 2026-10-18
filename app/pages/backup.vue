@@ -9,7 +9,7 @@ const backup = ref<BackupStatus | null>(null)
 const backupBusy = ref(false)
 const importPath = ref<string | null>(null)
 
-const load = async () => (backup.value = await reminders.backupStatus().catch((e) => ((error.value = String(e)), null)))
+const load = async () => (backup.value = await reminders.backupStatus().catch((e) => ((error.value = friendlyError(e, 'load the backup status')), null)))
 onMounted(load)
 
 async function toggleBackup() {
@@ -26,18 +26,18 @@ async function backupAction(f: () => Promise<BackupStatus | unknown>, done?: str
     if (r && typeof r === 'object' && 'folder' in r) backup.value = r as BackupStatus
     if (done) show({ message: done })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'back up')
   } finally {
     backupBusy.value = false
     backup.value = await reminders.backupStatus().catch(() => backup.value)
   }
 }
 async function exportCopy() {
-  const r = await reminders.exportBackup().catch((e) => ((error.value = String(e)), null))
+  const r = await reminders.exportBackup().catch((e) => ((error.value = friendlyError(e, 'export a copy')), null))
   if (r?.saved) show({ message: 'Backup saved' })
 }
 async function chooseImport() {
-  const r = await reminders.pickImportFile().catch((e) => ((error.value = String(e)), null))
+  const r = await reminders.pickImportFile().catch((e) => ((error.value = friendlyError(e, 'open the file')), null))
   if (r?.path) importPath.value = r.path
 }
 async function confirmImport() {
@@ -50,7 +50,7 @@ async function confirmImport() {
     await load()
     show({ message: 'Backup restored' })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'restore the backup')
   }
 }
 </script>
@@ -85,7 +85,7 @@ async function confirmImport() {
           <div class="detail">
             <span class="muted">Last</span>
             <span class="flex stack value">
-              <span v-if="backup.lastError" class="error">Failed: {{ backup.lastError }}</span>
+              <span v-if="backup.lastError" class="error">{{ friendlyBackupError(backup.lastError) }}</span>
               <span v-else-if="backup.lastAt" class="ok"><Check :size="15" :stroke-width="3" /> {{ dayLabel(backup.lastAt) }}</span>
               <span v-else>Not yet</span>
             </span>

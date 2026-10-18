@@ -26,7 +26,7 @@ async function load() {
     st.value = await api.syncStatus()
     if (!name.value) name.value = st.value.name || (await defaultName())
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the sync status')
   }
 }
 const defaultName = async () => (await reminders.status().then((s) => s.device, () => '')) || 'Desktop'
@@ -51,7 +51,7 @@ async function run(f: () => Promise<unknown>, done?: string) {
     await f()
     if (done) show({ message: done })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'do that')
   } finally {
     busy.value = false
     await load()
@@ -65,7 +65,7 @@ async function setMode(mode: SyncMode) {
 async function saveName() {
   const n = name.value.trim()
   if (!n || n === st.value?.name) return
-  await api.setDeviceName(n).catch((e) => (error.value = String(e)))
+  await api.setDeviceName(n).catch((e) => (error.value = friendlyError(e, 'save the name')))
 }
 
 const ago = (ms: number | null) => {
@@ -94,7 +94,7 @@ const qr = computed(() => (st.value?.pairing?.link ? renderSVG(st.value.pairing.
 async function copyLink() {
   const link = st.value?.pairing?.link
   if (!link) return
-  await navigator.clipboard.writeText(link).then(() => show({ message: 'Link copied' }), (e) => (error.value = String(e)))
+  await navigator.clipboard.writeText(link).then(() => show({ message: 'Link copied' }), () => (error.value = 'Couldn’t copy. Select the link and copy it yourself.'))
 }
 
 function pairWithLink(text: string) {
@@ -134,7 +134,10 @@ function pairPasted() {
       </button>
     </template>
     <p v-if="error" class="error">{{ error }}</p>
-    <p v-else-if="st?.lastError" class="error">{{ st.lastError }}</p>
+    <template v-else-if="st?.lastError">
+      <p class="error">{{ st.lastError }}</p>
+      <p v-if="st.lastErrorDetail" class="muted tiny detail">Details: {{ st.lastErrorDetail }}</p>
+    </template>
     <p v-if="st && st.mode !== 'off' && !st.running" class="error">Sync isn't running. Switch it off and on again.</p>
 
     <template v-if="st">
@@ -230,6 +233,8 @@ function pairPasted() {
 </template>
 
 <style scoped>
+/* Raw error text, small, for when the friendly line isn't enough. */
+.detail { margin: -6px 0 12px; font-size: 0.75rem; overflow-wrap: anywhere; }
 .when { display: inline-flex; align-items: center; gap: 6px; }
 .when.orange { color: var(--orange); }
 .when.red { color: var(--red); }

@@ -41,7 +41,8 @@ async function checkUpdate() {
     if (update.pending.value) updateNote.value = `Befikr ${update.pending.value} is still being built. Try again in a few minutes.`
     else if (!update.available.value) updateNote.value = 'Up to date'
   } catch (e) {
-    updateNote.value = `Couldn't check: ${e}`
+    console.warn('update check:', e)
+    updateNote.value = /HTTP 403|rate/i.test(String(e)) ? 'GitHub is busy. Try again in an hour.' : 'Couldn’t check for updates. Are you online?'
     updateFailed.value = true
   }
 }
@@ -52,7 +53,8 @@ async function installUpdate() {
     const r = await update.install()
     if (r.needsPermission) updateNote.value = 'Allow Befikr to install apps, then tap Update again'
   } catch (e) {
-    updateNote.value = `Update failed: ${e}`
+    console.warn('update:', e)
+    updateNote.value = 'Update failed. Try again, or get it from the releases page.'
     updateFailed.value = true
   }
 }
@@ -75,7 +77,7 @@ async function load() {
   try {
     settings.value = await api.settings()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the settings')
   }
   status.value = await reminders.status().catch(() => null)
   blocked.value = await api.notificationsBlocked()
@@ -122,7 +124,7 @@ async function run(f: () => Promise<unknown>) {
     error.value = ''
     await load()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'change the setting')
   }
 }
 </script>

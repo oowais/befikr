@@ -29,7 +29,7 @@ const adding = ref(false)
 
 /** Open dated tasks to an .ics file, for another calendar app. */
 async function exportIcs() {
-  const r = await api.exportIcs().catch((e) => ((error.value = String(e)), null))
+  const r = await api.exportIcs().catch((e) => ((error.value = friendlyError(e, 'export the calendar')), null))
   if (r?.saved) show({ message: 'Calendar file saved' })
 }
 
@@ -109,7 +109,7 @@ async function load() {
     undated.value = open.filter((r) => r.dueAt == null && r.snoozedUntil == null)
     error.value = ''
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load the calendar')
   }
 }
 watch([from, to, listVersion], load, { immediate: true })
@@ -182,7 +182,7 @@ async function reschedule(card: Card, day: number) {
     if (card.rrule) await api.snoozeTask(card.id, at)
     else await api.updateTask(card.id, { dueAt: at, tz: deviceTz() })
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'move the task')
   }
   listChanged()
 }

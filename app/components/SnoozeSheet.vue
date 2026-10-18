@@ -47,7 +47,7 @@ async function snooze(until: number | null) {
     listChanged()
     emit('done')
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'snooze')
   }
 }
 
@@ -63,7 +63,7 @@ async function skip() {
     listChanged()
     emit('done')
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'move the task')
   }
 }
 

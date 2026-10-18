@@ -42,7 +42,7 @@ async function refresh() {
       overduePeak = overdue ? Math.max(overduePeak, overdue) : 0
     }
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'load your tasks')
   }
   loaded.value = true
   releaseSplash()
@@ -69,7 +69,7 @@ async function complete(row: Row) {
       action: { label: 'Undo', run: () => api.reopenTask(row.id).then(refresh) },
     })
   } catch (e) {
-    show({ message: String(e) })
+    show({ message: friendlyError(e, 'complete the task') })
   }
   setTimeout(refresh, 400)
 }
@@ -105,7 +105,7 @@ async function skip(row: Row) {
       action: { label: 'Undo', run: () => api.updateTask(row.id, { dueAt: row.dueAt }).then(refresh) },
     })
   } catch (e) {
-    show({ message: String(e) })
+    show({ message: friendlyError(e, 'skip it') })
   }
   refresh()
 }
@@ -118,7 +118,7 @@ async function retire(row: Row) {
     await api.retireTask(row.id)
     show({ message: 'Retired · history kept', action: { label: 'Undo', run: () => api.reopenTask(row.id).then(refresh) } })
   } catch (e) {
-    show({ message: String(e) })
+    show({ message: friendlyError(e, 'stop the repeat') })
     refresh()
   }
 }
@@ -129,7 +129,7 @@ async function remove(row: Row) {
     await api.deleteTask(row.id)
     show({ message: 'Deleted', action: { label: 'Undo', run: () => api.restoreTask(row.id).then(refresh) } })
   } catch (e) {
-    show({ message: String(e) })
+    show({ message: friendlyError(e, 'delete the task') })
     refresh()
   }
 }

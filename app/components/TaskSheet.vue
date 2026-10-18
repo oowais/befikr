@@ -53,7 +53,7 @@ async function load() {
     description.value = task.value.description
     showNotes.value = !!task.value.description
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'open the task')
   }
 }
 onMounted(load)
@@ -74,7 +74,7 @@ async function patch(p: Parameters<typeof api.updateTask>[1]) {
     error.value = ''
     listChanged()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'save the change')
   }
 }
 
@@ -139,7 +139,7 @@ async function addSub() {
   const t = newSub.value.trim()
   if (!t) return
   newSub.value = ''
-  await api.addTask({ title: t, parentId: id.value }).catch((e) => (error.value = String(e)))
+  await api.addTask({ title: t, parentId: id.value }).catch((e) => (error.value = friendlyError(e, 'add the subtask')))
   subtasks.value = await api.listSubtasks(id.value)
   listChanged()
 }
@@ -174,7 +174,7 @@ async function skip() {
     listChanged()
     close()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'move the task')
   }
 }
 // Retired = a repeating task closed with no completion at that moment.
@@ -187,7 +187,7 @@ async function retire() {
     listChanged()
     close()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'stop the repeat')
   }
 }
 // A past completion that wasn't really done: kept in the list, counted as
@@ -205,7 +205,7 @@ async function setDone(c: Completion, done: boolean) {
     listChanged()
   } catch (e) {
     c.notDone = done
-    error.value = String(e)
+    error.value = friendlyError(e, 'change it')
   }
 }
 const dayOf = (ms: number) => new Date(ms).toDateString()
@@ -244,7 +244,7 @@ async function reopen() {
     show({ message: wasRetired ? 'Brought back' : 'Back in to-do' })
     listChanged()
   } catch (e) {
-    error.value = String(e)
+    error.value = friendlyError(e, 'reopen the task')
   }
 }
 async function remove() {

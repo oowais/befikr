@@ -65,7 +65,7 @@ async function undo(g: CompletedGroup) {
     await api.reopenTask(g.taskId)
     show({ message: g.retired ? 'Brought back' : 'Back in to-do' })
   } catch (e) {
-    show({ message: String(e) })
+    show({ message: friendlyError(e, 'undo it') })
   }
   load()
 }
