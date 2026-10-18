@@ -122,6 +122,12 @@ fn task_history(db: State<Db>, id: String) -> Res<Vec<Completion>> {
     db.store.lock().map_err(err)?.task_history(&id).map_err(err)
 }
 
+/// A past completion wasn't really done (`done: false`), or was after all.
+#[tauri::command]
+fn set_completion_done(db: State<Db>, id: String, done: bool) -> Res<()> {
+    db.store.lock().map_err(err)?.set_completion_done(&id, done).map_err(err)
+}
+
 #[tauri::command]
 fn stats(db: State<Db>, since: Option<i64>, week_starts: Vec<i64>) -> Res<Stats> {
     db.store.lock().map_err(err)?.stats(since, &week_starts).map_err(err)
@@ -550,6 +556,7 @@ pub fn run() {
             retire_task,
             completed_groups,
             task_history,
+            set_completion_done,
             delete_task,
             restore_task,
             shopping_list,

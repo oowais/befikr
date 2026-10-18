@@ -101,20 +101,12 @@ impl Store {
     /// Completion history, newest first.
     pub fn list_completed(&self, limit: u32) -> Result<Vec<Completion>> {
         let mut st = self.conn.prepare(
-            "SELECT c.id, c.task_id, t.title, c.completed_at, c.due_at_then
+            "SELECT c.id, c.task_id, t.title, c.completed_at, c.due_at_then, c.not_done_at IS NOT NULL
              FROM completions c JOIN tasks t ON t.id = c.task_id
-             WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL
+             WHERE c.deleted_at IS NULL AND c.not_done_at IS NULL AND t.deleted_at IS NULL
              ORDER BY c.completed_at DESC, c.id DESC LIMIT ?1",
         )?;
-        let rows = st.query_map([limit], |r| {
-            Ok(Completion {
-                id: r.get(0)?,
-                task_id: r.get(1)?,
-                title: r.get(2)?,
-                completed_at: r.get(3)?,
-                due_at_then: r.get(4)?,
-            })
-        })?;
+        let rows = st.query_map([limit], row_completion)?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
 
@@ -123,9 +115,9 @@ impl Store {
     pub fn completed_groups(&self) -> Result<Vec<CompletedGroup>> {
         let mut st = self.conn.prepare(
             "SELECT t.id, t.title, COUNT(c.id), MAX(c.completed_at), t.completed_at, t.rrule IS NOT NULL,
-               (SELECT c2.due_at_then FROM completions c2 WHERE c2.task_id = t.id AND c2.deleted_at IS NULL
+               (SELECT c2.due_at_then FROM completions c2 WHERE c2.task_id = t.id AND c2.deleted_at IS NULL AND c2.not_done_at IS NULL
                 ORDER BY c2.completed_at DESC, c2.id DESC LIMIT 1)
-             FROM tasks t LEFT JOIN completions c ON c.task_id = t.id AND c.deleted_at IS NULL
+             FROM tasks t LEFT JOIN completions c ON c.task_id = t.id AND c.deleted_at IS NULL AND c.not_done_at IS NULL
              WHERE t.deleted_at IS NULL AND t.parent_id IS NULL
              GROUP BY t.id
              HAVING COUNT(c.id) > 0 OR (t.completed_at IS NOT NULL AND t.rrule IS NOT NULL)",
@@ -150,24 +142,43 @@ impl Store {
         Ok(rows)
     }
 
-    /// One task's completions, newest first.
+    /// One task's completions, newest first, incl. those marked not done.
     pub fn task_history(&self, id: &str) -> Result<Vec<Completion>> {
         let mut st = self.conn.prepare(
-            "SELECT c.id, c.task_id, t.title, c.completed_at, c.due_at_then
+            "SELECT c.id, c.task_id, t.title, c.completed_at, c.due_at_then, c.not_done_at IS NOT NULL
              FROM completions c JOIN tasks t ON t.id = c.task_id
              WHERE c.task_id = ?1 AND c.deleted_at IS NULL
              ORDER BY c.completed_at DESC, c.id DESC",
         )?;
-        let rows = st.query_map([id], |r| {
-            Ok(Completion {
-                id: r.get(0)?,
-                task_id: r.get(1)?,
-                title: r.get(2)?,
-                completed_at: r.get(3)?,
-                due_at_then: r.get(4)?,
-            })
-        })?;
+        let rows = st.query_map([id], row_completion)?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// Say a past completion wasn't really done (`done = false`), or was after
+    /// all. The next due date stays; streaks, stats and carefree days follow.
+    pub fn set_completion_done(&mut self, completion_id: &str, done: bool) -> Result<()> {
+        self.write(|c, now| {
+            let (task_id, due_then): (String, Option<i64>) = c
+                .query_row(
+                    "SELECT task_id, due_at_then FROM completions WHERE id = ?1 AND deleted_at IS NULL",
+                    [completion_id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?
+                .ok_or_else(|| Error::NotFound(completion_id.to_string()))?;
+            let n = c.execute(
+                if done {
+                    "UPDATE completions SET not_done_at = NULL, updated_at = ?2 WHERE id = ?1 AND not_done_at IS NOT NULL"
+                } else {
+                    "UPDATE completions SET not_done_at = ?2, updated_at = ?2 WHERE id = ?1 AND not_done_at IS NULL"
+                },
+                params![completion_id, now],
+            )?;
+            if n > 0 {
+                log(c, &task_id, if done { "redone" } else { "not_done" }, now, due_then, None, Source::App)?;
+            }
+            Ok(())
+        })
     }
 
     /// Stats for completions, snoozes and missed repeats since `since`.
@@ -180,7 +191,7 @@ impl Store {
         let from = since.min(week_starts.first().copied().unwrap_or(since));
         let mut st = self.conn.prepare(
             "SELECT c.completed_at, c.due_at_then, t.tz FROM completions c JOIN tasks t ON t.id = c.task_id
-             WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.completed_at >= ?1",
+             WHERE c.deleted_at IS NULL AND c.not_done_at IS NULL AND t.deleted_at IS NULL AND c.completed_at >= ?1",
         )?;
         let rows = st.query_map([from], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?, r.get::<_, Option<String>>(2)?))
@@ -226,7 +237,14 @@ impl Store {
                SELECT 1 FROM completions c
                WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)",
             [since],
-            |r| r.get(0),
+            |r| r.get::<_, u32>(0),
+        )?;
+        // Completions marked not done afterwards count as missed too.
+        s.missed += self.conn.query_row(
+            "SELECT COUNT(*) FROM completions c JOIN tasks t ON t.id = c.task_id
+             WHERE c.not_done_at IS NOT NULL AND c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.completed_at >= ?1",
+            [since],
+            |r| r.get::<_, u32>(0),
         )?;
         Ok(s)
     }
@@ -347,7 +365,7 @@ impl Store {
             let t = get(c, id)?;
             let last: Option<(String, Option<i64>, i64)> = c
                 .query_row(
-                    "SELECT id, due_at_then, completed_at FROM completions WHERE task_id = ?1 AND deleted_at IS NULL
+                    "SELECT id, due_at_then, completed_at FROM completions WHERE task_id = ?1 AND deleted_at IS NULL AND not_done_at IS NULL
                      ORDER BY completed_at DESC, id DESC LIMIT 1",
                     [id],
                     |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
@@ -733,6 +751,17 @@ fn get(c: &Connection, id: &str) -> Result<Task> {
 }
 
 /// Event kinds: see the `task_events` comment in `schema.rs`, plus `skipped`.
+fn row_completion(r: &Row) -> rusqlite::Result<Completion> {
+    Ok(Completion {
+        id: r.get(0)?,
+        task_id: r.get(1)?,
+        title: r.get(2)?,
+        completed_at: r.get(3)?,
+        due_at_then: r.get(4)?,
+        not_done: r.get(5)?,
+    })
+}
+
 fn log(
     c: &Connection,
     task_id: &str,

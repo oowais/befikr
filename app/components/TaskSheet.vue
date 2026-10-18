@@ -3,7 +3,7 @@
 // mounted in RouteSheets). Edit title, date, repeat, notes, subtasks; done,
 // snooze, skip, retire, delete. Closes by dragging its top down, tapping
 // outside, Back, or after done / skip / retire / delete.
-import { AlarmClock, CalendarDays, Check, CheckCircle2, ChevronRight, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, Check, CheckCircle2, ChevronRight, CircleX, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
 import type { Completion, HabitStreak, Task } from '~/composables/api'
 
@@ -190,6 +190,24 @@ async function retire() {
     error.value = String(e)
   }
 }
+// A past completion that wasn't really done: kept in the list, counted as
+// missed (streaks, stats, carefree days); the next due date stays.
+const doneCount = computed(() => history.value.filter((c) => !c.notDone).length)
+async function setDone(c: Completion, done: boolean) {
+  haptic()
+  c.notDone = !done
+  try {
+    await api.setCompletionDone(c.id, done)
+    show({
+      message: done ? 'Marked done' : `${dayLabel(c.completedAt)} marked not done`,
+      action: { label: 'Undo', run: () => api.setCompletionDone(c.id, !done).then(listChanged) },
+    })
+    listChanged()
+  } catch (e) {
+    c.notDone = done
+    error.value = String(e)
+  }
+}
 const dayOf = (ms: number) => new Date(ms).toDateString()
 const late = (c: Completion) => c.dueAtThen != null && c.completedAt > c.dueAtThen && dayOf(c.completedAt) !== dayOf(c.dueAtThen)
 // "Show all": by month (newest first, only the latest open), scrolling
@@ -333,17 +351,21 @@ async function remove() {
 
       <template v-if="history.length && task.rrule">
         <h2 class="section-title">
-          Done {{ history.length }}×
+          Done {{ doneCount }}×
           <span v-if="carefree.enabled.value && streak?.current" class="streak">
             · <Flame :size="13" /> {{ streak.current }} {{ streakUnit }} in a row<template v-if="streak.best > streak.current"> (best {{ streak.best }})</template>
           </span>
           <button v-if="allHistory" class="less" @click="allHistory = false">Show less</button>
         </h2>
         <div v-if="!allHistory" class="pane rows">
-          <div v-for="c in history.slice(0, 5)" :key="c.id" class="sub">
-            <History :size="18" class="muted" />
-            <span class="flex">{{ dayLabel(c.completedAt) }}</span>
-            <span v-if="late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+          <div v-for="c in history.slice(0, 5)" :key="c.id" class="sub" :class="{ 'not-done': c.notDone }">
+            <CircleX v-if="c.notDone" :size="18" class="miss" />
+            <History v-else :size="18" class="muted" />
+            <span class="flex">{{ dayLabel(c.completedAt) }}<span v-if="c.notDone" class="muted small"> · not done</span></span>
+            <span v-if="!c.notDone && late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+            <button type="button" class="icon-btn toggle" :aria-label="c.notDone ? 'Mark done' : 'Mark not done'" @click="setDone(c, c.notDone)">
+              <RotateCcw v-if="c.notDone" :size="16" /><X v-else :size="16" />
+            </button>
           </div>
           <button v-if="history.length > 5" class="sub muted" @click="showAllHistory">Show all {{ history.length }}</button>
         </div>
@@ -355,10 +377,14 @@ async function remove() {
               <span class="muted small">{{ m.items.length }}</span>
             </button>
             <template v-if="openMonths.has(m.key)">
-              <div v-for="c in m.items" :key="c.id" class="sub">
-                <History :size="18" class="muted" />
-                <span class="flex">{{ dayLabel(c.completedAt) }}</span>
-                <span v-if="late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+              <div v-for="c in m.items" :key="c.id" class="sub" :class="{ 'not-done': c.notDone }">
+                <CircleX v-if="c.notDone" :size="18" class="miss" />
+                <History v-else :size="18" class="muted" />
+                <span class="flex">{{ dayLabel(c.completedAt) }}<span v-if="c.notDone" class="muted small"> · not done</span></span>
+                <span v-if="!c.notDone && late(c)" class="muted small">{{ span(c.completedAt - c.dueAtThen!) }} late</span>
+                <button type="button" class="icon-btn toggle" :aria-label="c.notDone ? 'Mark done' : 'Mark not done'" @click="setDone(c, c.notDone)">
+                  <RotateCcw v-if="c.notDone" :size="16" /><X v-else :size="16" />
+                </button>
               </div>
             </template>
           </template>
@@ -423,6 +449,9 @@ async function remove() {
 .add-props { display: flex; gap: 8px; margin-top: 12px; }
 .sub { display: flex; align-items: center; gap: 12px; min-height: 48px; width: 100%; text-align: left; }
 .sub.done span:last-child { text-decoration: line-through; color: var(--muted); }
+.sub.not-done > .flex { color: var(--muted); }
+.sub .miss { color: var(--red); flex: none; }
+.sub .toggle { color: var(--muted); margin-right: -8px; flex: none; }
 .add-icon { margin: 0 2px; }
 /* About eight rows, then it scrolls on its own. */
 .all-history { max-height: min(400px, 50vh); overflow-y: auto; overscroll-behavior: contain; }

@@ -87,6 +87,8 @@ pub struct Completion {
     pub title: String,
     pub completed_at: i64,
     pub due_at_then: Option<i64>,
+    /// Marked not done afterwards: shown in the history, counted as missed.
+    pub not_done: bool,
 }
 
 /// A task's completions, as one row of the history ("Water plants · 58×").

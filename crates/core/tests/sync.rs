@@ -301,3 +301,26 @@ fn no_conflicts_from_values_a_restore_rolled_back() {
     assert_eq!(a.get_task(&id).unwrap().title, "soy milk");
     assert!(a.conflicts().unwrap().is_empty());
 }
+
+#[test]
+fn marking_a_completion_not_done_syncs() {
+    let (mut a, clock) = device();
+    let (mut b, _) = device();
+    let (mut a_seen, mut b_seen) = (0, 0);
+    let id = a
+        .add_task(NewTask { title: "Stretch".into(), due_at: Some(T0), rrule: Some("FREQ=DAILY".into()), tz: Some("Europe/Berlin".into()), ..Default::default() })
+        .unwrap()
+        .task
+        .id;
+    clock.store(T0 + 60_000, Ordering::SeqCst);
+    a.complete_task(&id, Source::App).unwrap();
+    sync(&a, &mut b, &mut a_seen);
+    let cid = b.task_history(&id).unwrap()[0].id.clone();
+
+    b.set_completion_done(&cid, false).unwrap();
+    sync(&b, &mut a, &mut b_seen);
+    assert!(a.task_history(&id).unwrap()[0].not_done);
+    b.set_completion_done(&cid, true).unwrap();
+    sync(&b, &mut a, &mut b_seen);
+    assert!(!a.task_history(&id).unwrap()[0].not_done);
+}

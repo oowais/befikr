@@ -23,7 +23,15 @@ export type CalendarItem = Task & { at: number; upcoming: boolean }
 
 export type Urgency = 'red' | 'orange' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
-export type Completion = { id: string; taskId: string; title: string; completedAt: number; dueAtThen: number | null }
+export type Completion = {
+  id: string
+  taskId: string
+  title: string
+  completedAt: number
+  dueAtThen: number | null
+  /** Marked not done afterwards: shown, counted as missed. */
+  notDone: boolean
+}
 export type CompletedGroup = {
   taskId: string
   title: string
@@ -129,6 +137,7 @@ export const api = {
   listCompleted: (limit = 200) => invoke<Completion[]>('list_completed', { limit }),
   completedGroups: () => invoke<CompletedGroup[]>('completed_groups'),
   taskHistory: (id: string) => invoke<Completion[]>('task_history', { id }),
+  setCompletionDone: (id: string, done: boolean) => invoke<void>('set_completion_done', { id, done }),
   habitStreak: (id: string) => invoke<HabitStreak | null>('habit_streak', { id, tz: deviceTz() }),
   carefree: () => invoke<Carefree>('carefree', { tz: deviceTz() }),
   stats: (since: number | null, weekStarts: number[]) => invoke<Stats>('stats', { since, weekStarts }),

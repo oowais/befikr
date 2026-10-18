@@ -134,3 +134,42 @@ fn habit_streak_counts_on_time_skips_are_neutral_late_resets() {
     clock.store(at(10, 13), Ordering::SeqCst);
     assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 0);
 }
+
+#[test]
+fn completion_marked_not_done_counts_as_missed_until_marked_done_again() {
+    let (mut s, clock) = setup(at(1, 8));
+    let gym = daily(&mut s, "gym", at(1, 18));
+    for d in 1..=5 {
+        done_at(&mut s, &clock, &gym, at(d, 19));
+    }
+    clock.store(at(6, 13), Ordering::SeqCst);
+    let due = s.get_task(&gym).unwrap().due_at;
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 5);
+    let history = s.task_history(&gym).unwrap();
+    let third = history.iter().find(|c| c.due_at_then == Some(at(3, 18))).unwrap().id.clone();
+
+    s.set_completion_done(&third, false).unwrap();
+    let h = s.task_history(&gym).unwrap();
+    assert_eq!((h.len(), h.iter().filter(|c| c.not_done).count()), (5, 1), "kept, shown as not done");
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap(), Some(HabitStreak { current: 2, best: 2 }));
+    assert_eq!(s.get_task(&gym).unwrap().due_at, due, "next due stays");
+    let st = s.stats(None, &[]).unwrap();
+    assert_eq!((st.completed, st.missed), (4, 1));
+    assert_eq!(s.completed_groups().unwrap()[0].count, 4);
+    assert_eq!(s.carefree(TZ).unwrap().streak, 4, "1, 2, (3 forgiven), 4, 5");
+    assert_eq!(s.carefree(TZ).unwrap().on_time_total, 4);
+
+    // A second one breaks the carefree run.
+    let second = h.iter().find(|c| c.due_at_then == Some(at(2, 18))).unwrap().id.clone();
+    s.set_completion_done(&second, false).unwrap();
+    assert_eq!(s.carefree(TZ).unwrap().streak, 2);
+
+    // Both back: as before.
+    s.set_completion_done(&second, true).unwrap();
+    s.set_completion_done(&third, true).unwrap();
+    s.set_completion_done(&third, true).unwrap(); // already done: no-op
+    assert!(s.task_history(&gym).unwrap().iter().all(|c| !c.not_done));
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 5);
+    assert_eq!(s.stats(None, &[]).unwrap().missed, 0);
+    assert!(s.set_completion_done("nope", false).is_err());
+}

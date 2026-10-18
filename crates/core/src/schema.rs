@@ -184,6 +184,13 @@ pub fn migrations() -> Migrations<'static> {
         ALTER TABLE peers ADD COLUMN kind TEXT NOT NULL DEFAULT '';
         ",
         ),
+        M::up(
+            "
+        -- A past completion the user said wasn't really done: kept, shown as
+        -- not done, counted as missed. NULL again when marked done again.
+        ALTER TABLE completions ADD COLUMN not_done_at INTEGER;
+        ",
+        ),
     ])
 }
 

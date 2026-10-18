@@ -40,7 +40,12 @@ pub(crate) const SYNCED: &[Synced] = &[
         ],
         only: None,
     },
-    Synced { table: "completions", key: "id", fields: &["task_id", "completed_at", "due_at_then", "deleted_at"], only: None },
+    Synced {
+        table: "completions",
+        key: "id",
+        fields: &["task_id", "completed_at", "due_at_then", "deleted_at", "not_done_at"],
+        only: None,
+    },
     Synced {
         table: "task_events",
         key: "id",

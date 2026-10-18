@@ -36,7 +36,7 @@ impl Store {
         // (due, resolved) for every dated occurrence; open ones resolve "now".
         let mut st = self.conn.prepare(
             "SELECT c.due_at_then, c.completed_at FROM completions c JOIN tasks t ON t.id = c.task_id
-             WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL
+             WHERE c.deleted_at IS NULL AND c.not_done_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL
              UNION ALL
              SELECT e.due_at_then, e.at FROM task_events e JOIN tasks t ON t.id = e.task_id
              WHERE e.kind = 'skipped' AND t.deleted_at IS NULL AND e.due_at_then IS NOT NULL
@@ -56,6 +56,17 @@ impl Store {
             while d <= until {
                 missed.insert(d);
                 d += Duration::days(1);
+            }
+        }
+        // Marked not done afterwards: its due day is missed.
+        let mut st = self.conn.prepare(
+            "SELECT c.due_at_then FROM completions c JOIN tasks t ON t.id = c.task_id
+             WHERE c.not_done_at IS NOT NULL AND c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL",
+        )?;
+        for due in st.query_map([], |r| r.get::<_, i64>(0))? {
+            let d = day(due?);
+            if d <= last {
+                missed.insert(d);
             }
         }
 
@@ -84,7 +95,7 @@ impl Store {
     fn on_time_counts(&self, tz: chrono_tz::Tz, monday: NaiveDate) -> Result<(u32, u32)> {
         let mut st = self.conn.prepare(
             "SELECT c.due_at_then, c.completed_at FROM completions c JOIN tasks t ON t.id = c.task_id
-             WHERE c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL",
+             WHERE c.deleted_at IS NULL AND c.not_done_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL",
         )?;
         let rows = st.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))?;
         let (mut total, mut week) = (0, 0);
@@ -117,9 +128,9 @@ impl Store {
             from_ms(at, tz).naive_local() <= cutoff
         };
         // (due, Some(on time)) for completions, (due, Some(false)) for missed
-        // occurrences, (due, None) for skips.
+        // occurrences (and completions marked not done), (due, None) for skips.
         let mut st = self.conn.prepare(
-            "SELECT due_at_then, completed_at, 'done' FROM completions
+            "SELECT due_at_then, completed_at, CASE WHEN not_done_at IS NULL THEN 'done' ELSE 'missed' END FROM completions
              WHERE task_id = ?1 AND deleted_at IS NULL AND due_at_then IS NOT NULL
              UNION ALL
              SELECT e.due_at_then, e.at, e.kind FROM task_events e
