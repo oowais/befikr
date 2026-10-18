@@ -3,7 +3,7 @@
 // one row per task ("Water plants · 58×"). Tap a row to open the task and
 // its history; tap the tick to undo its latest completion (or bring back a
 // retired task).
-import { Check, PanelRightOpen, RotateCcw, Sprout, Sunset } from 'lucide-vue-next'
+import { Check, Info, PanelRightOpen, RotateCcw, Sprout, Sunset } from 'lucide-vue-next'
 import type { CompletedGroup, Stats, WeekStats } from '~/composables/api'
 
 const DAY = 86_400_000
@@ -19,6 +19,8 @@ const items = ref<CompletedGroup[]>([])
 const stats = ref<Stats | null>(null)
 const range = ref<number>(30)
 const carefree = useCarefree()
+// The carefree card opens how it works.
+const explainingCarefree = ref(false)
 
 /** Local Monday 00:00 of this week and the 7 before it, oldest first. */
 function weekStarts(): number[] {
@@ -72,7 +74,13 @@ async function undo(g: CompletedGroup) {
 <template>
   <Screen title="Stats">
 
-    <div v-if="carefree.enabled.value && carefree.data.value" class="pane carefree">
+    <button
+      v-if="carefree.enabled.value && carefree.data.value"
+      type="button"
+      class="pane carefree"
+      aria-label="How do carefree days work?"
+      @click="explainingCarefree = true"
+    >
       <Sprout :size="22" class="muted" />
       <div class="flex">
         <p class="cf-num">
@@ -81,7 +89,9 @@ async function undo(g: CompletedGroup) {
         </p>
         <p class="muted small">Days that end with nothing overdue (done by noon the next day is fine). One missed day a week is forgiven.</p>
       </div>
-    </div>
+      <Info :size="18" class="muted" />
+    </button>
+    <CarefreeInfo v-if="explainingCarefree" :garden="carefree.data.value" @close="explainingCarefree = false" />
 
     <template v-if="items.length && stats">
       <div class="seg" role="radiogroup" aria-label="Range">
@@ -172,7 +182,7 @@ async function undo(g: CompletedGroup) {
 .opt { padding: 5px 12px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
 .opt.chosen { color: var(--text); }
 
-.carefree { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; padding: 14px 16px; }
+.carefree { display: flex; gap: 12px; align-items: flex-start; width: 100%; margin-bottom: 16px; padding: 14px 16px; text-align: left; color: inherit; }
 .carefree p { margin: 0; }
 .carefree .flex { flex: 1; display: flex; flex-direction: column; gap: 4px; }
 .cf-num { font-weight: 600; font-size: 1.05rem; }

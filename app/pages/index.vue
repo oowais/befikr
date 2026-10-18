@@ -25,8 +25,6 @@ const milestones = useMilestones()
 let overduePeak = 0
 // The last task was just completed: the empty scene greets it (see Doodle).
 const celebrate = ref(false)
-// The streak beside the title explains itself.
-const explainingCarefree = ref(false)
 const hint = useHint()
 useHintRotation()
 
@@ -200,16 +198,9 @@ onUnmounted(() => {
     <header class="topbar">
       <h1 class="brand">Befikr</h1>
       <SyncDot />
-      <button
-        v-if="garden?.streak"
-        type="button"
-        class="streak"
-        :aria-label="`${garden.streak} carefree ${garden.streak === 1 ? 'day' : 'days'} in a row. How does it work?`"
-        @click="explainingCarefree = true"
-      >
+      <NuxtLink v-if="garden?.streak" to="/stats" class="streak" :aria-label="`${garden.streak} carefree ${garden.streak === 1 ? 'day' : 'days'} in a row`">
         <Sprout :size="17" /> {{ garden.streak }}
-      </button>
-      <CarefreeInfo v-if="explainingCarefree" :garden="garden" @close="explainingCarefree = false" />
+      </NuxtLink>
       <span class="grow" />
       <NuxtLink to="/calendar" class="icon-btn wide-only" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
