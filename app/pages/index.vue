@@ -209,6 +209,7 @@ onUnmounted(() => {
         <Settings :size="22" /><span v-if="update.available.value" class="update-dot" />
       </NuxtLink>
     </header>
+    <SyncStaleHint />
 
     <p v-if="error" class="muted">{{ error }}</p>
 

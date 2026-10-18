@@ -1,34 +1,20 @@
 <script setup lang="ts">
 // Sync at a glance in the top bar, only while sync is on: a dot, green =
-// working (pulses while syncing), red = a problem (error or not running),
-// grey = no paired devices yet. Tapping it opens the Sync page (devices,
-// last sync, the error in full).
-import { listen } from '@tauri-apps/api/event'
-import type { SyncStatus } from '~/composables/api'
+// working (pulses while syncing), orange = no device synced for a few hours
+// (SyncStaleHint says which to open), red = a problem (error or not
+// running), grey = no paired devices yet. Tapping it opens the Sync page
+// (devices, last sync, the error in full).
+const { st, state, lastSync, now, ready } = useSyncStatus()
 
-const st = ref<SyncStatus | null>(null)
-const load = async () => (st.value = await api.syncStatus().catch(() => null))
-
-let unlisten: (() => void) | undefined
 // In the header from the first frame, not popping in after the splash.
 const releaseSplash = holdSplash()
-onMounted(async () => {
-  await load()
-  releaseSplash()
-  unlisten = await listen('sync-changed', load).catch(() => undefined)
-})
-onUnmounted(() => unlisten?.())
+onMounted(() => ready.then(releaseSplash))
 
-const state = computed(() => {
-  const s = st.value
-  if (!s || s.mode === 'off') return null
-  if (!s.running || s.lastError) return 'bad'
-  return s.peers.length ? 'ok' : 'idle'
-})
 const label = computed(() => {
   const s = st.value
   if (!s || !state.value) return ''
   if (state.value === 'bad') return `Sync problem: ${s.lastError ?? 'not running'}`
+  if (state.value === 'stale') return lastSync.value ? `Last synced ${span(now.value - lastSync.value)} ago` : 'Not synced yet'
   const n = s.peers.length
   return n ? `Sync on, ${n} ${n === 1 ? 'device' : 'devices'}` : 'Sync on, no devices yet'
 })
@@ -51,6 +37,7 @@ const label = computed(() => {
 .dot { transition: opacity 0.12s, scale 0.12s; }
 .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: -16px; }
 .ok { background: var(--green); }
+.stale { background: var(--orange); }
 .bad { background: var(--red); }
 .idle { background: var(--muted); }
 .pulse { animation: pulse 1s ease-in-out infinite; }
