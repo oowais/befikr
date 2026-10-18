@@ -5,6 +5,7 @@
 
 pub mod backup;
 pub mod digest;
+pub mod migrate;
 mod notify;
 pub mod notify_settings;
 pub mod prefs;

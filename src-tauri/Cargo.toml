@@ -36,7 +36,7 @@ tauri-plugin-updater = "2"
 # This computer's time zone for the morning digest ("today" is local).
 iana-time-zone = "0.1"
 
-# Window app id (`com.befikr.app`, see `run`).
+# Window app id (`com.owaisahmed.befikr`, see `run`).
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
 

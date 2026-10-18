@@ -489,11 +489,11 @@ fn export_ics() -> Res<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Wayland app id / X11 class `com.befikr.app` (matches StartupWMClass in
+    // Wayland app id / X11 class `com.owaisahmed.befikr` (matches StartupWMClass in
     // packaging/linux/befikr.desktop). The default, `befikr`, made launchers
     // that also match window titles focus any window titled "befikr" instead.
     #[cfg(target_os = "linux")]
-    gtk::glib::set_prgname(Some("com.befikr.app"));
+    gtk::glib::set_prgname(Some("com.owaisahmed.befikr"));
     let builder = tauri::Builder::default();
     // A second launch (e.g. from the menu while in the tray) focuses this one.
     #[cfg(desktop)]
@@ -506,6 +506,8 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_reminders::init())
         .setup(|app| {
+            #[cfg(desktop)]
+            desktop::migrate::adopt_old_data(app.handle());
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             let path = dir.join("befikr.db").to_string_lossy().into_owned();

@@ -65,6 +65,11 @@
 | **Windows** 10/11 | `befikr_x.y.z_x64-setup.exe` from the [latest release](https://github.com/oowais/befikr/releases/latest) | In the app (signed updates) |
 | **Linux** | `.deb` from the [latest release](https://github.com/oowais/befikr/releases/latest). Arch / CachyOS: [`scripts/install-arch.sh`](scripts/install-arch.sh) builds and installs a pacman package | Your package manager (Arch: run the script again) |
 
+**Coming from 0.37 or older?** The app id changed to `com.owaisahmed.befikr` in 0.38, so it installs as a new app once:
+
+- **Android:** in the old app, Settings → Backup → Export a copy. Install the new [`befikr.apk`](https://github.com/oowais/befikr/releases/latest/download/befikr.apk) (the old app's own update can't install it), restore that copy in the new app, pair sync again, then uninstall the old Befikr. In Discoverium, remove and re-add the repo if it keeps tracking the old app.
+- **Windows / Linux:** quit Befikr (also from the tray), install the new version as usual. On first start it copies your tasks, sync pairing and settings from the old app. If two Befikr entries show up in your apps list, uninstall the older one.
+
 All three run the same app with the same Rust core, and sync with each other. On computers Befikr lives in the tray, can start with the system (hidden), and shows native notifications with Complete and Snooze.
 
 <p align="center">
