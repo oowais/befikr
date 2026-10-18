@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 18, 2026 (due labels)** — Tasks due within 12 hours show the clock time and how soon ("21:00 · in 4h", `dueLabel` in `format.ts`); under an hour it used to be relative only.
 - **Oct 18, 2026 (what's new)** — "What's new" sheet after an update: CI writes `public/whats-new.json` (last 10 releases' feat/fix, `.github/scripts/whats-new.mjs`, all three build jobs); first start of a newer version shows what changed since the last version seen (`befikr.seenVersion`, localStorage), fresh installs skip it; Settings → "What's new" shows all. Next: check it after the next update on a device.
 - **Oct 18, 2026 (friendly errors)** — Errors worded for the user: sync/pairing in Rust (`befikr-sync` `errors.rs` `friendly()`, naming the device; raw text kept as `lastErrorDetail`, shown small under the error on the Sync page), everything else via `friendlyError(e, doing)` (`app/composables/errors.ts`: known core messages mapped, sentences pass through, else "Couldn't <doing>. Try again."; raw to console). Backup, update, camera, clipboard lines reworded.
 - **Oct 18, 2026 (scrollbars)** — Desktop (`pointer: fine`): thin rounded themed scrollbars, no arrows (`main.css`, `::-webkit-scrollbar`); touch keeps overlay bars.

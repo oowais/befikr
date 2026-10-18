@@ -20,9 +20,9 @@ export function dueLabel(ms: number | null, now = Date.now(), timeOnly = false):
   if (ms == null) return ''
   const diff = ms - now
   if (diff < 0) return `${span(-diff)} late`
-  if (diff < HOUR) return `in ${span(diff)}`
-  if (timeOnly) return time(new Date(ms))
-  return dayLabel(ms, now)
+  const at = timeOnly ? time(new Date(ms)) : dayLabel(ms, now)
+  // Within 12 hours: the clock time to plan by, and how soon ("21:00 · in 4h").
+  return diff < 12 * HOUR ? `${at} · in ${span(diff)}` : at
 }
 
 export const isToday = (ms: number, now = Date.now()) => startOfDay(new Date(ms)) === startOfDay(new Date(now))
