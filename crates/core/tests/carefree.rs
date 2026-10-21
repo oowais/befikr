@@ -173,3 +173,39 @@ fn completion_marked_not_done_counts_as_missed_until_marked_done_again() {
     assert_eq!(s.stats(None, &[]).unwrap().missed, 0);
     assert!(s.set_completion_done("nope", false).is_err());
 }
+
+#[test]
+fn snoozing_moves_the_deadline_for_carefree_days() {
+    let (mut s, clock) = setup(at(1, 8));
+    let a = add(&mut s, "a", at(2, 9));
+    let b = add(&mut s, "b", at(2, 9));
+    clock.store(at(2, 9), Ordering::SeqCst);
+    s.snooze_task(&a, at(5, 9), Source::App).unwrap();
+    s.snooze_task(&b, at(5, 9), Source::App).unwrap();
+    done_at(&mut s, &clock, &a, at(5, 10)); // done after its snooze: fine
+    // b still open, snoozed: not missed until noon the day after the snooze.
+    // Without snoozes the 2nd and 3rd would be missed (broken by now).
+    clock.store(at(6, 11), Ordering::SeqCst);
+    assert_eq!(s.carefree(TZ).unwrap().streak, 4, "1..=4");
+    clock.store(at(6, 13), Ordering::SeqCst);
+    assert_eq!(s.carefree(TZ).unwrap().streak, 4, "the 5th missed (forgiven)");
+}
+
+#[test]
+fn snoozing_keeps_a_habit_streak() {
+    let (mut s, clock) = setup(at(1, 8));
+    let gym = daily(&mut s, "gym", at(1, 18));
+    done_at(&mut s, &clock, &gym, at(1, 19)); // 1st on time
+    // 2nd snoozed past the 3rd's occurrence, done after the snooze.
+    clock.store(at(2, 18), Ordering::SeqCst);
+    s.snooze_task(&gym, at(4, 9), Source::App).unwrap();
+    done_at(&mut s, &clock, &gym, at(4, 10));
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap(), Some(HabitStreak { current: 2, best: 2 }));
+    // Open and snoozed: the grace counts from the snooze.
+    clock.store(at(4, 18), Ordering::SeqCst);
+    s.snooze_task(&gym, at(6, 9), Source::App).unwrap();
+    clock.store(at(7, 11), Ordering::SeqCst);
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 2);
+    clock.store(at(7, 13), Ordering::SeqCst);
+    assert_eq!(s.habit_streak(&gym, TZ).unwrap().unwrap().current, 0);
+}

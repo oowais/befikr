@@ -1,7 +1,8 @@
 //! Carefree days (gamification): worked out from completions, skips and open
 //! tasks, nothing stored. A day is missed when something due on or before it
 //! was still undone at noon the next day; rescheduled or deleted tasks don't
-//! count against it. Days are local to the caller's time zone.
+//! count against it. A snooze moves the due time (no limit), so snoozing
+//! never breaks a streak by itself. Days are local to the caller's time zone.
 
 use std::collections::BTreeSet;
 
@@ -34,16 +35,17 @@ impl Store {
         };
 
         // (due, resolved) for every dated occurrence; open ones resolve "now".
-        let mut st = self.conn.prepare(
-            "SELECT c.due_at_then, c.completed_at FROM completions c JOIN tasks t ON t.id = c.task_id
+        // Due = the snoozed time when snoozed.
+        let mut st = self.conn.prepare(&format!(
+            "SELECT {EFFECTIVE_DUE}, c.completed_at FROM completions c JOIN tasks t ON t.id = c.task_id
              WHERE c.deleted_at IS NULL AND c.not_done_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL
              UNION ALL
              SELECT e.due_at_then, e.at FROM task_events e JOIN tasks t ON t.id = e.task_id
              WHERE e.kind = 'skipped' AND t.deleted_at IS NULL AND e.due_at_then IS NOT NULL
              UNION ALL
-             SELECT due_at, ?1 FROM tasks
-             WHERE completed_at IS NULL AND deleted_at IS NULL AND due_at IS NOT NULL",
-        )?;
+             SELECT COALESCE(snoozed_until, due_at), ?1 FROM tasks
+             WHERE completed_at IS NULL AND deleted_at IS NULL AND due_at IS NOT NULL"
+        ))?;
         let spans = st.query_map([now], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?)))?;
         let mut missed = BTreeSet::new();
         for s in spans {
@@ -59,10 +61,10 @@ impl Store {
             }
         }
         // Marked not done afterwards: its due day is missed.
-        let mut st = self.conn.prepare(
-            "SELECT c.due_at_then FROM completions c JOIN tasks t ON t.id = c.task_id
-             WHERE c.not_done_at IS NOT NULL AND c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL",
-        )?;
+        let mut st = self.conn.prepare(&format!(
+            "SELECT {EFFECTIVE_DUE} FROM completions c JOIN tasks t ON t.id = c.task_id
+             WHERE c.not_done_at IS NOT NULL AND c.deleted_at IS NULL AND t.deleted_at IS NULL AND c.due_at_then IS NOT NULL"
+        ))?;
         for due in st.query_map([], |r| r.get::<_, i64>(0))? {
             let d = day(due?);
             if d <= last {
@@ -129,15 +131,15 @@ impl Store {
         };
         // (due, Some(on time)) for completions, (due, Some(false)) for missed
         // occurrences (and completions marked not done), (due, None) for skips.
-        let mut st = self.conn.prepare(
-            "SELECT due_at_then, completed_at, CASE WHEN not_done_at IS NULL THEN 'done' ELSE 'missed' END FROM completions
-             WHERE task_id = ?1 AND deleted_at IS NULL AND due_at_then IS NOT NULL
+        let mut st = self.conn.prepare(&format!(
+            "SELECT {EFFECTIVE_DUE}, c.completed_at, CASE WHEN c.not_done_at IS NULL THEN 'done' ELSE 'missed' END FROM completions c
+             WHERE c.task_id = ?1 AND c.deleted_at IS NULL AND c.due_at_then IS NOT NULL
              UNION ALL
              SELECT e.due_at_then, e.at, e.kind FROM task_events e
              WHERE e.task_id = ?1 AND e.kind IN ('missed', 'skipped') AND e.due_at_then IS NOT NULL
                AND NOT EXISTS (SELECT 1 FROM completions c
-                 WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)",
-        )?;
+                 WHERE c.task_id = e.task_id AND c.completed_at = e.at AND c.deleted_at IS NOT NULL)"
+        ))?;
         let mut occ: Vec<(i64, Option<bool>)> = st
             .query_map([task_id], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, String>(2)?)))?
             .map(|r| {
@@ -148,8 +150,8 @@ impl Store {
                 })
             })
             .collect::<rusqlite::Result<_>>()?;
-        // The current one, once its grace has passed undone.
-        if let (true, Some(due)) = (task.is_open(), task.due_at) {
+        // The current one, once its grace has passed undone (counted from a snooze).
+        if let (true, Some(due)) = (task.is_open(), task.effective_due()) {
             if !in_time(due, now) {
                 occ.push((due, Some(false)));
             }
@@ -167,6 +169,11 @@ impl Store {
         Ok(Some(HabitStreak { current, best }))
     }
 }
+
+/// A completion's due time as it was then, snooze included: the "completed"
+/// event logs it (`completions.due_at_then` keeps the schedule's, for undo).
+const EFFECTIVE_DUE: &str = "COALESCE((SELECT e.due_at_then FROM task_events e
+    WHERE e.task_id = c.task_id AND e.kind = 'completed' AND e.at = c.completed_at LIMIT 1), c.due_at_then)";
 
 fn noon() -> NaiveTime {
     NaiveTime::from_hms_opt(12, 0, 0).unwrap()

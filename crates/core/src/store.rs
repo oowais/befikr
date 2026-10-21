@@ -818,9 +818,11 @@ fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change
     log(c, id, "completed", now, t.effective_due(), None, source)?;
     // Fixed schedule done late: log each occurrence that passed meanwhile
     // (stats only). `at` = this completion, so an undone completion
-    // (completions.deleted_at set) identifies its missed rows.
+    // (completions.deleted_at set) identifies its missed rows. Ones a snooze
+    // covered aren't missed (snoozing never breaks a streak).
     if let (Some(rule), Some(due), Some(tz), false) = (&t.rrule, t.due_at, &t.tz, t.adaptive) {
-        for m in recurrence::missed(rule, parse_tz(tz)?, due, now)? {
+        let snoozed = t.snoozed_until.unwrap_or(due);
+        for m in recurrence::missed(rule, parse_tz(tz)?, due, now)?.into_iter().filter(|&m| m > snoozed) {
             log(c, id, "missed", now, Some(m), None, source)?;
         }
     }
