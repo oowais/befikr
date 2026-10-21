@@ -30,6 +30,7 @@ class ActionReceiver : BroadcastReceiver() {
                 Notifier.cancel(ctx, id)
                 if (change != null) Scheduler.apply(ctx, change) else Scheduler.cancel(ctx, id)
                 TasksWidget.refresh(ctx)
+                RemindersPlugin.tasksChanged()
                 SyncWorker.now(ctx)
             }
             // Swiped away: Rust arms the re-remind (or nothing when it's off).

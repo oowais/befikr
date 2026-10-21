@@ -39,6 +39,7 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
         }
         val alarms = out.optJSONArray("alarms")
         for (i in 0 until (alarms?.length() ?: 0)) Scheduler.apply(ctx, alarms!!.getJSONObject(i))
+        RemindersPlugin.tasksChanged()
         Log.i(TAG, "background sync: ${alarms?.length() ?: 0} alarm changes" +
             (out.optString("skipped").takeIf { it.isNotEmpty() }?.let { ", skipped ($it)" } ?: "") +
             (out.optString("problem").takeIf { it.isNotEmpty() }?.let { ", $it" } ?: ""))

@@ -20,6 +20,7 @@ import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
+import java.lang.ref.WeakReference
 import java.util.Locale
 
 @InvokeArg
@@ -55,6 +56,7 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         webView.setBackgroundColor(activity.getColor(R.color.befikr_window))
         Notifier.ensureChannel(activity)
         launchRoute = routeFor(activity.intent)
+        live = WeakReference(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -318,4 +320,15 @@ class RemindersPlugin(private val activity: Activity) : Plugin(activity) {
         launchRoute = null
         invoke.resolve(JSObject().apply { put("route", route) })
     }
+
+    companion object {
+        @Volatile private var live: WeakReference<RemindersPlugin>? = null
+
+        /** Tasks changed outside the webview (notification, widget, background sync): reload the open app's list. */
+        fun tasksChanged() {
+            live?.get()?.emitTasksChanged()
+        }
+    }
+
+    private fun emitTasksChanged() = trigger("tasksChanged", JSObject())
 }

@@ -147,6 +147,7 @@ class SnoozeActivity : Activity() {
                 val change = parseOutcome(call(dbPath))
                 if (change != null) {
                     Scheduler.apply(ctx, change)
+                    RemindersPlugin.tasksChanged()
                     SyncWorker.now(ctx)
                     toast(done)
                 } else {

@@ -22,6 +22,9 @@ onMounted(async () => {
   // plugin) must not skip the others.
   // Notification "Snooze" opens the app on a route (cold or warm start).
   addPluginListener('reminders', 'launchRoute', (e: { route: string }) => router.push(e.route)).catch(() => {})
+  // Android: Complete/Skip from a notification or the widget, or a background
+  // sync, changed tasks while the app was open.
+  addPluginListener('reminders', 'tasksChanged', () => listChanged()).catch(() => {})
   // Desktop: a notification's Open / Snooze brings the window up on a route,
   // and its Complete changes the list.
   listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
