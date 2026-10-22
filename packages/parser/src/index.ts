@@ -316,6 +316,16 @@ function findDate(text: string, now: Date, settings: Settings): DateMatch | null
     },
   })
 
+  // "tomo" = tomorrow (chrono knows "tmr"/"tmrw" but not this one).
+  c.parsers.push({
+    pattern: () => /\btomo\b/i,
+    extract: (ctx) => {
+      const ref = ctx.reference.instant
+      const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + 1)
+      return { day: d.getDate(), month: d.getMonth() + 1, year: d.getFullYear() }
+    },
+  })
+
   // forwardDate lets chrono read a bare "<number> <unit>" as "in …", and "the"/"a"
   // count as 1: "get the money" would land a month out. Keep those only after "in".
   c.refiners.push({
