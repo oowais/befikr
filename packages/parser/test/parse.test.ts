@@ -21,6 +21,9 @@ const CASES: Case[] = [
   { input: '', title: '', due: null },
   { input: 'everyone meeting', title: 'everyone meeting', due: null },
   { input: 'every banana', title: 'every banana', due: null },
+  { input: 'get the money', title: 'get the money', due: null },
+  { input: 'buy a day pass', title: 'buy a day pass', due: null },
+  { input: 'get the money tomorrow', title: 'get the money', due: '2026-10-16' },
 
   // Dates and times
   { input: 'buy milk tomorrow', title: 'buy milk', due: '2026-10-16' },

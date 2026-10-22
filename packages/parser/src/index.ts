@@ -263,6 +263,8 @@ function firstOccurrence(options: Partial<RRuleOptions>, date: DateMatch | null,
 
 type DateMatch = { start: number; end: number; due: Due; dateCertain: boolean }
 
+const BARE_WORD_DURATION = /^(?:the|an?|few|several|half(?:\s+an?)?|(?:a\s+)?couple(?:\s+of)?)\s+[a-z]+$/i
+
 function findDate(text: string, now: Date, settings: Settings): DateMatch | null {
   const words = timeWordMap(settings)
   const wordRe = timeWordRegex(words.keys())
@@ -312,6 +314,12 @@ function findDate(text: string, now: Date, settings: Settings): DateMatch | null
       }
       return { day, month: mo + 1, year: y }
     },
+  })
+
+  // forwardDate lets chrono read a bare "<number> <unit>" as "in …", and "the"/"a"
+  // count as 1: "get the money" would land a month out. Keep those only after "in".
+  c.refiners.push({
+    refine: (_ctx, results) => results.filter((r) => !BARE_WORD_DURATION.test(r.text.trim())),
   })
 
   const [r] = c.parse(text, now, { forwardDate: true })
