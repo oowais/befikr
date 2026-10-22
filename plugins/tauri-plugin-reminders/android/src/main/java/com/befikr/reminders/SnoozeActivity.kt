@@ -3,10 +3,12 @@ package com.befikr.reminders
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.os.Bundle
 import android.text.TextUtils
@@ -212,7 +214,7 @@ class SnoozeActivity : Activity() {
     private fun pick(label: String, sub: String, onClick: () -> Unit) = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         background = GradientDrawable().apply { setColor(pickColor); cornerRadius = dp(16f) }
-        foreground = ripple()
+        foreground = ripple(dp(16f))
         setPadding(dp(14), dp(12), dp(14), dp(12))
         layoutParams = cell()
         addView(text(label, 15.5f, textColor, bold = true))
@@ -222,14 +224,17 @@ class SnoozeActivity : Activity() {
 
     private fun link(label: String, onClick: () -> Unit) = text(label, 15f, mutedColor, bold = true).apply {
         setPadding(dp(8), dp(12), dp(16), dp(8))
-        foreground = ripple()
+        foreground = ripple(dp(12f))
         setOnClickListener { onClick() }
     }
 
-    private fun ripple() = TypedValue().let {
-        theme.resolveAttribute(android.R.attr.selectableItemBackground, it, true)
-        getDrawable(it.resourceId)
-    }
+    // Our own ripple: the legacy translucent theme's selectableItemBackground is
+    // the old square orange/yellow pressed state.
+    private fun ripple(radius: Float) = RippleDrawable(
+        ColorStateList.valueOf(if (dark) 0x33FFFFFF else 0x1F000000),
+        null,
+        GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = radius },
+    )
 
     private fun text(s: String, sp: Float, color: Int, bold: Boolean = false) = TextView(this).apply {
         text = s
