@@ -9,9 +9,17 @@ export function useToast() {
     current.value = t
     timer = setTimeout(() => (current.value = null), ms)
   }
+  // While a finger holds it (swiping), it doesn't time out underneath.
+  function pause() {
+    clearTimeout(timer)
+  }
+  function resume(ms = 3000) {
+    clearTimeout(timer)
+    timer = setTimeout(() => (current.value = null), ms)
+  }
   function dismiss() {
     clearTimeout(timer)
     current.value = null
   }
-  return { current, show, dismiss }
+  return { current, show, dismiss, pause, resume }
 }
