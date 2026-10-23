@@ -51,13 +51,16 @@ async function openQuickAdd() {
   if (path !== '/' && path !== '/calendar') await router.push('/')
 }
 
-/** N or Ctrl+N (computers), unless typing or a sheet is already open. */
+/** N or Ctrl+N: quick add; / or Ctrl+F: search (computers), unless typing or a sheet is already open. */
 function quickAddKey(e: KeyboardEvent) {
-  if (e.key.toLowerCase() !== 'n' || e.altKey || e.shiftKey || e.repeat) return
+  const k = e.key.toLowerCase()
+  const isSearch = k === '/' ? !e.ctrlKey && !e.metaKey : k === 'f' && (e.ctrlKey || e.metaKey)
+  if ((k !== 'n' && !isSearch) || e.altKey || (e.shiftKey && k !== '/') || e.repeat) return
   const el = e.target as HTMLElement | null
   if (el?.closest('input, textarea, select, [contenteditable="true"]') || sheetOpen()) return
   e.preventDefault()
-  openQuickAdd()
+  if (isSearch) router.push('/search')
+  else openQuickAdd()
 }
 </script>
 

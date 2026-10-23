@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 23, 2026** — From the Todoist comparison: **search** (`/search`, core `Store::search`) and **earlier reminders** (`tasks.remind_before`, migration 9; one alarm per task stepping through them via `next_at_ms`; notification text "Due … at …" on Android + desktop; VALARMs in `.ics`). Checked in the browser preview; Kotlin first compiles in CI. Next: device check.
 - **Oct 22, 2026** — Toast ("Deleted · Undo") moved to `AppToast.vue` and swipes away left or right (it covered the quick-add bar); timer pauses while held. Checked in the browser preview.
 - **Oct 22, 2026** — Parser: "tom" = tomorrow (custom chrono parser; merges with times like "tom 5pm").
 - **Oct 22, 2026** — Parser: chrono's forwardDate read bare "the/a <unit>" as a duration ("get the money" → in 1 month, via abbreviation `mon`); a refiner now drops word-number durations without "in". Tests added.

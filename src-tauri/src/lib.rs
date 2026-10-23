@@ -97,6 +97,12 @@ fn list_open(db: State<Db>, tz: String) -> Res<Vec<Row>> {
         .collect())
 }
 
+/// Search open and done tasks (title, notes, subtasks).
+#[tauri::command]
+fn search(db: State<Db>, query: String) -> Res<Vec<befikr_core::SearchHit>> {
+    db.store.lock().map_err(err)?.search(&query).map_err(err)
+}
+
 #[tauri::command]
 fn get_task(db: State<Db>, id: String) -> Res<Task> {
     db.store.lock().map_err(err)?.get_task(&id).map_err(err)
@@ -541,6 +547,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             list_open,
+            search,
             calendar,
             get_task,
             list_subtasks,

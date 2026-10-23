@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Plus, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Plus, Search, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -202,6 +202,7 @@ onUnmounted(() => {
         <Sprout :size="17" /> {{ garden.streak }}
       </NuxtLink>
       <span class="grow" />
+      <NuxtLink to="/search" class="icon-btn" aria-label="Search" title="Search (/)"><Search :size="22" /></NuxtLink>
       <NuxtLink to="/calendar" class="icon-btn wide-only" aria-label="Calendar"><CalendarDays :size="22" /></NuxtLink>
       <NuxtLink to="/shopping" class="icon-btn" aria-label="Shopping list"><ShoppingCart :size="22" /></NuxtLink>
       <NuxtLink to="/stats" class="icon-btn" aria-label="Stats"><ChartColumn :size="22" /></NuxtLink>
