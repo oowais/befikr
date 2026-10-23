@@ -36,7 +36,7 @@ pub(crate) const SYNCED: &[Synced] = &[
         key: "id",
         fields: &[
             "parent_id", "title", "description", "due_at", "tz", "rrule", "adaptive", "completed_at",
-            "snoozed_until", "created_at", "deleted_at",
+            "snoozed_until", "created_at", "deleted_at", "remind_before",
         ],
         only: None,
     },
@@ -64,7 +64,8 @@ pub(crate) const SYNCED: &[Synced] = &[
 pub(crate) const DEVICE_SETTINGS: &[&str] = &["backup_dir", "digest_time"];
 
 /// Task fields whose change restarts the reminder (like a local edit would).
-pub(crate) const SCHEDULE_FIELDS: &[&str] = &["due_at", "tz", "rrule", "snoozed_until", "completed_at", "deleted_at"];
+pub(crate) const SCHEDULE_FIELDS: &[&str] =
+    &["due_at", "tz", "rrule", "snoozed_until", "completed_at", "deleted_at", "remind_before"];
 
 /// One field's latest value, as exchanged between peers.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -289,7 +290,7 @@ impl Store {
                 crate::conflicts::log_lost_completions(c, &mine_before, now)?;
             }
             for (id, reset) in touched {
-                out.alarms.push(finish(c, &id, reset)?.alarm);
+                out.alarms.push(finish(c, &id, reset, now)?.alarm);
             }
             Ok(out)
         })

@@ -23,6 +23,9 @@ pub struct Task {
     pub created_at: i64,
     pub updated_at: i64,
     pub deleted_at: Option<i64>,
+    /// Extra reminders this many minutes before the due time, largest first
+    /// ("1 day before", "30 min before"). Not before a snoozed time.
+    pub remind_before: Vec<u32>,
 }
 
 impl Task {
@@ -58,6 +61,8 @@ pub struct NewTask {
     pub rrule: Option<String>,
     #[serde(default)]
     pub adaptive: bool,
+    #[serde(default)]
+    pub remind_before: Vec<u32>,
 }
 
 /// Partial update. Outer `None` = leave unchanged; `Some(None)` = clear.
@@ -73,6 +78,7 @@ pub struct TaskPatch {
     #[serde(default, deserialize_with = "double_option")]
     pub rrule: Option<Option<String>>,
     pub adaptive: Option<bool>,
+    pub remind_before: Option<Vec<u32>>,
 }
 
 fn double_option<'de, T: Deserialize<'de>, D: Deserializer<'de>>(d: D) -> Result<Option<Option<T>>, D::Error> {
@@ -182,6 +188,9 @@ pub struct FireOutcome {
     pub next_at_ms: Option<i64>,
     /// Repeating task: the notification offers Skip.
     pub repeats: bool,
+    /// An early reminder ("30 min before"): when the task is due, for the
+    /// notification's text. `None` for the reminder at the due time.
+    pub due_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]

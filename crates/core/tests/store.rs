@@ -193,7 +193,7 @@ fn reminder_waits_until_swiped_then_comes_back() {
     s.update_task(&id, TaskPatch { title: Some("y".into()), ..Default::default() }).unwrap();
     assert_eq!(s.pending_alarms().unwrap()[0].title, "y");
     s.complete_task(&id, Source::Native).unwrap();
-    assert_eq!(s.on_fired(&id, Source::Native).unwrap(), FireOutcome { show: false, next_at_ms: None, repeats: false });
+    assert_eq!(s.on_fired(&id, Source::Native).unwrap(), FireOutcome { show: false, next_at_ms: None, repeats: false, due_at_ms: None });
     assert_eq!(s.on_dismissed(&id, Source::Native).unwrap(), None);
     assert!(s.restore_alarms().unwrap().is_empty());
 }

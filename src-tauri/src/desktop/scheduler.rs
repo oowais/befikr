@@ -87,7 +87,7 @@ impl Scheduler {
         match out {
             Ok(o) => {
                 if o.show {
-                    super::notify::show(app, &alarm.task_id, &alarm.title, o.repeats);
+                    super::notify::show(app, &alarm.task_id, &alarm.title, o.repeats, o.due_at_ms);
                 }
                 if let Some(next) = o.next_at_ms {
                     self.schedule(Alarm { at_ms: next, ..alarm });

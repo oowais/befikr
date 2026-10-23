@@ -12,7 +12,8 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
         val dbPath = Prefs.dbPath(ctx) ?: return
         val outcome = parseOutcome(Native.onFired(dbPath, id)) ?: return
-        if (outcome.optBoolean("show")) Notifier.show(ctx, id, title, outcome.optBoolean("repeats"))
+        val dueAt = if (outcome.isNull("dueAtMs")) null else outcome.getLong("dueAtMs")
+        if (outcome.optBoolean("show")) Notifier.show(ctx, id, title, outcome.optBoolean("repeats"), dueAt)
         if (!outcome.isNull("nextAtMs")) Scheduler.schedule(ctx, id, title, outcome.getLong("nextAtMs"))
     }
 }

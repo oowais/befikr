@@ -108,3 +108,17 @@ export const haptic = () => {
     /* not supported */
   }
 }
+
+/** Early reminder: "15 min before", "2 h before", "1 day before", "1 week before". */
+export function beforeLabel(minutes: number): string {
+  const w = minutes / 10080
+  const d = minutes / 1440
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  const amount = Number.isInteger(w) ? `${w} ${w === 1 ? 'week' : 'weeks'}`
+    : Number.isInteger(d) ? `${d} ${d === 1 ? 'day' : 'days'}`
+    : h && !m ? `${h} ${h === 1 ? 'hour' : 'hours'}`
+    : h ? `${h} h ${m} min`
+    : `${m} min`
+  return `${amount} before`
+}

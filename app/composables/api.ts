@@ -16,6 +16,8 @@ export type Task = {
   createdAt: number
   updatedAt: number
   deletedAt: number | null
+  /** Extra reminders, minutes before the due time, largest first. */
+  remindBefore: number[]
 }
 
 /** Calendar: a task, or a later repeat of one (`upcoming`), placed at `at`. */
@@ -23,6 +25,8 @@ export type CalendarItem = Task & { at: number; upcoming: boolean }
 
 export type Urgency = 'red' | 'orange' | 'yellow' | 'green' | 'gray'
 export type Row = Task & { subtasksDone: number; subtasksTotal: number; urgency: Urgency }
+/** Search result: open or done; `lastDoneAt` = latest completion. */
+export type SearchHit = Task & { lastDoneAt: number | null }
 export type Completion = {
   id: string
   taskId: string
@@ -112,6 +116,7 @@ export type NewTask = {
   tz?: string | null
   rrule?: string | null
   adaptive?: boolean
+  remindBefore?: number[]
 }
 
 /** Outer undefined = unchanged, null = clear. */
@@ -122,6 +127,7 @@ export type TaskPatch = {
   tz?: string | null
   rrule?: string | null
   adaptive?: boolean
+  remindBefore?: number[]
 }
 
 /** Bumped when a write happens off the main list (e.g. an Undo toast); the list reloads. */
@@ -132,6 +138,7 @@ export const deviceTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const api = {
   listOpen: () => invoke<Row[]>('list_open', { tz: deviceTz() }),
+  search: (query: string) => invoke<SearchHit[]>('search', { query }),
   calendar: (from: number, to: number) => invoke<CalendarItem[]>('calendar', { from, to, tz: deviceTz() }),
   /** Desktop: save open dated tasks as an .ics file (save dialog). */
   exportIcs: () => invoke<{ saved: boolean }>('export_ics', { tz: deviceTz() }),

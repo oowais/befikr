@@ -13,6 +13,11 @@ use crate::{schema, sync, Error, Result};
 const DEFAULT_REREMIND_MINUTES: i64 = 60;
 /// Alarms that should have fired already are re-armed this far in the future.
 const CATCH_UP_MS: i64 = 5_000;
+/// Extra reminders before the due time: at most this many, up to 4 weeks before.
+const MAX_REMIND_BEFORE: usize = 4;
+const MAX_REMIND_MINUTES: u32 = 4 * 7 * 24 * 60;
+/// An alarm going off this close to the due time is the due reminder itself.
+const DUE_SLACK_MS: i64 = 30_000;
 
 pub struct Store {
     pub(crate) conn: Connection,
@@ -90,7 +95,7 @@ impl Store {
              ORDER BY COALESCE(snoozed_until, due_at) IS NULL, COALESCE(snoozed_until, due_at), id"
         ))?;
         let rows = st.query_map([], |r| {
-            Ok(ListItem { task: row_task(r)?, subtasks_done: r.get(13)?, subtasks_total: r.get(14)? })
+            Ok(ListItem { task: row_task(r)?, subtasks_done: r.get(14)?, subtasks_total: r.get(15)? })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
@@ -286,14 +291,21 @@ impl Store {
                 }
             }
             check_schedule(new.due_at, new.tz.as_deref(), new.rrule.as_deref())?;
+            let before = normalize_before(&new.remind_before)?;
+            if new.parent_id.is_some() && !before.is_empty() {
+                return Err(Error::Invalid("subtasks follow their parent's reminders".into()));
+            }
             let id = new_id();
             c.execute(
-                "INSERT INTO tasks (id, parent_id, title, description, due_at, tz, rrule, adaptive, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)",
-                params![id, new.parent_id, title, new.description, new.due_at, new.tz, new.rrule, new.adaptive, now],
+                "INSERT INTO tasks (id, parent_id, title, description, due_at, tz, rrule, adaptive, remind_before, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)",
+                params![
+                    id, new.parent_id, title, new.description, new.due_at, new.tz, new.rrule, new.adaptive,
+                    join_minutes(&before), now
+                ],
             )?;
             log(c, &id, "created", now, new.due_at, None, Source::App)?;
-            finish(c, &id, true)
+            finish(c, &id, true, now)
         })
     }
 
@@ -323,7 +335,16 @@ impl Store {
             if let Some(v) = patch.adaptive {
                 t.adaptive = v;
             }
-            if t.parent_id.is_some() && (t.due_at.is_some() || t.rrule.is_some()) {
+            let reminders_changed = match patch.remind_before {
+                Some(v) => {
+                    let v = normalize_before(&v)?;
+                    let changed = v != t.remind_before;
+                    t.remind_before = v;
+                    changed
+                }
+                None => false,
+            };
+            if t.parent_id.is_some() && (t.due_at.is_some() || t.rrule.is_some() || !t.remind_before.is_empty()) {
                 return Err(Error::Invalid("subtasks follow their parent's date".into()));
             }
             check_schedule(t.due_at, t.tz.as_deref(), t.rrule.as_deref())?;
@@ -333,11 +354,15 @@ impl Store {
             }
             c.execute(
                 "UPDATE tasks SET title = ?2, description = ?3, due_at = ?4, tz = ?5, rrule = ?6, adaptive = ?7,
-                   snoozed_until = ?8, updated_at = ?9 WHERE id = ?1",
-                params![id, t.title, t.description, t.due_at, t.tz, t.rrule, t.adaptive, t.snoozed_until, now],
+                   snoozed_until = ?8, remind_before = ?9, updated_at = ?10 WHERE id = ?1",
+                params![
+                    id, t.title, t.description, t.due_at, t.tz, t.rrule, t.adaptive, t.snoozed_until,
+                    join_minutes(&t.remind_before), now
+                ],
             )?;
             log(c, id, "updated", now, t.due_at, None, Source::App)?;
-            finish(c, id, schedule_changed)
+            // New reminders re-arm the alarm; unlike a new date they keep a snooze.
+            finish(c, id, schedule_changed || reminders_changed, now)
         })
     }
 
@@ -360,7 +385,7 @@ impl Store {
                 params![id, now],
             )?;
             log(c, id, "retired", now, t.effective_due(), None, Source::App)?;
-            finish(c, id, true)
+            finish(c, id, true, now)
         })
     }
 
@@ -381,7 +406,7 @@ impl Store {
             if t.rrule.is_some() && t.completed_at.is_some() && last.as_ref().map(|l| l.2) != t.completed_at {
                 c.execute("UPDATE tasks SET completed_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
                 log(c, id, "reopened", now, None, None, Source::App)?;
-                return finish(c, id, true);
+                return finish(c, id, true, now);
             }
             if let Some(done_at) = t.completed_at {
                 c.execute("UPDATE tasks SET completed_at = NULL, updated_at = ?2 WHERE id = ?1", params![id, now])?;
@@ -405,7 +430,7 @@ impl Store {
                 c.execute("UPDATE completions SET deleted_at = ?2, updated_at = ?2 WHERE id = ?1", params![cid, now])?;
             }
             log(c, id, "reopened", now, None, None, Source::App)?;
-            finish(c, id, true)
+            finish(c, id, true, now)
         })
     }
 
@@ -432,7 +457,7 @@ impl Store {
                 params![id, now],
             )?;
             log(c, id, "skipped", now, t.effective_due(), None, source)?;
-            finish(c, id, true)
+            finish(c, id, true, now)
         })
     }
 
@@ -447,7 +472,7 @@ impl Store {
                 params![id, until, now],
             )?;
             log(c, id, "snoozed", now, t.effective_due(), Some(until), source)?;
-            finish(c, id, true)
+            finish(c, id, true, now)
         })
     }
 
@@ -478,28 +503,39 @@ impl Store {
                 params![id, deleted_at, now],
             )?;
             log(c, id, "restored", now, None, None, Source::App)?;
-            finish(c, id, true)
+            finish(c, id, true, now)
         })
     }
 
     // ------------------------------------------------------------ reminders
 
-    /// An alarm went off. Decides whether to show it. Nothing else is armed:
-    /// the notification stays until it's answered or swiped away.
+    /// An alarm went off. Decides whether to show it. An early reminder ("30
+    /// min before") arms the next one; the due reminder arms nothing: the
+    /// notification stays until it's answered or swiped away.
     pub fn on_fired(&mut self, id: &str, source: Source) -> Result<FireOutcome> {
         self.write(|c, now| {
-            let none = FireOutcome { show: false, next_at_ms: None, repeats: false };
+            let none = FireOutcome { show: false, next_at_ms: None, repeats: false, due_at_ms: None };
             let Ok(t) = get(c, id) else { return Ok(none) };
             let fires: Option<i64> =
                 c.query_row("SELECT fires FROM alarm_state WHERE task_id = ?1", [id], |r| r.get(0)).optional()?;
             let (Some(fires), true) = (fires, t.is_open()) else { return Ok(none) };
             log(c, id, "fired", now, t.effective_due(), None, source)?;
+            if let Some(due) = t.effective_due().filter(|d| is_early(&t, *d, now)) {
+                let next = next_fire(&t, now).unwrap_or(due);
+                c.execute("UPDATE alarm_state SET next_fire_at = ?2 WHERE task_id = ?1", params![id, next])?;
+                return Ok(FireOutcome {
+                    show: true,
+                    next_at_ms: Some(next),
+                    repeats: t.rrule.is_some(),
+                    due_at_ms: Some(due),
+                });
+            }
             // Shown and unanswered: `fires > 0` with no alarm armed.
             c.execute(
                 "UPDATE alarm_state SET fires = ?2, next_fire_at = NULL WHERE task_id = ?1",
                 params![id, fires + 1],
             )?;
-            Ok(FireOutcome { show: true, next_at_ms: None, repeats: t.rrule.is_some() })
+            Ok(FireOutcome { show: true, next_at_ms: None, repeats: t.rrule.is_some(), due_at_ms: None })
         })
     }
 
@@ -719,10 +755,10 @@ fn is_late(due: i64, done: i64, tz: Option<&str>) -> bool {
     recurrence::from_ms(done, tz).date_naive() > recurrence::from_ms(due, tz).date_naive()
 }
 
-const COLS: &str = "id, parent_id, title, description, due_at, tz, rrule, adaptive, completed_at, \
-                    snoozed_until, created_at, updated_at, deleted_at";
+pub(crate) const COLS: &str = "id, parent_id, title, description, due_at, tz, rrule, adaptive, completed_at, \
+                    snoozed_until, created_at, updated_at, deleted_at, remind_before";
 
-fn row_task(r: &Row) -> rusqlite::Result<Task> {
+pub(crate) fn row_task(r: &Row) -> rusqlite::Result<Task> {
     Ok(Task {
         id: r.get(0)?,
         parent_id: r.get(1)?,
@@ -737,6 +773,7 @@ fn row_task(r: &Row) -> rusqlite::Result<Task> {
         created_at: r.get(10)?,
         updated_at: r.get(11)?,
         deleted_at: r.get(12)?,
+        remind_before: parse_minutes(&r.get::<_, String>(13)?),
     })
 }
 
@@ -805,7 +842,7 @@ fn check_schedule(due_at: Option<i64>, tz: Option<&str>, rrule: Option<&str>) ->
 fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change> {
     let t = get(c, id)?;
     if t.completed_at.is_some() {
-        return finish(c, id, false); // idempotent: double tap / notification + app
+        return finish(c, id, false, now); // idempotent: double tap / notification + app
     }
     let next = match (&t.rrule, t.due_at, &t.tz) {
         (Some(rule), Some(due), Some(tz)) => recurrence::next_due(rule, parse_tz(tz)?, due, t.adaptive, now)?,
@@ -844,13 +881,13 @@ fn complete(c: &Connection, id: &str, now: i64, source: Source) -> Result<Change
             params![id, now],
         )?;
     }
-    finish(c, id, true)
+    finish(c, id, true, now)
 }
 
 /// Re-read the task and bring its alarm in line with it. `reset` restarts
 /// the reminder at the (effective) due time; otherwise an alarm already
 /// in flight (e.g. a re-remind after a swipe) is kept.
-pub(crate) fn finish(c: &Connection, id: &str, reset: bool) -> Result<Change> {
+pub(crate) fn finish(c: &Connection, id: &str, reset: bool, now: i64) -> Result<Change> {
     let task = get_any(c, id)?;
     let due = task.effective_due().filter(|_| task.parent_id.is_none() && task.is_open());
     let Some(due) = due else {
@@ -863,14 +900,60 @@ pub(crate) fn finish(c: &Connection, id: &str, reset: bool) -> Result<Change> {
     let at = match current {
         Some(Some(at)) if !reset => at,
         _ => {
+            let at = next_fire(&task, now).unwrap_or(due);
             c.execute(
                 "INSERT INTO alarm_state (task_id, next_fire_at, fires) VALUES (?1, ?2, 0)
                  ON CONFLICT(task_id) DO UPDATE SET next_fire_at = excluded.next_fire_at, fires = 0",
-                params![id, due],
+                params![id, at],
             )?;
-            due
+            at
         }
     };
     let alarm = AlarmChange::Schedule(Alarm { task_id: id.to_string(), title: task.title.clone(), at_ms: at });
     Ok(Change { task, alarm })
+}
+
+// ---------------------------------------------------------------- reminders before
+
+/// When the reminder should next go off after `now`: the first early one
+/// still ahead, else the due time. A snoozed task: the snooze time only.
+fn next_fire(t: &Task, now: i64) -> Option<i64> {
+    let due = t.effective_due()?;
+    if t.snoozed_until.is_none() {
+        // Largest first = earliest first.
+        for m in &t.remind_before {
+            let at = due - i64::from(*m) * 60_000;
+            if at > now + DUE_SLACK_MS {
+                return Some(at);
+            }
+        }
+    }
+    Some(due)
+}
+
+/// An alarm going off now is one of the early reminders, not the due one.
+fn is_early(t: &Task, due: i64, now: i64) -> bool {
+    t.snoozed_until.is_none() && !t.remind_before.is_empty() && due - now > DUE_SLACK_MS
+}
+
+/// Positive, distinct, largest first; at most `MAX_REMIND_BEFORE`.
+fn normalize_before(v: &[u32]) -> Result<Vec<u32>> {
+    let mut v: Vec<u32> = v.iter().copied().filter(|m| *m > 0).collect();
+    if v.iter().any(|m| *m > MAX_REMIND_MINUTES) {
+        return Err(Error::Invalid("reminders go at most 4 weeks before".into()));
+    }
+    v.sort_unstable_by(|a, b| b.cmp(a));
+    v.dedup();
+    if v.len() > MAX_REMIND_BEFORE {
+        return Err(Error::Invalid(format!("at most {MAX_REMIND_BEFORE} early reminders")));
+    }
+    Ok(v)
+}
+
+fn join_minutes(v: &[u32]) -> String {
+    v.iter().map(u32::to_string).collect::<Vec<_>>().join(",")
+}
+
+fn parse_minutes(s: &str) -> Vec<u32> {
+    s.split(',').filter_map(|m| m.trim().parse().ok()).collect()
 }

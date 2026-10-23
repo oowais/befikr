@@ -143,8 +143,11 @@ internal object Notifier {
         }
     }
 
-    /** [repeats]: also offer Skip (move to the next occurrence, no completion). */
-    fun show(ctx: Context, id: String, title: String, repeats: Boolean) {
+    /**
+     * [repeats]: also offer Skip (move to the next occurrence, no completion).
+     * [dueAt]: an early reminder ("30 min before"); the text says when it's due.
+     */
+    fun show(ctx: Context, id: String, title: String, repeats: Boolean, dueAt: Long? = null) {
         ensureChannel(ctx)
         fun action(action: String, kind: String) = PendingIntent.getBroadcast(
             ctx, 0,
@@ -165,6 +168,7 @@ internal object Notifier {
             .addAction(0, "Snooze", snoozePendingIntent(ctx, id, title, repeats))
             .setDeleteIntent(action(ACTION_DISMISS, "dismiss"))
         if (repeats) b.addAction(0, "Skip", action(ACTION_SKIP, "skip"))
+        if (dueAt != null) b.setContentText(dueText(ctx, dueAt))
         val n = b.build()
         try {
             NotificationManagerCompat.from(ctx).notify(notificationId(id), n)
@@ -174,6 +178,17 @@ internal object Notifier {
     }
 
     fun cancel(ctx: Context, id: String) = NotificationManagerCompat.from(ctx).cancel(notificationId(id))
+
+    /** "Due at 18:00", "Due tomorrow at 9:00", "Due Mon at 9:00" (the phone's 12/24 h). */
+    private fun dueText(ctx: Context, at: Long): String {
+        val time = android.text.format.DateFormat.getTimeFormat(ctx).format(java.util.Date(at))
+        val day = when {
+            android.text.format.DateUtils.isToday(at) -> ""
+            android.text.format.DateUtils.isToday(at - android.text.format.DateUtils.DAY_IN_MILLIS) -> "tomorrow "
+            else -> java.text.SimpleDateFormat("EEE d MMM", java.util.Locale.getDefault()).format(java.util.Date(at)) + " "
+        }
+        return "Due ${day}at $time"
+    }
 
     /** App-provided `ic_stat_befikr` (src-tauri/android/res), else a system bell. */
     fun smallIcon(ctx: Context): Int {

@@ -101,3 +101,13 @@ fn long_lines_fold_at_75_octets() {
     let unfolded = ics.replace("\r\n ", "");
     assert!(unfolded.contains(&format!("SUMMARY:{title}\r\n")));
 }
+
+#[test]
+fn early_reminders_become_alarms() {
+    let mut s = store();
+    add(&mut s, NewTask { title: "dentist".into(), due_at: Some(at(16, 18, 0)), remind_before: vec![30, 1440], ..Default::default() });
+    let ics = s.export_ics(TZ).unwrap();
+    let e = events(&ics);
+    assert!(e[0].contains("BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:dentist\r\nTRIGGER:-PT1440M\r\nEND:VALARM\r\n"));
+    assert!(e[0].contains("TRIGGER:-PT30M\r\n"));
+}

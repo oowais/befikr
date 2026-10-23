@@ -18,10 +18,13 @@ fn shown() -> MutexGuard<'static, BTreeMap<String, (u32, u64)>> {
     SHOWN.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-fn build(title: &str, repeats: bool) -> Notification {
+fn build(title: &str, repeats: bool, due_at: Option<i64>) -> Notification {
     let mut n = Notification::new();
-    n.appname("Befikr")
-        .summary(title)
+    n.appname("Befikr").summary(title);
+    if let Some(at) = due_at {
+        n.body(&due_text(at));
+    }
+    n
         .action("default", "Open")
         .action("complete", "Complete")
         .action("snooze", "Snooze");
@@ -33,8 +36,9 @@ fn build(title: &str, repeats: bool) -> Notification {
     n
 }
 
-pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool) {
-    let mut n = build(title, repeats);
+/// `due_at`: an early reminder ("30 min before"); the text says when it's due.
+pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool, due_at: Option<i64>) {
+    let mut n = build(title, repeats, due_at);
     let prev = shown().get(id).copied();
     if let Some((nid, _)) = prev {
         if cfg!(target_os = "linux") {
@@ -119,4 +123,17 @@ fn dismissed(app: &AppHandle, id: &str) {
         app.state::<super::Scheduler>().schedule(a);
         super::refresh_tray();
     }
+}
+
+/// "Due at 18:00", "Due tomorrow at 09:00", "Due Mon 26 Oct at 09:00".
+fn due_text(at: i64) -> String {
+    use chrono::{Local, TimeZone};
+    let Some(due) = Local.timestamp_millis_opt(at).single() else { return String::new() };
+    let today = Local::now().date_naive();
+    let day = match (due.date_naive() - today).num_days() {
+        0 => String::new(),
+        1 => "tomorrow ".into(),
+        _ => format!("{} ", due.format("%a %-d %b")),
+    };
+    format!("Due {day}at {}", due.format("%H:%M"))
 }

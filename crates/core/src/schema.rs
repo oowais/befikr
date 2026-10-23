@@ -191,6 +191,13 @@ pub fn migrations() -> Migrations<'static> {
         ALTER TABLE completions ADD COLUMN not_done_at INTEGER;
         ",
         ),
+        M::up(
+            "
+        -- Extra reminders before the due time: minutes, comma-separated,
+        -- largest first ('1440,30'); '' = only at the due time.
+        ALTER TABLE tasks ADD COLUMN remind_before TEXT NOT NULL DEFAULT '';
+        ",
+        ),
     ])
 }
 

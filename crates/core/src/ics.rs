@@ -61,6 +61,14 @@ fn event(out: &mut String, t: &Task, stamp: &str, zone: Tz, start: i64, rrule: O
     if !t.description.trim().is_empty() {
         push(out, &format!("DESCRIPTION:{}", escape(&t.description)));
     }
+    // Early reminders as the calendar's own alerts.
+    for m in &t.remind_before {
+        push(out, "BEGIN:VALARM");
+        push(out, "ACTION:DISPLAY");
+        push(out, &format!("DESCRIPTION:{}", escape(&t.title)));
+        push(out, &format!("TRIGGER:-PT{m}M"));
+        push(out, "END:VALARM");
+    }
     push(out, "END:VEVENT");
 }
 

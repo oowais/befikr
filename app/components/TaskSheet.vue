@@ -3,7 +3,7 @@
 // mounted in RouteSheets). Edit title, date, repeat, notes, subtasks; done,
 // snooze, skip, retire, delete. Closes by dragging it down (from anywhere), tapping
 // outside, Back, or after done / skip / retire / delete.
-import { AlarmClock, CalendarDays, Check, CheckCircle2, ChevronRight, CircleX, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, Bell, CalendarDays, Check, CheckCircle2, ChevronRight, CircleX, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
 import type { Completion, HabitStreak, Task } from '~/composables/api'
 
@@ -42,6 +42,16 @@ const pickingRepeat = ref(false)
 const found = ref<ReturnType<typeof parseWith> | null>(null)
 const showNotes = ref(false)
 const picking = ref(false)
+/** Choosing an early reminder (the chips under the Reminders row). */
+const addingReminder = ref(false)
+const REMINDER_CHOICES = [5, 15, 30, 60, 120, 1440, 2880, 10080]
+const reminderChoices = computed(() => REMINDER_CHOICES.filter((m) => !task.value?.remindBefore.includes(m)))
+const canRemind = computed(() => !!task.value?.dueAt && !task.value.parentId && !task.value.completedAt)
+function addReminder(m: number) {
+  addingReminder.value = false
+  patch({ remindBefore: [...(task.value?.remindBefore ?? []), m] })
+}
+const removeReminder = (m: number) => patch({ remindBefore: task.value!.remindBefore.filter((x) => x !== m) })
 
 async function load() {
   try {
@@ -310,6 +320,20 @@ async function remove() {
         <div v-if="task.rrule" class="prop adaptive">
           <AdaptiveToggle :model-value="task.adaptive" @update:model-value="patch({ adaptive: $event })" />
         </div>
+        <div v-if="canRemind && (task.remindBefore.length || addingReminder)" class="prop top reminders">
+          <Bell :size="20" class="muted" />
+          <div class="flex chips">
+            <span v-for="m in task.remindBefore" :key="m" class="chip">
+              {{ beforeLabel(m) }}
+              <button class="chip-x" :aria-label="`Remove ${beforeLabel(m)}`" @click="removeReminder(m)"><X :size="14" /></button>
+            </span>
+            <button v-if="!addingReminder && task.remindBefore.length < 4" class="chip off" aria-label="Add a reminder" @click="addingReminder = true"><Plus :size="15" /></button>
+            <template v-if="addingReminder">
+              <button v-for="m in reminderChoices" :key="m" class="chip off" @click="addReminder(m)">{{ beforeLabel(m) }}</button>
+              <button class="chip off" aria-label="Cancel" @click="addingReminder = false"><X :size="15" /></button>
+            </template>
+          </div>
+        </div>
         <div v-if="showNotes" class="prop top">
           <StickyNote :size="20" class="muted" />
           <textarea
@@ -326,6 +350,7 @@ async function remove() {
 
       <div class="add-props">
         <button v-if="!task.rrule" class="chip off" @click="pickingRepeat = true"><Plus :size="15" /> Repeat</button>
+        <button v-if="canRemind && !task.remindBefore.length && !addingReminder" class="chip off" @click="addingReminder = true"><Plus :size="15" /> Earlier reminder</button>
         <button v-if="!showNotes" class="chip off" @click="openNotes"><Plus :size="15" /> Notes</button>
       </div>
 
@@ -463,5 +488,8 @@ async function remove() {
 .end-actions { margin-top: 40px; display: flex; flex-direction: column; gap: 8px; }
 .end-actions p { margin: 0 0 8px; }
 .cap::first-letter { text-transform: uppercase; }
+.reminders .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 12px; }
+.reminders .chip { gap: 2px; }
+.chip-x { display: inline-grid; place-items: center; margin: -4px -6px -4px 0; padding: 4px; color: var(--muted); }
 .found { display: flex; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 12px; flex-wrap: wrap; animation: float-in 0.2s; }
 </style>

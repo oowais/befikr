@@ -174,14 +174,14 @@ impl Store {
                     "UPDATE tasks SET completed_at = ?2, updated_at = ?3 WHERE (id = ?1 OR parent_id = ?1) AND completed_at = ?4",
                     params![task, lost, now, old],
                 )?;
-                return Ok(Some(finish(c, &task, false)?));
+                return Ok(Some(finish(c, &task, false, now)?));
             }
             c.execute(
                 &format!("UPDATE {} SET {field} = ?1, updated_at = ?2 WHERE {} = ?3", t.table, t.key),
                 params![lost, now, row_id],
             )?;
             if t.table == "tasks" {
-                return Ok(Some(finish(c, &row_id, SCHEDULE_FIELDS.contains(&field.as_str()))?));
+                return Ok(Some(finish(c, &row_id, SCHEDULE_FIELDS.contains(&field.as_str()), now)?));
             }
             Ok(None)
         })
