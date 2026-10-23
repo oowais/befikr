@@ -2,7 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
-- **Oct 22, 2026** — Parser: "tomo" = tomorrow (custom chrono parser; merges with times like "tomo 5pm").
+- **Oct 22, 2026** — Parser: "tom" = tomorrow (custom chrono parser; merges with times like "tom 5pm").
 - **Oct 22, 2026** — Parser: chrono's forwardDate read bare "the/a <unit>" as a duration ("get the money" → in 1 month, via abbreviation `mon`); a refiner now drops word-number durations without "in". Tests added.
 - **Oct 22, 2026** — Android notification snooze sheet: pressing a pick showed a square yellow highlight (legacy `Theme.Translucent` `selectableItemBackground`); now a rounded neutral `RippleDrawable`. Kotlin first compiles in CI. Next: device check.
 - **Oct 21, 2026 (issues #12, #13)** — Android: notification Complete/Skip, quick snooze picks, widget ticks and background sync now trigger `tasksChanged` from the plugin → the open app reloads its list (#12; Kotlin first compiles in CI). Snoozing moves the deadline for carefree days and habit streaks, no limit (effective due from the "completed" event; snoozed-over repeats not logged as missed) (#13). Next: device check.

@@ -316,9 +316,9 @@ function findDate(text: string, now: Date, settings: Settings): DateMatch | null
     },
   })
 
-  // "tomo" = tomorrow (chrono knows "tmr"/"tmrw" but not this one).
+  // "tom" = tomorrow (chrono knows "tmr"/"tmrw" but not this one).
   c.parsers.push({
-    pattern: () => /\btomo\b/i,
+    pattern: () => /\btom\b/i,
     extract: (ctx) => {
       const ref = ctx.reference.instant
       const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + 1)

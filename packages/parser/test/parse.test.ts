@@ -28,9 +28,9 @@ const CASES: Case[] = [
   // Dates and times
   { input: 'buy milk tomorrow', title: 'buy milk', due: '2026-10-16' },
   { input: 'buy milk tomorrow evening', title: 'buy milk', due: '2026-10-16 18:00' },
-  { input: 'buy milk tomo', title: 'buy milk', due: '2026-10-16' },
-  { input: 'call mom tomo 5pm', title: 'call mom', due: '2026-10-16 17:00' },
-  { input: 'tomoko lunch', title: 'tomoko lunch', due: null },
+  { input: 'buy milk tom', title: 'buy milk', due: '2026-10-16' },
+  { input: 'call mom tom 5pm', title: 'call mom', due: '2026-10-16 17:00' },
+  { input: 'tomato soup', title: 'tomato soup', due: null },
   { input: 'call mom at 5pm', title: 'call mom', due: '2026-10-15 17:00' },
   { input: 'call mom at 9am', title: 'call mom', due: '2026-10-16 09:00' },
   { input: 'dentist fri 3pm', title: 'dentist', due: '2026-10-16 15:00' },
