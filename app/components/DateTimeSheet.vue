@@ -188,7 +188,7 @@ function clear() {
         </div>
       </div>
 
-      <div v-wheel-x class="chips">
+      <div class="chips">
         <button
           v-for="t in timeChips"
           :key="t.word"

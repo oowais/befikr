@@ -142,7 +142,7 @@ function clear() {
         <button class="icon-btn" aria-label="Close" @click="emit('close')"><X :size="22" /></button>
       </header>
 
-      <div v-wheel-x class="chips">
+      <div class="chips">
         <button v-for="p in presets" :key="p.label" class="chip" :class="{ chosen: presetOn(p) }" @click="usePreset(p)">
           {{ p.label }}
         </button>

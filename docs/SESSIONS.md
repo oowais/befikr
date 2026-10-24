@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Oct 25, 2026** — #14 follow-up: the `v-wheel-x` directive missed the date chips in `DateTimeSheet`, so `app/plugins/wheel-x.client.ts` is now one global wheel handler for every short sideways-only strip (tall ones such as the calendar week keep the wheel for the page). Swept the app: no other mouse-unreachable scrolling; gestures already take a mouse. Checked with a real wheel in the browser.
 - **Oct 24, 2026** — Issue #14: a mouse wheel now scrolls the sideways chip rows (Repeat presets, time chips in `DateTimeSheet`) on Windows, via the `v-wheel-x` directive (`app/plugins/wheel-x.client.ts`). Checked in the browser with synthetic wheel events; next: try it on Windows.
 - **Oct 23, 2026** — From the Todoist comparison: **search** (`/search`, core `Store::search`) and **earlier reminders** (`tasks.remind_before`, migration 9; one alarm per task stepping through them via `next_at_ms`; notification text "Due … at …" on Android + desktop; VALARMs in `.ics`). Checked in the browser preview; Kotlin first compiles in CI. Next: device check.
 - **Oct 22, 2026** — Toast ("Deleted · Undo") moved to `AppToast.vue` and swipes away left or right (it covered the quick-add bar); timer pauses while held. Checked in the browser preview.
