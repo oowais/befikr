@@ -1,10 +1,26 @@
 # Sideload signing key
 
-`sideload.jks` signs the CI release APK so updates install over each other
-(Android rejects an update signed with a different key — you'd have to
-uninstall and lose data).
+The release APK is signed with one key, every build, so updates install over
+each other (Android rejects an update signed with a different key — you'd
+have to uninstall and lose data).
 
-Password: `befikr-sideload`, alias `befikr`. It is committed on purpose: the
-app is sideloaded for personal use, not published. Anyone with repo access
-could sign an update that installs over the app. If the repo is shared, move
-the keystore to a GitHub secret and decode it in CI instead.
+The repo is public, so the key is **not** committed. It lives on the user's
+machine next to the updater key, and in two repo secrets that CI reads
+(`.github/workflows/android.yml`):
+
+| File | Secret |
+| --- | --- |
+| `~/.tauri/befikr-sideload.p12` (PKCS12, alias `befikr`) | `ANDROID_KEYSTORE_B64` (base64 of the file) |
+| `~/.tauri/befikr-sideload.pass` | `ANDROID_KEYSTORE_PASSWORD` |
+
+```bash
+base64 -w0 ~/.tauri/befikr-sideload.p12 | gh secret set ANDROID_KEYSTORE_B64 -R oowais/befikr
+gh secret set ANDROID_KEYSTORE_PASSWORD -R oowais/befikr < ~/.tauri/befikr-sideload.pass
+```
+
+Never generate a new key once an APK is installed: updates would stop
+installing. Keep a backup of both files.
+
+Until Nov 1, 2026 a keystore was committed here (`sideload.jks`, password
+in the workflow). It is still in git history, so it was replaced: APKs from
+0.x releases after that date don't install over older ones (uninstall once).
