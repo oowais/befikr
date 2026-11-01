@@ -49,9 +49,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
                 super::show_main(tray.app_handle());
             }
         });
-    if let Some(icon) = app.default_window_icon() {
-        tray = tray.icon(icon.clone());
-    }
+    tray = tray.icon(glyph());
     tray.build(app)?;
     start_status(app.clone());
     Ok(())
@@ -63,10 +61,8 @@ fn start_status(app: AppHandle) {
     std::thread::Builder::new()
         .name("tray-status".into())
         .spawn(move || {
-            let (plain, dotted) = match app.default_window_icon() {
-                Some(i) => (i.clone().to_owned(), with_dot(i)),
-                None => return,
-            };
+            let plain = glyph();
+            let dotted = with_dot(&plain);
             let mut shown: Option<(bool, String)> = None;
             loop {
                 let today = app
@@ -97,6 +93,31 @@ fn start_status(app: AppHandle) {
         .unwrap_or_else(|e| eprintln!("tray status thread: {e}"));
 }
 
+/// The checklist mark with no tile, like other tray icons: white on dark
+/// panels, dark ink on a light Windows taskbar.
+fn glyph() -> Image<'static> {
+    if light_taskbar() {
+        tauri::include_image!("icons/tray-on-light.png")
+    } else {
+        tauri::include_image!("icons/tray-on-dark.png")
+    }
+}
+
+#[cfg(windows)]
+fn light_taskbar() -> bool {
+    use windows_registry::CURRENT_USER;
+    CURRENT_USER
+        .open(r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")
+        .and_then(|k| k.get_u32("SystemUsesLightTheme"))
+        .is_ok_and(|v| v == 1)
+}
+
+/// Linux panels are dark almost everywhere (KDE, GNOME, most bars).
+#[cfg(not(windows))]
+fn light_taskbar() -> bool {
+    false
+}
+
 /// "Befikr · 2 overdue · next: Call mum 10:00"
 fn tooltip(today: &[TodayTask]) -> String {
     let overdue = today.iter().filter(|t| t.overdue).count();
@@ -113,7 +134,7 @@ fn tooltip(today: &[TodayTask]) -> String {
     parts.join(" · ")
 }
 
-/// The app icon with a red dot in the top-right corner.
+/// The tray icon with a red dot in the top-right corner.
 fn with_dot(icon: &Image<'_>) -> Image<'static> {
     let (w, h) = (icon.width(), icon.height());
     let mut rgba = icon.rgba().to_vec();
