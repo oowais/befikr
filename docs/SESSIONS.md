@@ -2,6 +2,7 @@
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
 
+- **Nov 18, 2026** — Snooze picks (#21, `core/snooze.rs`): six in time order — In 1 hour, In 3 hours, This evening or Tonight, Tomorrow, Next week, Next month (same date, clamped; all 9:00). Android overlay labels dates beyond 6 days as `d MMM`. Next: #22.
 - **Nov 18, 2026** — Pinned section (#23): `tasks.pinned` (migration, synced, not a schedule field), Pinned section on top of the list in due order, pin/unpin from the task sheet bar and the right-click menu. Next: #22 (Linux notification snooze).
 - **Nov 1, 2026** — Desktop tray icon is now the bare checklist glyph (no tile), white on dark panels, dark ink on a light Windows taskbar (`SystemUsesLightTheme`). Source in `android/icon/gen.py` → `src-tauri/icons/tray-on-*.{svg,png}`.
 - **Oct 25, 2026** — #14 follow-up: the `v-wheel-x` directive missed the date chips in `DateTimeSheet`, so `app/plugins/wheel-x.client.ts` is now one global wheel handler for every short sideways-only strip (tall ones such as the calendar week keep the wheel for the page). Swept the app: no other mouse-unreachable scrolling; gestures already take a mouse. Checked with a real wheel in the browser.

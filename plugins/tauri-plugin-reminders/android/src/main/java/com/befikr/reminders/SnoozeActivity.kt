@@ -200,9 +200,12 @@ class SnoozeActivity : Activity() {
 
     private fun time(at: Long) = DateFormat.getTimeFormat(this).format(Date(at))
 
+    /** "18:00", "Mon 09:00" within the week, "18 Dec 09:00" further out ("Next month"). */
     private fun dayTime(at: Long) =
         if (DateUtils.isToday(at)) time(at)
-        else "${SimpleDateFormat("EEE", Locale.getDefault()).format(Date(at))} ${time(at)}"
+        else if (at - System.currentTimeMillis() < 6 * DateUtils.DAY_IN_MILLIS)
+            "${SimpleDateFormat("EEE", Locale.getDefault()).format(Date(at))} ${time(at)}"
+        else "${DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), "dMMM"), at)} ${time(at)}"
 
     private fun handle() = View(this).apply {
         background = GradientDrawable().apply { setColor(mutedColor); cornerRadius = dp(2f); alpha = 90 }
