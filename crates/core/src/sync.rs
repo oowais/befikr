@@ -36,7 +36,7 @@ pub(crate) const SYNCED: &[Synced] = &[
         key: "id",
         fields: &[
             "parent_id", "title", "description", "due_at", "tz", "rrule", "adaptive", "completed_at",
-            "snoozed_until", "created_at", "deleted_at", "remind_before",
+            "snoozed_until", "created_at", "deleted_at", "remind_before", "pinned",
         ],
         only: None,
     },

@@ -95,7 +95,7 @@ impl Store {
              ORDER BY COALESCE(snoozed_until, due_at) IS NULL, COALESCE(snoozed_until, due_at), id"
         ))?;
         let rows = st.query_map([], |r| {
-            Ok(ListItem { task: row_task(r)?, subtasks_done: r.get(14)?, subtasks_total: r.get(15)? })
+            Ok(ListItem { task: row_task(r)?, subtasks_done: r.get(15)?, subtasks_total: r.get(16)? })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
@@ -335,6 +335,9 @@ impl Store {
             if let Some(v) = patch.adaptive {
                 t.adaptive = v;
             }
+            if let Some(v) = patch.pinned {
+                t.pinned = v;
+            }
             let reminders_changed = match patch.remind_before {
                 Some(v) => {
                     let v = normalize_before(&v)?;
@@ -354,10 +357,10 @@ impl Store {
             }
             c.execute(
                 "UPDATE tasks SET title = ?2, description = ?3, due_at = ?4, tz = ?5, rrule = ?6, adaptive = ?7,
-                   snoozed_until = ?8, remind_before = ?9, updated_at = ?10 WHERE id = ?1",
+                   snoozed_until = ?8, remind_before = ?9, pinned = ?10, updated_at = ?11 WHERE id = ?1",
                 params![
                     id, t.title, t.description, t.due_at, t.tz, t.rrule, t.adaptive, t.snoozed_until,
-                    join_minutes(&t.remind_before), now
+                    join_minutes(&t.remind_before), t.pinned, now
                 ],
             )?;
             log(c, id, "updated", now, t.due_at, None, Source::App)?;
@@ -756,7 +759,7 @@ fn is_late(due: i64, done: i64, tz: Option<&str>) -> bool {
 }
 
 pub(crate) const COLS: &str = "id, parent_id, title, description, due_at, tz, rrule, adaptive, completed_at, \
-                    snoozed_until, created_at, updated_at, deleted_at, remind_before";
+                    snoozed_until, created_at, updated_at, deleted_at, remind_before, pinned";
 
 pub(crate) fn row_task(r: &Row) -> rusqlite::Result<Task> {
     Ok(Task {
@@ -774,6 +777,7 @@ pub(crate) fn row_task(r: &Row) -> rusqlite::Result<Task> {
         updated_at: r.get(11)?,
         deleted_at: r.get(12)?,
         remind_before: parse_minutes(&r.get::<_, String>(13)?),
+        pinned: r.get(14)?,
     })
 }
 

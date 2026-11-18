@@ -52,7 +52,7 @@ impl Store {
         );
         let mut st = self.conn.prepare(&sql)?;
         let rows = st.query_map(rusqlite::params_from_iter(words.iter()), |r| {
-            Ok(SearchHit { task: row_task(r)?, last_done_at: r.get(14)? })
+            Ok(SearchHit { task: row_task(r)?, last_done_at: r.get(15)? })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }

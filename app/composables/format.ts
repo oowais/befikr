@@ -29,9 +29,11 @@ export const isToday = (ms: number, now = Date.now()) => startOfDay(new Date(ms)
 
 export const timeLabel = (ms: number) => time(new Date(ms))
 
-/** List sections, in display order. Each excludes the ones before it. */
-export type Section = 'overdue' | 'today' | 'tomorrow' | 'week' | 'month' | 'later' | 'none'
+/** List sections, in display order. Each excludes the ones before it
+ * (pinned tasks show only under Pinned). */
+export type Section = 'pinned' | 'overdue' | 'today' | 'tomorrow' | 'week' | 'month' | 'later' | 'none'
 export const sectionTitles: Record<Section, string> = {
+  pinned: 'Pinned',
   overdue: 'Overdue',
   today: 'Today',
   tomorrow: 'Tomorrow',

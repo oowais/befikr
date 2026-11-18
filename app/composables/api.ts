@@ -18,6 +18,8 @@ export type Task = {
   deletedAt: number | null
   /** Extra reminders, minutes before the due time, largest first. */
   remindBefore: number[]
+  /** Shown in the Pinned section at the top of the list. */
+  pinned: boolean
 }
 
 /** Calendar: a task, or a later repeat of one (`upcoming`), placed at `at`. */
@@ -128,6 +130,7 @@ export type TaskPatch = {
   rrule?: string | null
   adaptive?: boolean
   remindBefore?: number[]
+  pinned?: boolean
 }
 
 /** Bumped when a write happens off the main list (e.g. an Undo toast); the list reloads. */

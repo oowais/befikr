@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Plus, Search, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Pin, PinOff, Plus, Search, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -89,12 +89,25 @@ function menu(e: MouseEvent, row: Row) {
   openMenu(e, [
     { label: 'Open', icon: PanelRightOpen, run: () => openTask(row.id) },
     { label: 'Complete', icon: Check, run: () => complete(row) },
+    row.pinned ? { label: 'Unpin', icon: PinOff, run: () => pin(row, false) } : { label: 'Pin', icon: Pin, run: () => pin(row, true) },
     ...(canSnooze ? [{ label: 'Snooze…', icon: AlarmClock, run: () => openSnooze(row.id) }] : []),
     ...(row.rrule ? [{ label: 'Skip this one', icon: SkipForward, run: () => skip(row) }] : []),
     ...(row.rrule ? [{ label: 'Retire', icon: Sunset, run: () => retire(row) }] : []),
     'separator',
     { label: 'Delete', icon: Trash2, danger: true, run: () => remove(row) },
   ])
+}
+
+// Optimistic: the row moves at once.
+async function pin(row: Row, pinned: boolean) {
+  haptic()
+  rows.value = rows.value.map((r) => (r.id === row.id ? { ...r, pinned } : r))
+  try {
+    await api.updateTask(row.id, { pinned })
+  } catch (e) {
+    show({ message: friendlyError(e, pinned ? 'pin it' : 'unpin it') })
+    refresh()
+  }
 }
 
 async function skip(row: Row) {
@@ -134,11 +147,12 @@ async function remove(row: Row) {
   }
 }
 
-// Overdue / Today / Tomorrow / This week / This month / Later / No date.
+// Pinned / Overdue / Today / Tomorrow / This week / This month / Later / No date.
+// Pinned keeps the list's order (by due time).
 const sections = computed(() => {
   const by = new Map<Section, Row[]>()
   for (const r of rows.value) {
-    const s = sectionOf(r.snoozedUntil ?? r.dueAt, now.value)
+    const s = r.pinned ? 'pinned' : sectionOf(r.snoozedUntil ?? r.dueAt, now.value)
     by.set(s, [...(by.get(s) ?? []), r])
   }
   return (Object.keys(sectionTitles) as Section[]).filter((s) => by.has(s)).map((s) => ({ id: s, rows: by.get(s)! }))

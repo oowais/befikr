@@ -3,7 +3,7 @@
 // mounted in RouteSheets). Edit title, date, repeat, notes, subtasks; done,
 // snooze, skip, retire, delete. Closes by dragging it down (from anywhere), tapping
 // outside, Back, or after done / skip / retire / delete.
-import { AlarmClock, Bell, CalendarDays, Check, CheckCircle2, ChevronRight, CircleX, Flame, History, Moon, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
+import { AlarmClock, Bell, CalendarDays, Check, CheckCircle2, ChevronRight, CircleX, Flame, History, Moon, Pin, PinOff, Plus, Repeat, RotateCcw, SkipForward, StickyNote, Sunset, Trash2, X } from 'lucide-vue-next'
 import { firstDue } from '@befikr/parser'
 import type { Completion, HabitStreak, Task } from '~/composables/api'
 
@@ -86,6 +86,15 @@ async function patch(p: Parameters<typeof api.updateTask>[1]) {
   } catch (e) {
     error.value = friendlyError(e, 'save the change')
   }
+}
+
+// Optimistic: the icon flips at once.
+function togglePin() {
+  if (!task.value) return
+  haptic()
+  const pinned = !task.value.pinned
+  task.value = { ...task.value, pinned }
+  patch({ pinned })
 }
 
 function saveTitle() {
@@ -270,6 +279,17 @@ async function remove() {
   <div class="sheet popover" role="dialog" aria-label="Task" :class="{ dragging: drag.dragging.value }" :style="drag.style.value" v-on="drag.handlers">
     <header class="bar">
       <span class="handle" />
+      <button
+        v-if="task && !task.completedAt && !task.parentId"
+        class="icon-btn pin"
+        :class="{ on: task.pinned }"
+        :aria-label="task.pinned ? 'Unpin' : 'Pin to the top'"
+        :aria-pressed="task.pinned"
+        :title="task.pinned ? 'Unpin' : 'Pin to the top'"
+        @click="togglePin"
+      >
+        <component :is="task.pinned ? PinOff : Pin" :size="20" />
+      </button>
       <span style="flex: 1" />
       <button v-if="task?.completedAt" class="btn" @click="reopen"><RotateCcw :size="18" /> {{ retired ? 'Bring back' : 'Undo' }}</button>
       <template v-else-if="task">
@@ -457,6 +477,8 @@ async function remove() {
   position: relative; display: flex; align-items: center; gap: 8px; min-height: 72px; padding-top: 22px;
   touch-action: none; user-select: none; cursor: grab;
 }
+.bar .pin { flex: none; margin-left: -8px; color: var(--muted); }
+.bar .pin.on { color: var(--accent); }
 /* Snooze, Skip and Complete side by side on a phone. */
 .bar .btn { padding-inline: 12px; white-space: nowrap; }
 .handle {

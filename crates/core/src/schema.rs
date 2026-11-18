@@ -198,6 +198,12 @@ pub fn migrations() -> Migrations<'static> {
         ALTER TABLE tasks ADD COLUMN remind_before TEXT NOT NULL DEFAULT '';
         ",
         ),
+        M::up(
+            "
+        -- Pinned tasks sit in their own section at the top of the list.
+        ALTER TABLE tasks ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;
+        ",
+        ),
     ])
 }
 

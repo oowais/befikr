@@ -26,6 +26,8 @@ pub struct Task {
     /// Extra reminders this many minutes before the due time, largest first
     /// ("1 day before", "30 min before"). Not before a snoozed time.
     pub remind_before: Vec<u32>,
+    /// Shown in the Pinned section at the top of the list.
+    pub pinned: bool,
 }
 
 impl Task {
@@ -79,6 +81,7 @@ pub struct TaskPatch {
     pub rrule: Option<Option<String>>,
     pub adaptive: Option<bool>,
     pub remind_before: Option<Vec<u32>>,
+    pub pinned: Option<bool>,
 }
 
 fn double_option<'de, T: Deserialize<'de>, D: Deserializer<'de>>(d: D) -> Result<Option<Option<T>>, D::Error> {
