@@ -1,102 +1,232 @@
 //! Reminder notifications with Complete and Snooze (and Skip for repeating
 //! tasks), like on Android: tap opens the list, Complete and Skip run the same
-//! core calls as the app, Snooze opens the snooze sheet. Each notification waits for its answer on its own thread.
+//! core calls as the app, Snooze opens the snooze sheet.
+//!
+//! Linux talks D-Bus itself: one connection shows every notification and one
+//! thread reads its answers. notify-rust starts a new message stream for each
+//! message it reads, so a signal right after another is lost: Noctalia sends
+//! `ActivationToken`, `ActionInvoked` and `NotificationClosed` at once, and
+//! "Snooze" arrived as a plain dismiss (#22). Some servers also send the
+//! answer only to the connection that showed the notification.
+//! Windows uses notify-rust, each toast waiting for its answer on its own thread.
 
 use std::collections::BTreeMap;
 use std::sync::{Mutex, MutexGuard};
 
 use befikr_core::Source;
-use notify_rust::{CloseReason, Notification, NotificationResponse, Timeout, Urgency};
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Shown notification per task: (notification id, generation). A re-remind
-/// replaces the old notification under the same id (Linux), and both waiting
-/// threads then hear its answer: only the latest generation acts on it.
+/// What the user did with a notification.
+enum Answer {
+    Open,
+    Action(String),
+    /// Swiped or closed by the user (re-remind).
+    Dismissed,
+    /// Expired, or closed by us.
+    Gone,
+}
+
+/// Run the answer for task `id`.
+fn answer(app: &AppHandle, id: &str, a: Answer) {
+    match a {
+        Answer::Action(a) if a == "complete" => act(app, id, false),
+        Answer::Action(a) if a == "skip" => act(app, id, true),
+        Answer::Action(a) if a == "snooze" => super::open_route(app, &format!("/?snooze={id}")),
+        Answer::Dismissed => dismissed(app, id),
+        Answer::Gone => {}
+        Answer::Open | Answer::Action(_) => super::open_route(app, "/"),
+    }
+}
+
+/// Buttons, as (action key, label).
+fn actions(repeats: bool) -> Vec<(&'static str, &'static str)> {
+    let mut a = vec![("default", "Open"), ("complete", "Complete"), ("snooze", "Snooze")];
+    if repeats {
+        a.push(("skip", "Skip"));
+    }
+    a
+}
+
+#[cfg(target_os = "linux")]
+pub use linux::{close, show};
+#[cfg(windows)]
+pub use windows::{close, show};
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use std::collections::HashMap;
+    use std::sync::OnceLock;
+
+    use tauri::AppHandle;
+    use zbus::blocking::{Connection, MessageIterator};
+    use zbus::zvariant::Value;
+    use zbus::MatchRule;
+
+    use super::{answer, due_text, shown, Answer};
+
+    const DEST: &str = "org.freedesktop.Notifications";
+    const PATH: &str = "/org/freedesktop/Notifications";
+
+    /// The one connection; its listener thread starts with it.
+    static BUS: OnceLock<Option<Connection>> = OnceLock::new();
+
+    fn bus(app: &AppHandle) -> Option<&'static Connection> {
+        BUS.get_or_init(|| match connect(app) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                eprintln!("notifications unavailable: {e}");
+                None
+            }
+        })
+        .as_ref()
+    }
+
+    fn connect(app: &AppHandle) -> zbus::Result<Connection> {
+        let conn = Connection::session()?;
+        let rule = MatchRule::builder()
+            .msg_type(zbus::message::Type::Signal)
+            .interface(DEST)?
+            .path(PATH)?
+            .build();
+        // Subscribed before the first notification, so no answer is missed.
+        let signals = MessageIterator::for_match_rule(rule, &conn, Some(64))?;
+        let app = app.clone();
+        std::thread::Builder::new()
+            .name("notifications".into())
+            .spawn(move || listen(&app, signals))
+            .map_err(|e| zbus::Error::Failure(e.to_string()))?;
+        Ok(conn)
+    }
+
+    fn listen(app: &AppHandle, signals: MessageIterator) {
+        for msg in signals.flatten() {
+            let header = msg.header();
+            let (nid, a) = match header.member().map(|m| m.as_str()) {
+                Some("ActionInvoked") => match msg.body().deserialize::<(u32, String)>() {
+                    Ok((nid, a)) if a == "default" => (nid, Answer::Open),
+                    Ok((nid, a)) => (nid, Answer::Action(a)),
+                    Err(_) => continue,
+                },
+                Some("NotificationClosed") => match msg.body().deserialize::<(u32, u32)>() {
+                    // 2 = dismissed by the user; 1 expired, 3 closed by us.
+                    Ok((nid, 2)) => (nid, Answer::Dismissed),
+                    Ok((nid, _)) => (nid, Answer::Gone),
+                    Err(_) => continue,
+                },
+                _ => continue,
+            };
+            // Answered: it's gone, nothing to close later. The close that
+            // follows an action finds nothing left and does nothing.
+            let id = {
+                let mut s = shown();
+                let Some(id) = s.iter().find(|(_, v)| v.0 == nid).map(|(k, _)| k.clone()) else { continue };
+                s.remove(&id);
+                id
+            };
+            answer(app, &id, a);
+        }
+    }
+
+    /// `due_at`: an early reminder ("30 min before"); the text says when it's due.
+    /// A re-remind replaces the task's notification still on screen.
+    pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool, due_at: Option<i64>) {
+        let Some(conn) = bus(app) else { return };
+        let replaces = shown().get(id).map_or(0, |s| s.0);
+        let body = due_at.map(due_text).unwrap_or_default();
+        let actions: Vec<&str> = super::actions(repeats).into_iter().flat_map(|(k, l)| [k, l]).collect();
+        // Critical: stays until answered.
+        let hints = HashMap::from([("urgency", Value::U8(2))]);
+        let reply = conn.call_method(
+            Some(DEST),
+            PATH,
+            Some(DEST),
+            "Notify",
+            &("Befikr", replaces, "", title, body, actions, hints, 0i32),
+        );
+        match reply.and_then(|r| r.body().deserialize::<u32>()) {
+            Ok(nid) => {
+                shown().insert(id.to_string(), (nid, 0));
+            }
+            Err(e) => eprintln!("notification failed: {e}"),
+        }
+    }
+
+    /// The task was completed, snoozed or deleted elsewhere: take its
+    /// notification down.
+    pub fn close(id: &str) {
+        // Removed first: the "closed" signal then belongs to no task.
+        let Some((nid, _)) = shown().remove(id) else { return };
+        let Some(Some(conn)) = BUS.get() else { return };
+        let _ = conn.call_method(Some(DEST), PATH, Some(DEST), "CloseNotification", &(nid,));
+    }
+}
+
+#[cfg(windows)]
+mod windows {
+    use notify_rust::{CloseReason, Notification, NotificationResponse, Timeout, Urgency};
+    use tauri::{AppHandle, Manager};
+
+    use super::{answer, due_text, shown, Answer};
+
+    /// `due_at`: an early reminder ("30 min before"); the text says when it's due.
+    pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool, due_at: Option<i64>) {
+        let mut n = Notification::new();
+        n.appname("Befikr").summary(title);
+        if let Some(at) = due_at {
+            n.body(&due_text(at));
+        }
+        for (k, l) in super::actions(repeats) {
+            n.action(k, l);
+        }
+        // Stays until answered (reminder toast).
+        n.urgency(Urgency::Critical).timeout(Timeout::Never);
+        // Installed builds have a Start menu entry under the app identifier;
+        // dev builds borrow PowerShell's.
+        if !cfg!(debug_assertions) {
+            n.app_id(&app.config().identifier);
+        }
+        let handle = match n.show() {
+            Ok(h) => h,
+            Err(e) => return eprintln!("notification failed: {e}"),
+        };
+        // A newer reminder for the task replaces this one's turn to answer.
+        let generation = shown().get(id).map_or(0, |s| s.1 + 1);
+        shown().insert(id.to_string(), (0, generation));
+
+        let (app, id) = (app.clone(), id.to_string());
+        std::thread::spawn(move || {
+            let _ = handle.wait_for_response(|r: &NotificationResponse| {
+                {
+                    let mut s = shown();
+                    if s.get(&id).map(|s| s.1) != Some(generation) {
+                        return;
+                    }
+                    // Answered: it's gone, nothing to close later.
+                    s.remove(&id);
+                }
+                let a = match r {
+                    NotificationResponse::Action(a) => Answer::Action(a.clone()),
+                    // Only the user's own close counts as a swipe (re-remind).
+                    NotificationResponse::Closed(CloseReason::Dismissed) => Answer::Dismissed,
+                    NotificationResponse::Closed(_) => Answer::Gone,
+                    _ => Answer::Open,
+                };
+                answer(&app, &id, a);
+            });
+        });
+    }
+
+    /// Windows toasts stay; acting on one later is safe.
+    pub fn close(id: &str) {
+        shown().remove(id);
+    }
+}
+
+/// Shown notification per task: (notification id on Linux, generation on Windows).
 static SHOWN: Mutex<BTreeMap<String, (u32, u64)>> = Mutex::new(BTreeMap::new());
 
 fn shown() -> MutexGuard<'static, BTreeMap<String, (u32, u64)>> {
     SHOWN.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-fn build(title: &str, repeats: bool, due_at: Option<i64>) -> Notification {
-    let mut n = Notification::new();
-    n.appname("Befikr").summary(title);
-    if let Some(at) = due_at {
-        n.body(&due_text(at));
-    }
-    n
-        .action("default", "Open")
-        .action("complete", "Complete")
-        .action("snooze", "Snooze");
-    if repeats {
-        n.action("skip", "Skip");
-    }
-    // Stays until answered (Windows: reminder toast).
-    n.urgency(Urgency::Critical).timeout(Timeout::Never);
-    n
-}
-
-/// `due_at`: an early reminder ("30 min before"); the text says when it's due.
-pub fn show(app: &AppHandle, id: &str, title: &str, repeats: bool, due_at: Option<i64>) {
-    let mut n = build(title, repeats, due_at);
-    let prev = shown().get(id).copied();
-    if let Some((nid, _)) = prev {
-        if cfg!(target_os = "linux") {
-            n.id(nid);
-        }
-    }
-    // Installed builds have a Start menu entry under the app identifier;
-    // dev builds borrow PowerShell's.
-    #[cfg(windows)]
-    if !cfg!(debug_assertions) {
-        n.app_id(&app.config().identifier);
-    }
-    let handle = match n.show() {
-        Ok(h) => h,
-        Err(e) => return eprintln!("notification failed: {e}"),
-    };
-    let generation = prev.map_or(0, |(_, g)| g + 1);
-    #[cfg(target_os = "linux")]
-    let nid = handle.id();
-    #[cfg(not(target_os = "linux"))]
-    let nid = 0;
-    shown().insert(id.to_string(), (nid, generation));
-
-    let (app, id) = (app.clone(), id.to_string());
-    std::thread::spawn(move || {
-        let _ = handle.wait_for_response(|r: &NotificationResponse| {
-            // Linux: answers to a replaced (older) notification arrive here too.
-            if cfg!(target_os = "linux") && shown().get(&id).map(|s| s.1) != Some(generation) {
-                return;
-            }
-            // Answered: it's gone, nothing to close later.
-            shown().remove(&id);
-            match r {
-                NotificationResponse::Action(a) if a == "complete" => act(&app, &id, false),
-                NotificationResponse::Action(a) if a == "skip" => act(&app, &id, true),
-                NotificationResponse::Action(a) if a == "snooze" => super::open_route(&app, &format!("/?snooze={id}")),
-                // Only the user's own close counts as a swipe (re-remind).
-                NotificationResponse::Closed(CloseReason::Dismissed) => dismissed(&app, &id),
-                NotificationResponse::Closed(_) => {}
-                _ => super::open_route(&app, "/"),
-            }
-        });
-    });
-}
-
-/// The task was completed, snoozed or deleted elsewhere: take its
-/// notification down (Linux; Windows toasts stay, and acting on them is safe).
-pub fn close(id: &str) {
-    let Some((nid, _)) = shown().remove(id) else { return };
-    #[cfg(target_os = "linux")]
-    {
-        // Closing needs a handle: replace under the same id, then close it.
-        let mut n = Notification::new();
-        if let Ok(h) = n.id(nid).appname("Befikr").summary("").show() {
-            h.close();
-        }
-    }
-    let _ = nid;
 }
 
 /// Complete, or skip to the next occurrence.

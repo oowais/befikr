@@ -352,6 +352,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "windows-registry 0.100.0",
+ "zbus",
 ]
 
 [[package]]

@@ -39,6 +39,8 @@ iana-time-zone = "0.1"
 # Window app id (`com.owaisahmed.befikr`, see `run`).
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+# Notifications over D-Bus, shown and answered on one connection (desktop/notify.rs).
+zbus = "5"
 
 # Reminder notifications with Complete / Snooze buttons (D-Bus on Linux, toasts on Windows).
 [target.'cfg(any(target_os = "linux", windows))'.dependencies]
