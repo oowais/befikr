@@ -58,6 +58,21 @@ export function sectionOf(ms: number | null, now = Date.now()): Section {
   return 'later'
 }
 
+/** How far ahead the home list looks (Settings → Show tasks due). */
+export type Horizon = 'all' | 'today' | 'week' | 'month' | 'year'
+
+/** When the horizon ends (exclusive), on the same calendar as
+ * [`sectionOf`]: end of today, of Sunday, of the month, of the year. */
+export function horizonEnd(h: Horizon, now = Date.now()): number {
+  const n = new Date(now)
+  const [y, m, d] = [n.getFullYear(), n.getMonth(), n.getDate()]
+  if (h === 'today') return new Date(y, m, d + 1).getTime()
+  if (h === 'week') return new Date(y, m, d + 1 + ((7 - n.getDay()) % 7)).getTime()
+  if (h === 'month') return new Date(y, m + 1, 1).getTime()
+  if (h === 'year') return new Date(y + 1, 0, 1).getTime()
+  return Infinity
+}
+
 /** "Today 18:00", "Tomorrow 09:00", "Fri 15:00", "23 Oct 15:00". */
 export function dayLabel(ms: number, now = Date.now()): string {
   const d = new Date(ms)

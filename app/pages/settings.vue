@@ -85,6 +85,7 @@ async function load() {
 }
 onMounted(load)
 const { theme, setTheme } = useTheme()
+const { horizon, horizons, setHorizon } = useHorizon()
 const sync = ref<SyncStatus | null>(null)
 onMounted(async () => (sync.value = await api.syncStatus().catch(() => null)))
 const syncLabel = computed(() => {
@@ -218,6 +219,23 @@ async function run(f: () => Promise<unknown>) {
         {{ { system: 'System', light: 'Light', dark: 'Dark' }[t] }}
       </button>
     </div>
+
+    <h2 class="section-title">Show tasks due</h2>
+    <div class="seg" role="radiogroup" aria-label="Show tasks due">
+      <button
+        v-for="h in horizons"
+        :key="h"
+        type="button"
+        role="radio"
+        class="opt"
+        :class="{ chosen: horizon === h }"
+        :aria-checked="horizon === h"
+        @click="setHorizon(h)"
+      >
+        {{ { all: 'All', today: 'Today', week: 'Week', month: 'Month', year: 'Year' }[h] }}
+      </button>
+    </div>
+    <p class="muted small seg-hint">Later tasks fold into one line on the list. Overdue, pinned and undated tasks always show.</p>
 
     <h2 class="section-title">Feedback</h2>
     <div class="pane rows">
@@ -371,5 +389,6 @@ a.item { color: inherit; text-decoration: none; }
 }
 .opt { padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
 .opt.chosen { color: var(--text); }
+.seg-hint { margin: 8px 4px 0; }
 .stack { display: flex; flex-direction: column; gap: 2px; text-align: left; }
 </style>

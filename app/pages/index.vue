@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlarmClock, CalendarDays, ChartColumn, Check, PanelRightOpen, Pin, PinOff, Plus, Search, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
+import { AlarmClock, CalendarDays, ChartColumn, Check, Eye, EyeOff, PanelRightOpen, Pin, PinOff, Plus, Search, Settings, ShoppingCart, SkipForward, Sprout, Sunset, Trash2 } from 'lucide-vue-next'
 import type { Row } from '~/composables/api'
 import type { Section } from '~/composables/format'
 
@@ -147,11 +147,30 @@ async function remove(row: Row) {
   }
 }
 
+// Settings → Show tasks due: tasks due past the horizon fold into one line
+// (tap to show them until the list is next opened). Overdue, pinned and
+// undated ones always show.
+const { horizon } = useHorizon()
+const showLater = ref(false)
+watch(horizon, () => (showLater.value = false))
+const later = computed(() => {
+  if (horizon.value === 'all') return new Set<string>()
+  const end = horizonEnd(horizon.value, now.value)
+  return new Set(rows.value.filter((r) => !r.pinned && (r.snoozedUntil ?? r.dueAt ?? -Infinity) >= end).map((r) => r.id))
+})
+const laterLabel = computed(() => {
+  if (horizon.value === 'all') return ''
+  const n = later.value.size
+  const after = horizonAfter[horizon.value]
+  return showLater.value ? `Hide tasks due ${after}` : `${n} ${n === 1 ? 'task' : 'tasks'} due ${after}`
+})
+const visible = computed(() => (showLater.value || !later.value.size ? rows.value : rows.value.filter((r) => !later.value.has(r.id))))
+
 // Pinned / Overdue / Today / Tomorrow / This week / This month / Later / No date.
 // Pinned keeps the list's order (by due time).
 const sections = computed(() => {
   const by = new Map<Section, Row[]>()
-  for (const r of rows.value) {
+  for (const r of visible.value) {
     const s = r.pinned ? 'pinned' : sectionOf(r.snoozedUntil ?? r.dueAt, now.value)
     by.set(s, [...(by.get(s) ?? []), r])
   }
@@ -249,6 +268,9 @@ onUnmounted(() => {
               />
             </TransitionGroup>
           </section>
+          <button v-if="later.size" type="button" class="later-line" :aria-expanded="showLater" @click="showLater = !showLater">
+            <component :is="showLater ? EyeOff : Eye" :size="16" /> {{ laterLabel }}
+          </button>
           <!-- After the last task: fills the room left on a short list, scrolls into view below a long one. -->
           <Doodle class="below ease" :garden="garden" />
         </div>
@@ -310,6 +332,11 @@ onUnmounted(() => {
   overscroll-behavior: contain; scrollbar-width: none;
 }
 .section { flex: none; }
+/* Tasks past the "Show tasks due" horizon: one quiet line after the list. */
+.later-line {
+  flex: none; align-self: center; display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 14px; padding: 8px 14px; border-radius: 999px; font-size: 0.9rem; color: var(--muted);
+}
 .below { flex: 1 0 220px; margin: 0 -16px; mask-image: linear-gradient(to bottom, transparent 0, #000 56px); }
 .dock { flex: none; padding: 10px 0 14px; }
 .scene { flex: 1; min-height: 0; }
