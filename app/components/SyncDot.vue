@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Sync at a glance in the top bar, only while sync is on: a dot, green =
-// working (pulses while syncing), orange = no device synced for a few hours
+// working (pulses while a sync takes a while), orange = no device synced for a few hours
 // (SyncStaleHint says which to open), red = a problem (error or not
 // running), grey = no paired devices yet. Tapping it opens the Sync page
 // (devices, last sync, the error in full).
@@ -8,7 +8,36 @@ const { st, state, lastSync, now, ready } = useSyncStatus()
 
 // In the header from the first frame, not popping in after the splash.
 const releaseSplash = holdSplash()
-onMounted(() => ready.then(releaseSplash))
+
+// Pulse only for a sync that takes a while while someone's looking: quick
+// rounds would just flicker, and an endless animation in a hidden or
+// background window (in the tray) keeps the renderer drawing every frame.
+const slow = ref(false)
+let slowTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => !!st.value?.syncing,
+  (on) => {
+    clearTimeout(slowTimer)
+    slow.value = false
+    if (on) slowTimer = setTimeout(() => (slow.value = true), 1000)
+  },
+  { immediate: true },
+)
+const looking = ref(false)
+const look = () => (looking.value = document.visibilityState === 'visible' && document.hasFocus())
+onMounted(() => {
+  ready.then(releaseSplash)
+  look()
+  window.addEventListener('focus', look)
+  window.addEventListener('blur', look)
+  document.addEventListener('visibilitychange', look)
+})
+onBeforeUnmount(() => {
+  clearTimeout(slowTimer)
+  window.removeEventListener('focus', look)
+  window.removeEventListener('blur', look)
+  document.removeEventListener('visibilitychange', look)
+})
 
 const label = computed(() => {
   const s = st.value
@@ -22,7 +51,7 @@ const label = computed(() => {
 
 <template>
   <NuxtLink v-if="state" to="/sync" class="icon-btn sync-dot" :aria-label="label" :title="label">
-    <span class="dot" :class="[state, { pulse: st?.syncing }]" />
+    <span class="dot" :class="[state, { pulse: st?.syncing && slow && looking }]" />
   </NuxtLink>
 </template>
 
