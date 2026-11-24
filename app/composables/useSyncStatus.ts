@@ -1,6 +1,6 @@
 // Sync status for the home screen (dot + stale hint), loaded once and kept
 // fresh by the `sync-changed` event. `now` ticks each minute so "stale"
-// shows up while the app sits open.
+// shows up while the app sits open. Coming back to the app syncs right away.
 import { listen } from '@tauri-apps/api/event'
 import type { SyncStatus } from '~/composables/api'
 
@@ -16,12 +16,31 @@ const load = async () => {
   now.value = Date.now()
 }
 
+/** At most one wake-up sync this often (focus can flap). */
+const WAKE_GAP_MS = 30_000
+let wokeAt = 0
+
+/** Window back in front or network back: sync every device now, even one
+ *  the background round is backing off from (it may have just come online). */
+function wake() {
+  const s = st.value
+  if (!s?.running || !s.peers.length || Date.now() - wokeAt < WAKE_GAP_MS) return
+  wokeAt = Date.now()
+  api.syncNow().catch(() => undefined)
+}
+
 function start() {
   started ??= (async () => {
     await load()
     listen('sync-changed', load).catch(() => undefined)
     setInterval(() => (now.value = Date.now()), 60_000)
-    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && load())
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return
+      load()
+      wake()
+    })
+    window.addEventListener('focus', wake)
+    window.addEventListener('online', wake)
   })()
   return started
 }
