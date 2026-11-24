@@ -43,6 +43,11 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const PERIODIC: Duration = Duration::from_secs(30);
 /// How often the change log is checked for local writes.
 const POLL: Duration = Duration::from_secs(2);
+/// An unreachable device is retried after this, doubling up to
+/// [`BACKOFF_MAX`], instead of every [`PERIODIC`]: each try waits out
+/// [`CONNECT_TIMEOUT`]. A local change or a sync from it tries it again.
+const BACKOFF_FIRST: Duration = Duration::from_secs(60);
+const BACKOFF_MAX: Duration = Duration::from_secs(5 * 60);
 /// The other device is off or Befikr isn't running there: normal, not an
 /// error for the status (its "last synced" shows it).
 const UNREACHABLE: &str = "device not reachable. Is Befikr open there with sync on?";
@@ -110,6 +115,9 @@ struct State {
     syncing: BTreeMap<EndpointId, Arc<tokio::sync::Mutex<()>>>,
     /// Syncs in progress (for the status).
     in_flight: usize,
+    /// Unreachable devices: not retried by the periodic round before the
+    /// instant; the current delay.
+    backoff: BTreeMap<EndpointId, (Instant, Duration)>,
     /// Raw error and the device it was with ("" = none).
     last_error: Option<(String, String)>,
 }
@@ -354,8 +362,15 @@ impl<H: Host> SyncService<H> {
 
     /// Sync with every paired device that can be reached.
     pub async fn sync_now(&self) {
+        self.sync_round(true).await
+    }
+
+    /// `all` = false: skip devices that are backing off (periodic round).
+    async fn sync_round(&self, all: bool) {
         let peers = self.inner.host.store(|s| s.peers()).unwrap_or_default();
-        let jobs = peers.iter().filter_map(|p| Some((p.endpoint.parse::<EndpointId>().ok()?, p.name.clone()))).map(|(id, name)| {
+        let due = |id: &EndpointId| all || self.state().backoff.get(id).is_none_or(|(at, _)| Instant::now() >= *at);
+        let ids = peers.iter().filter_map(|p| Some((p.endpoint.parse::<EndpointId>().ok()?, p.name.clone())));
+        let jobs = ids.filter(|(id, _)| due(id)).map(|(id, name)| {
             let me = self.clone();
             tokio::spawn(async move { (id, name, me.sync_peer(id).await) })
         });
@@ -369,7 +384,9 @@ impl<H: Host> SyncService<H> {
         };
         let mut error = None;
         for j in jobs.collect::<Vec<_>>() {
-            if let Ok((id, name, Err(e))) = j.await {
+            let Ok((id, name, r)) = j.await else { continue };
+            self.back_off(id, matches!(&r, Err(e) if e == UNREACHABLE));
+            if let Err(e) = r {
                 eprintln!("sync with {}: {e}", id.fmt_short());
                 if e != UNREACHABLE && !fresh(&id) {
                     error = Some((e, name));
@@ -399,6 +416,18 @@ impl<H: Host> SyncService<H> {
         r
     }
 
+    /// After a sync with `id`: unreachable → wait longer before the next
+    /// periodic try; otherwise try it every round again.
+    fn back_off(&self, id: EndpointId, unreachable: bool) {
+        let mut st = self.state();
+        if !unreachable {
+            st.backoff.remove(&id);
+            return;
+        }
+        let delay = next_delay(st.backoff.get(&id).map(|(_, d)| *d));
+        st.backoff.insert(id, (Instant::now() + delay, delay));
+    }
+
     async fn accept_loop(self, ep: Endpoint) {
         while let Some(incoming) = ep.accept().await {
             let me = self.clone();
@@ -409,7 +438,11 @@ impl<H: Host> SyncService<H> {
                     Ok(proto::Served::Paired) => {
                         me.stop_pairing();
                     }
-                    Ok(proto::Served::Synced) => me.inner.host.status_changed(),
+                    Ok(proto::Served::Synced) => {
+                        // It's back: the periodic round tries it again.
+                        me.back_off(conn.remote_id(), false);
+                        me.inner.host.status_changed();
+                    }
                     Err(e) => eprintln!("sync from {}: {e}", conn.remote_id().fmt_short()),
                 }
                 let _ = tokio::time::timeout(Duration::from_secs(5), conn.closed()).await;
@@ -446,14 +479,22 @@ impl<H: Host> SyncService<H> {
                 _ = self.inner.nudge.notified() => {}
             }
             let seq = last_seq();
-            if seq != synced_seq || synced_at.elapsed() >= PERIODIC {
+            let changed = seq != synced_seq;
+            if changed || synced_at.elapsed() >= PERIODIC {
                 // A merge raises the seq too: one more (empty) round follows.
+                // A change goes to every device; the periodic round skips
+                // the ones backing off.
                 synced_seq = seq;
                 synced_at = Instant::now();
-                self.sync_now().await;
+                self.sync_round(changed).await;
             }
         }
     }
+}
+
+/// The wait before retrying an unreachable device, after waiting `prev`.
+fn next_delay(prev: Option<Duration>) -> Duration {
+    prev.map_or(BACKOFF_FIRST, |d| (d * 2).min(BACKOFF_MAX))
 }
 
 /// Tell the endpoint where a paired device was last seen.
@@ -470,4 +511,22 @@ async fn connect(ep: &Endpoint, id: EndpointId) -> Result<iroh::endpoint::Connec
         .await
         .map_err(|_| UNREACHABLE.to_string())?
         .map_err(|e| format!("connect: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unreachable_devices_wait_longer_up_to_five_minutes() {
+        let mut d = None;
+        let waits: Vec<u64> = (0..5)
+            .map(|_| {
+                let next = next_delay(d);
+                d = Some(next);
+                next.as_secs()
+            })
+            .collect();
+        assert_eq!(waits, [60, 120, 240, 300, 300]);
+    }
 }
