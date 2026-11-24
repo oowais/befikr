@@ -281,7 +281,7 @@ onUnmounted(() => {
       <div class="dock">
         <button class="composer field" title="New task (N)" @click="adding = true">
           <Plus :size="22" /> <span>New task</span>
-          <Transition name="hint" mode="out-in"><span :key="hint" class="hint" aria-hidden="true">{{ hint }}</span></Transition>
+          <span class="hint" aria-hidden="true">{{ hint }}</span>
           <kbd class="key" aria-hidden="true">N</kbd>
         </button>
       </div>
@@ -348,7 +348,10 @@ onUnmounted(() => {
   flex: none; display: flex; align-items: center; gap: 12px; min-height: 60px; text-align: left;
   font-size: 1.05rem; color: var(--muted); border-radius: 18px; cursor: text;
 }
-/* Example phrase after "New task": faint, one line, cut off rather than wrapped. */
+/* Example phrase after "New task": faint, one line, cut off rather than wrapped.
+   Swapped without a fade: while any transition runs, the WebView sends the GPU
+   process a full frame of this glass page every vsync (~4.8 MB per 1.2 s
+   fade on Windows, against ~56 KB for an instant swap). */
 .hint {
   flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   font-size: 0.9rem; font-style: italic; opacity: 0.5; text-align: right;
@@ -360,6 +363,4 @@ onUnmounted(() => {
   box-shadow: inset 0 0 0 1px var(--line), inset 0 -1.5px 0 var(--line);
 }
 @media (hover: hover) and (pointer: fine) { .key { display: inline-grid; } }
-.hint-enter-active, .hint-leave-active { transition: opacity 0.6s ease; }
-.hint-enter-from, .hint-leave-to { opacity: 0; }
 </style>

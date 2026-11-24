@@ -26,8 +26,7 @@ export function useHintRotation() {
     start()
     document.addEventListener('visibilitychange', onVisible)
   })
-  // Next visit opens on a new phrase. Not on mount: a phrase change that
-  // early leaves the hint stuck invisible when transitions are off.
+  // Next visit opens on a new phrase.
   onUnmounted(() => {
     stop()
     document.removeEventListener('visibilitychange', onVisible)
