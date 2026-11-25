@@ -1,6 +1,7 @@
 # Session log
 
 Newest first. One or two lines per session: what changed, what's next. Add new entries at the top; no need to read the rest.
+- **Nov 25, 2026 (deps)** — Applied Dependabot #25–28 locally (Tauri 2.12.6 + `@tauri-apps/*` 2.12.5 together, nuxt 4.6.4, vue 3.5.45, vitest 5.1.0, uuid, rand, notify-rust). PR lockfile diffs applied with `git diff cf21804 pr/N | git apply` from Git Bash (PowerShell pipes re-encode patches). Clippy, tests, build all pass.
 
 - **Nov 24, 2026 (open window)** — Window open on Windows still cost ~560 KB/s. Measured live over WebView2 remote debugging (CDP, `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222`) plus a trace: the 1.2 s hint fade made the page submit a full compositor frame every vsync (~350 frames, ~4.8 MB per change; stepped timing no better; blur/masks irrelevant). The hint now swaps without a fade: ~3.5 KB/s with the window open (29 KB per change).
 - **Nov 24, 2026 (#24)** — Settings → Show tasks due: All / Today / Week / Month / Year (per device, `useHorizon.ts`, `horizonEnd` in `format.ts`). Tasks due past it fold into one "N tasks due after …" line on the home list (tap to show until the list is reopened); overdue, pinned and undated always show; search and calendar unchanged. Checked in the browser (mocked backend, phone size).
