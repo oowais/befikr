@@ -64,15 +64,7 @@ function later() {
 <template>
   <main class="page welcome">
     <div class="hero">
-      <svg viewBox="0 0 108 108" class="logo" aria-hidden="true">
-        <rect width="108" height="108" rx="26" class="logo-bg" />
-        <g transform="translate(54 54) scale(0.95) translate(-54 -54)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M26 38 l3.6 3.6 l7.2 -8 M43 38 q9 -7 18 0 t19 0" class="l1" stroke-width="5.5" />
-          <path d="M26 54 l3.6 3.6 l7.2 -8 M43 54 q10 -8 21 0 t22 0" class="l2" stroke-width="6.5" />
-          <circle cx="31.5" cy="70" r="4.8" class="l3" stroke-width="3.6" />
-          <path d="M43 70 q8 -7 16.5 0 t16.5 0" class="l1" stroke-width="5.5" />
-        </g>
-      </svg>
+      <AppLogo />
       <h1>Befikr</h1>
       <p class="muted">Three permissions, so reminders never get lost.</p>
     </div>
@@ -106,21 +98,6 @@ function later() {
 .welcome { display: flex; flex-direction: column; gap: 20px; padding-top: 6vh; }
 .hero { text-align: center; }
 .hero h1 { margin: 12px 0 4px; font-size: 1.8rem; letter-spacing: -0.02em; }
-.logo { width: 88px; height: 88px; filter: drop-shadow(0 8px 18px var(--glass-shade)); }
-.logo-bg { fill: #e3ecdc; }
-.l1 { stroke: #7a9a76; }
-.l2 { stroke: #24452a; }
-.l3 { stroke: #e07a5f; }
-@media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme="light"])) .logo-bg { fill: #23262b; }
-  :global(:root:not([data-theme="light"])) .l1 { stroke: #b9f6ca; }
-  :global(:root:not([data-theme="light"])) .l2 { stroke: #ffffff; }
-  :global(:root:not([data-theme="light"])) .l3 { stroke: #69f0ae; }
-}
-:global(:root[data-theme="dark"]) .logo-bg { fill: #23262b; }
-:global(:root[data-theme="dark"]) .l1 { stroke: #b9f6ca; }
-:global(:root[data-theme="dark"]) .l2 { stroke: #ffffff; }
-:global(:root[data-theme="dark"]) .l3 { stroke: #69f0ae; }
 .steps { list-style: none; margin: 0; }
 .step { display: flex; align-items: center; gap: 12px; padding: 14px 0; opacity: 0.55; }
 .step.active, .step:has(.checked) { opacity: 1; }
