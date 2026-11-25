@@ -1,33 +1,31 @@
 name: android
 
-# Builds and releases the APK only after a merge to main (or by hand); the
-# desktop packages (Linux .deb + AppImage + Arch PKGBUILD, Windows installer) build
-# alongside and are attached to the same release. PRs get lint and tests only
-# (core.yml, web.yml).
+# Builds and releases on a version tag (v0.x.y, pushed by scripts/release.sh):
+# the APK, the desktop packages (Linux .deb + AppImage + Arch PKGBUILD,
+# Windows installer), then one job creates the release with every file.
+# Creating it once (never updating it) keeps GITHUB_TOKEN clear of GitHub's
+# rule against touching a commit whose workflows differ from main.
+# A manual run builds everything as artifacts without releasing. A push to
+# main that touches Android code only builds the APK: the Kotlin compile
+# check, and it fills the Gradle cache that tag builds read (caches written
+# on a tag can't be read by the next one). Lint and tests: core.yml, web.yml.
 on:
   push:
+    tags: ["v0.*"]
     branches: [main]
     paths:
-      - "app/**"
       - "src-tauri/**"
-      - "crates/**"
       - "plugins/**"
-      - "packages/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "nuxt.config.ts"
-      - "Cargo.toml"
+      - "crates/**"
       - "Cargo.lock"
+      - "pnpm-lock.yaml"
       - ".github/workflows/android.yml"
-      - "packaging/**"
-      - "!**/*.md"
   workflow_dispatch:
 
 permissions:
   contents: write # publish the APK as a release
 
-# One build per branch at a time: a queued main build computes its version
-# only after the previous release has tagged.
+# One build per tag or branch at a time.
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: false
@@ -37,28 +35,28 @@ jobs:
     runs-on: ubuntu-24.04 # pinned: ubuntu-latest moves to 26 (Android SDK/NDK come from the image)
     outputs:
       version: ${{ steps.version.outputs.version }}
-      release: ${{ steps.version.outputs.release }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # tags + history for the version bump
 
-      # Semver 0.x.y from Conventional Commits (.github/scripts/next-version.sh).
-      # Android versionCode derives from it, so every release is an update.
+      # The version is the tag (scripts/release.sh picks it from Conventional
+      # Commits, .github/scripts/next-version.sh); a manual run uses the next
+      # one. Android versionCode derives from it, so every release is an update.
       - name: Version
         id: version
         run: |
-          V=$(.github/scripts/next-version.sh)
-          R=true
-          if [ "$V" = none ]; then
-            V=$(git describe --tags --abbrev=0 --match 'v0.*'); V=${V#v}
-            R=false
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            V=${GITHUB_REF_NAME#v}
+            [[ "$V" =~ ^0\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag $GITHUB_REF_NAME is not v0.x.y"; exit 1; }
+            # Notes since the tag before this one.
+            export LAST_TAG=$(git describe --tags --abbrev=0 --match 'v0.*' HEAD^ 2>/dev/null || true)
+          else
+            V=$(.github/scripts/next-version.sh)
+            if [ "$V" = none ]; then V=$(git describe --tags --abbrev=0 --match 'v0.*'); V=${V#v}; fi
           fi
-          echo "RELEASE=$R" >> "$GITHUB_ENV"
           echo "VERSION=$V" >> "$GITHUB_ENV"
-          # For the desktop-release job.
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "release=$R" >> "$GITHUB_OUTPUT"
           echo "Version $V"
           jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > conf.tmp && mv conf.tmp src-tauri/tauri.conf.json
           .github/scripts/release-notes.sh > release-notes.md
@@ -110,7 +108,7 @@ jobs:
 
       # Gradle downloads (Maven Central rate-limits shared runner IPs: 429).
       # After `tauri android init`: the basic (MIT) provider keys the cache on
-      # the generated *.gradle files. Only main writes it.
+      # the generated *.gradle files. Only main writes it; tags read it.
       - uses: gradle/actions/setup-gradle@v6
         with:
           cache-provider: basic
@@ -140,24 +138,16 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: befikr-${{ env.VERSION }}-apk
-          path: befikr.apk
-
-      # Only main publishes; a manual run on another branch just uploads the artifact.
-      - uses: softprops/action-gh-release@v3
-        if: github.ref == 'refs/heads/main' && env.RELEASE == 'true'
-        with:
-          tag_name: v${{ env.VERSION }}
-          name: Befikr ${{ env.VERSION }}
-          body_path: release-notes.md
-          make_latest: true
-          target_commitish: ${{ github.sha }}
-          files: befikr.apk
+          path: |
+            befikr.apk
+            release-notes.md
 
   # Linux: the .deb, the Arch PKGBUILD that repackages it
   # (scripts/install-arch.sh installs it; the AUR befikr-bin would be the same),
   # and an AppImage of the same binary under a fixed name, for AppImage
   # managers (CachyOS Package Installer) that pick it from the latest release.
   linux:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -203,6 +193,7 @@ jobs:
 
   # Windows: the NSIS installer (unsigned, so SmartScreen asks once).
   windows:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     runs-on: windows-2025
     defaults:
       run:
@@ -255,10 +246,10 @@ jobs:
             befikr_*_x64-setup.exe
             latest.json
 
-  # After the APK job has created the release: add the desktop files to it.
-  desktop-release:
+  # A tag only: create the release with every file in one go.
+  release:
     needs: [apk, linux, windows]
-    if: github.ref == 'refs/heads/main' && needs.apk.outputs.release == 'true'
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
@@ -267,8 +258,12 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ needs.apk.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          name: Befikr ${{ needs.apk.outputs.version }}
+          body_path: release-notes.md
+          make_latest: true
           files: |
+            befikr.apk
             befikr_*_amd64.deb
             befikr-x86_64.AppImage
             PKGBUILD
