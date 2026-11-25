@@ -1,5 +1,5 @@
 //! Tray icon: keeps the app (and its reminders) running with the window
-//! closed. Menu: Open, Quick add, Quit; a left click opens the window.
+//! closed. Menu: Open, Quit; a left click opens the window.
 //! While a task is overdue the icon gets a red dot, and the tooltip says what
 //! is overdue and what's next today (Windows; Linux tray hosts may not show it).
 
@@ -11,7 +11,7 @@ use befikr_core::TodayTask;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 /// Tasks turn overdue as time passes, with no write to tell us.
 const RECHECK: Duration = Duration::from_secs(60);
@@ -28,19 +28,14 @@ pub fn refresh() {
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open Befikr", true, None::<&str>)?;
-    let add = MenuItem::with_id(app, "add", "Quick add", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &add, &PredefinedMenuItem::separator(app)?, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("Befikr")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, e| match e.id().as_ref() {
             "open" => super::show_main(app),
-            "add" => {
-                super::show_main(app);
-                let _ = app.emit("quick-add", ());
-            }
             "quit" => app.exit(0),
             _ => {}
         })

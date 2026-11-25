@@ -19,7 +19,7 @@ const draft = reactive(fresh())
 export const useQuickAddDraft = () => draft
 export const clearQuickAddDraft = () => Object.assign(draft, fresh())
 
-/** Set to open quick add on the list (desktop tray: "Quick add"); the list clears it. */
+/** Set to open quick add on the list (N / Ctrl+N on computers); the list clears it. */
 export const quickAddPending = ref(false)
 
 /**

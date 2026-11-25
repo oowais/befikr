@@ -28,7 +28,6 @@ onMounted(async () => {
   // and its Complete changes the list.
   listen<string>('open-route', (e) => router.push(e.payload)).catch(() => {})
   listen('tasks-changed', () => listChanged()).catch(() => {})
-  listen('quick-add', openQuickAdd).catch(() => {})
   window.addEventListener('keydown', quickAddKey)
   await openingScreen().catch(() => {})
   releaseSplash()
@@ -46,7 +45,7 @@ async function openingScreen() {
   if (await needsSetup().catch(() => false)) await router.replace('/welcome')
 }
 
-// Quick add from the tray menu or the keyboard: the list (or the calendar,
+// Quick add from the keyboard: the list (or the calendar,
 // which has its own) opens it.
 async function openQuickAdd() {
   quickAddPending.value = true
