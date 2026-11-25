@@ -1,7 +1,7 @@
 name: android
 
 # Builds and releases the APK only after a merge to main (or by hand); the
-# desktop packages (Linux .deb + Arch PKGBUILD, Windows installer) build
+# desktop packages (Linux .deb + AppImage + Arch PKGBUILD, Windows installer) build
 # alongside and are attached to the same release. PRs get lint and tests only
 # (core.yml, web.yml).
 on:
@@ -147,8 +147,10 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: befikr.apk
 
-  # Linux: the .deb, and the Arch PKGBUILD that repackages it
-  # (scripts/install-arch.sh installs it; the AUR befikr-bin would be the same).
+  # Linux: the .deb, the Arch PKGBUILD that repackages it
+  # (scripts/install-arch.sh installs it; the AUR befikr-bin would be the same),
+  # and an AppImage of the same binary under a fixed name, for AppImage
+  # managers (CachyOS Package Installer) that pick it from the latest release.
   linux:
     runs-on: ubuntu-24.04
     steps:
@@ -177,11 +179,20 @@ jobs:
           SHA=$(sha256sum "$DEB" | cut -d' ' -f1)
           sed -e "s/@VERSION@/$VERSION/" -e "s/@SHA256@/$SHA/" packaging/arch/PKGBUILD.in > PKGBUILD
           ls -la "$DEB" PKGBUILD
+      # appimagetool pinned by version and checksum.
+      - name: AppImage
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          echo "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  $RUNNER_TEMP/appimagetool" | sha256sum -c
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          packaging/linux/build-appimage.sh "$RUNNER_TEMP/appimagetool" "$VERSION" befikr-x86_64.AppImage
       - uses: actions/upload-artifact@v7
         with:
           name: befikr-${{ env.VERSION }}-linux
           path: |
             befikr_*_amd64.deb
+            befikr-x86_64.AppImage
             PKGBUILD
 
   # Windows: the NSIS installer (unsigned, so SmartScreen asks once).
@@ -253,6 +264,7 @@ jobs:
           tag_name: v${{ needs.apk.outputs.version }}
           files: |
             befikr_*_amd64.deb
+            befikr-x86_64.AppImage
             PKGBUILD
             befikr_*_x64-setup.exe
             latest.json

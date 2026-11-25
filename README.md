@@ -63,7 +63,7 @@
 | --- | --- | --- |
 | **Android** 8+ | [`befikr.apk`](https://github.com/oowais/befikr/releases/latest/download/befikr.apk), or track the repo in Discoverium | In the app (Settings), or Discoverium |
 | **Windows** 10/11 | `befikr_x.y.z_x64-setup.exe` from the [latest release](https://github.com/oowais/befikr/releases/latest) | In the app (signed updates) |
-| **Linux** | `.deb` from the [latest release](https://github.com/oowais/befikr/releases/latest). Arch / CachyOS: [`scripts/install-arch.sh`](scripts/install-arch.sh) builds and installs a pacman package | Your package manager (Arch: run the script again) |
+| **Linux** | `.deb` or `befikr-x86_64.AppImage` from the [latest release](https://github.com/oowais/befikr/releases/latest). Arch / CachyOS: [`scripts/install-arch.sh`](scripts/install-arch.sh) builds and installs a pacman package, or add the AppImage from GitHub (`oowais/befikr`) in an AppImage manager such as the CachyOS Package Installer. The AppImage uses the system's `webkit2gtk-4.1`, `gtk3` and `libayatana-appindicator` | Your package manager (Arch: run the script again); AppImage: the manager's update check |
 
 **Coming from 0.37 or older?** The app id changed to `com.owaisahmed.befikr` in 0.38, so it installs as a new app once:
 
