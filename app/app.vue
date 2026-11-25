@@ -32,15 +32,18 @@ onMounted(async () => {
   window.addEventListener('keydown', quickAddKey)
   await openingScreen().catch(() => {})
   releaseSplash()
-  // After an update, on the list (not over the setup tour or a notification's screen).
+  // After an update, on the list (not over the tour, setup or a notification's screen).
   if (route.path === '/') whatsNew.checkAfterUpdate()
 })
 
 async function openingScreen() {
   const launch = await reminders.takeLaunchRoute().then((r) => r?.route, () => undefined)
   if (launch && launch !== '/') return router.push(launch)
-  // First launch, or a permission revoked: the setup tour.
-  if (route.path === '/' && (await needsSetup().catch(() => false))) await router.replace('/welcome')
+  if (route.path !== '/') return
+  // First launch: the app tour (which then leads on to the permissions).
+  if (await needsTour().catch(() => false)) return router.replace('/tour')
+  // A permission missing or revoked: the setup steps.
+  if (await needsSetup().catch(() => false)) await router.replace('/welcome')
 }
 
 // Quick add from the tray menu or the keyboard: the list (or the calendar,

@@ -321,7 +321,10 @@ async function run(f: () => Promise<unknown>) {
         <button class="btn" :disabled="update.checking.value || update.installing.value || !update.online.value" @click="checkUpdate">
           {{ update.checking.value ? 'Checking…' : 'Check for updates' }}
         </button>
-        <button class="whats-new" @click="useWhatsNew().openAll()">What's new</button>
+        <span class="links">
+          <button class="whats-new" @click="useWhatsNew().openAll()">What's new</button>
+          <button class="whats-new" @click="router.push('/tour?again')">Take the tour</button>
+        </span>
         <p v-if="!update.online.value" class="offline"><WifiOff :size="14" /> No internet connection</p>
         <p v-else-if="updateNote" :class="{ error: updateFailed }">{{ updateNote }}</p>
       </div>
@@ -363,6 +366,7 @@ a.item { color: inherit; text-decoration: none; }
 .switch.on .knob { transform: translateX(18px); }
 .version { margin-top: 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .version p { margin: 0; }
+.links { display: flex; gap: 4px; }
 .warn { color: var(--red); }
 .warn .btn { flex: none; }
 .field.time { width: auto; flex: none; padding: 6px 12px; text-align: center; font-variant-numeric: tabular-nums; }
