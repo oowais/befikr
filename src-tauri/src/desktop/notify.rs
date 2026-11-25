@@ -164,7 +164,7 @@ mod linux {
 #[cfg(windows)]
 mod windows {
     use notify_rust::{CloseReason, Notification, NotificationResponse, Timeout, Urgency};
-    use tauri::{AppHandle, Manager};
+    use tauri::AppHandle;
 
     use super::{answer, due_text, shown, Answer};
 
