@@ -150,14 +150,19 @@ onUnmounted(() => window.removeEventListener('keydown', key))
 </template>
 
 <style scoped>
+/* Pinned between the status and gesture bars, like the home screen
+   (index.vue): body already pads the safe areas, so a 100dvh box with its
+   own inset padding came out taller than the screen, with the gap on top
+   and the Next button below the fold (#29). */
 .tour {
-  max-width: 640px; margin: 0 auto; height: 100dvh; box-sizing: border-box;
-  display: flex; flex-direction: column; padding: max(8px, env(safe-area-inset-top)) 0 max(16px, env(safe-area-inset-bottom));
+  position: fixed; top: env(safe-area-inset-top); bottom: env(safe-area-inset-bottom); left: 0; right: 0;
+  max-width: 640px; margin: 0 auto; box-sizing: border-box;
+  display: flex; flex-direction: column; padding: 8px 0 16px;
 }
 .top, .bottom { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 48px; }
 .flex { flex: 1; }
 .track {
-  flex: 1; display: flex; overflow-x: auto; overflow-y: hidden;
+  flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden;
   scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
 }
 .track::-webkit-scrollbar { display: none; }
